@@ -1,0 +1,25 @@
+
+# Specifies base image and tag.
+FROM gcr.io/google-appengine/python
+
+WORKDIR /root
+
+# Installs additional packages.
+RUN pip3 install cloudml-hypertune
+RUN pip3 install google-cloud-storage
+RUN pip3 install google-cloud-aiplatform
+RUN pip3 install tensorflow==2.11.0
+RUN pip3 install tensorboard
+RUN pip3 install tensorboard-plugin-profile
+RUN pip3 install tensorboard-plugin-wit
+RUN pip3 install tensorboard-data-server
+RUN pip3 install tensorflow-io
+RUN pip3 install tf-agents==0.16.0
+RUN pip3 install matplotlib
+RUN pip3 install urllib3
+
+# Copies training code to the Docker image.
+COPY src/training /root/src/training
+
+# Sets up the entry point to invoke the task.
+ENTRYPOINT ["python3", "-m", "src.training.task"]
