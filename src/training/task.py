@@ -56,7 +56,8 @@ def get_args(
     
     parser.add_argument(
         "--project_id"
-        , action="store_true"
+        , type=str
+        , default='hybrid-vertex'
     )
     # Whether to execute hyperparameter tuning or training
     parser.add_argument(
