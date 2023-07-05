@@ -1,0 +1,7 @@
+
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', '$_IMAGE_URI', '$_FILE_LOCATION', '-f', '$_FILE_LOCATION/Dockerfile_$_DOCKERNAME']
+  env: ['AIP_STORAGE_URI=$_ARTIFACTS_DIR', 'PROJECT_ID=$_PROJECT_ID', 'LOGGER_PUBSUB_TOPIC=$_LOGGER_PUBSUB_TOPIC']
+images:
+- '$_IMAGE_URI'
