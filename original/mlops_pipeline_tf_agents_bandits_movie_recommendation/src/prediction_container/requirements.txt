@@ -1,4 +1,0 @@
-google-cloud-pubsub
-pillow
-tf-agents==0.16.0
-tensorflow==2.12.0
