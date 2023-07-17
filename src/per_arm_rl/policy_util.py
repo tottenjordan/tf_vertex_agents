@@ -16,6 +16,11 @@
 import collections
 from typing import Callable, Dict, List, Optional, TypeVar
 
+import logging
+logging.disable(logging.WARNING)
+
+import tensorflow as tf
+
 from tf_agents.agents import TFAgent
 from tf_agents.bandits.agents.examples.v2 import trainer
 from tf_agents.drivers import dynamic_step_driver
@@ -32,6 +37,7 @@ def train(
     , environment: TFEnvironment
     , training_loops: int
     , steps_per_loop: int
+    , log_dir: str
     , additional_metrics: Optional[List[TFStepMetric]] = None
     , training_data_spec_transformation_fn: Optional[Callable[[T],T]] = None
     , run_hyperparameter_tuning: bool = False
@@ -81,6 +87,15 @@ def train(
     """
     
     # ====================================================
+    # TB summary writer
+    # ====================================================
+    logging.info(f" log_dir: {log_dir}")
+    train_summary_writer = tf.compat.v2.summary.create_file_writer(
+        log_dir, flush_millis=10 * 1000
+    )
+    train_summary_writer.set_as_default()
+    
+    # ====================================================
     # get data spec
     # ====================================================
     if run_hyperparameter_tuning and not (root_dir is None and artifacts_dir is None):
@@ -116,6 +131,7 @@ def train(
     
     metrics = [
         tf_metrics.NumberOfEpisodes()
+        , tf_metrics.EnvironmentSteps()
         , tf_metrics.AverageEpisodeLengthMetric(batch_size=environment.batch_size)
     ]
     if additional_metrics:
@@ -174,6 +190,13 @@ def train(
             train_step = train_step
             , metrics = metrics
         )
+        # log tensorboard
+        for metric in metrics:
+            metric.tf_summaries(
+                train_step=train_step
+                , step_metrics=metrics[:2]
+            )
+        
         metric_utils.log_metrics(metrics)
     
         for metric in metrics:

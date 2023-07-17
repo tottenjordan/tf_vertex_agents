@@ -20,6 +20,7 @@ import logging
 import os
 import sys
 from typing import List, Union
+import time
 
 # google cloud
 from google.cloud import aiplatform, storage
@@ -38,6 +39,8 @@ from tf_agents.bandits.environments import environment_utilities
 from tf_agents.bandits.environments import movielens_py_environment
 from tf_agents.bandits.metrics import tf_metrics as tf_bandit_metrics
 from tf_agents.environments import tf_py_environment
+
+tf.compat.v1.enable_v2_behavior()
 
 if tf.__version__[0] != "2":
     raise Exception("The trainer only runs with TensorFlow version 2.")
@@ -59,143 +62,103 @@ def get_args(
     parser = argparse.ArgumentParser()
     
     parser.add_argument(
-        "--project_id"
-        , type=str
-        , default='hybrid-vertex'
+        "--project_id", type=str, default='hybrid-vertex'
     )
     # Whether to execute hyperparameter tuning or training
     parser.add_argument(
-        "--run-hyperparameter-tuning"
-        , action="store_true"
+        "--run-hyperparameter-tuning", action="store_true"
         , help="Whether to perform hyperparameter tuning instead of regular training."
     )
     # Whether to train using the best hyperparameters learned from a previous
     # hyperparameter tuning job.
     parser.add_argument(
-        "--train-with-best-hyperparameters"
-        , action="store_true"
+        "--train-with-best-hyperparameters", action="store_true"
         , help="Whether to train using the best hyperparameters learned from a previous hyperparameter tuning job."
     )
     # Path parameters
     parser.add_argument(
-        "--artifacts-dir"
-        , type=str
+        "--artifacts-dir", type=str
         , help="Extra directory where model artifacts are saved."
     )
     parser.add_argument(
-        "--profiler-dir"
-        , default=None
-        , type=str
+        "--profiler-dir", default=None, type=str
         , help="Directory for TensorBoard Profiler artifacts."
     )
     parser.add_argument(
         "--data-path", type=str, help="Path to MovieLens 100K's 'u.data' file."
     )
     parser.add_argument(
-        "--best-hyperparameters-bucket"
-        , type=str
+        "--best-hyperparameters-bucket", type=str
         , help="Path to MovieLens 100K's 'u.data' file."
     )
     parser.add_argument(
-        "--best-hyperparameters-path"
-        , type=str
+        "--best-hyperparameters-path", type=str
         , help="Path to JSON file containing the best hyperparameters."
     )
     # Hyperparameters
     parser.add_argument(
-        "--batch-size"
-        , default=8
-        , type=int
+        "--batch-size", default=8, type=int
         , help="Training and prediction batch size."
     )
     parser.add_argument(
-        "--training-loops"
-        , default=4
-        , type=int
+        "--training_loops", default=4, type=int
         , help="Number of training iterations."
     )
     parser.add_argument(
-        "--steps-per-loop"
-        , default=2
-        , type=int
+        "--steps-per-loop", default=2, type=int
         , help="Number of driver steps per training iteration."
     )
     # MovieLens simulation environment parameters
     parser.add_argument(
-        "--rank-k"
-        , default=20
-        , type=int
+        "--rank-k", default=20, type=int
         , help="Rank for matrix factorization in the MovieLens environment; also the observation dimension."
     )
     parser.add_argument(
-        "--num-actions"
-        , default=20
-        , type=int
+        "--num-actions", default=20, type=int
         , help="Number of actions (movie items) to choose from."
     )
     # LinUCB agent parameters
     parser.add_argument(
-        "--tikhonov-weight"
-        , default=0.001
-        , type=float
+        "--tikhonov-weight", default=0.001, type=float
         , help="LinUCB Tikhonov regularization weight."
     )
     parser.add_argument(
-        "--agent-alpha"
-        , default=10.0
-        , type=float
+        "--agent-alpha", default=10.0, type=float
         , help="LinUCB exploration parameter that multiplies the confidence intervals."
     )
-
-    ### new
     parser.add_argument(
-        "--bucket_name"
-        , default="tmp"
-        , type=str
-        , help=" "
+        "--bucket_name", default="tmp", type=str
     )
 
     parser.add_argument(
-        "--data_gcs_prefix"
-        , default="data"
-        , type=str
-        , help=""
+        "--data_gcs_prefix", default="data", type=str
     )
     
     parser.add_argument(
-        "--data_path"
-        , default="gs://tmp/tmp"
-        , type=str
-        , help=""
+        "--data_path", default="gs://tmp/tmp", type=str
     )
     
     parser.add_argument(
-        "--project_number"
-        , default="934903580331"
-        , type=str
-        , help=""
-    )
-    # distribute
-    parser.add_argument(
-        "--distribute"
-        , default="single"
-        , type=str
-        , help=""
-    )
-    # artifacts_dir
-    parser.add_argument(
-        "--artifacts_dir"
-        , default="gs://BUCKET/EXPERIMENT/RUN_NAME/artifacts"
-        , type=str
-        , help=""
+        "--project_number", default="934903580331", type=str
     )
     parser.add_argument(
-        "--root_dir"
-        , default="gs://BUCKET/EXPERIMENT/RUN_NAME/root"
-        , type=str
-        , help=""
+        "--distribute", default="single", type=str, help=""
     )
-    
+    parser.add_argument(
+        "--artifacts_dir", default="gs://BUCKET/EXPERIMENT/RUN_NAME/artifacts", type=str
+    )
+    parser.add_argument(
+        "--root_dir", default="gs://BUCKET/EXPERIMENT/RUN_NAME/root", type=str
+    )
+    parser.add_argument(
+        "--experiment_name", default="tmp-experiment", type=str
+    )
+    parser.add_argument(
+        "--experiment_run", default="tmp-experiment-run", type=str
+    )
+    parser.add_argument(
+        "--log_dir", type=str
+    )
     return parser.parse_args(raw_args)
 
 def execute_task(
@@ -216,17 +179,31 @@ def execute_task(
         Google Cloud Storage.
       hypertune_client: Client for submitting hyperparameter tuning metrics.
     """
+    # ====================================================
+    # set Vertex AI env vars
+    # ====================================================
+    if 'AIP_TENSORBOARD_LOG_DIR' in os.environ:
+        log_dir=os.environ['AIP_TENSORBOARD_LOG_DIR']
+        logging.info(f'AIP_TENSORBOARD_LOG_DIR: {log_dir}')
+    else:
+        log_dir = args.log_dir
+        logging.info(f'log_dir: {log_dir}')
+        
+    logging.info(f'TensorBoard log_dir: {log_dir}')
     
     # [Do Not Change] Set the root directory for training artifacts.
-    # TODO - JT
     MODEL_DIR = os.environ["AIP_MODEL_DIR"] if not args.run_hyperparameter_tuning else ""
+    logging.info(f'MODEL_DIR: {MODEL_DIR}')
+    
     root_dir = args.root_dir if not args.run_hyperparameter_tuning else ""
     logging.info(f'root_dir: {root_dir}')
 
-    # Use best hyperparameters learned from a previous hyperparameter tuning job.
-    logging.info(args.train_with_best_hyperparameters)
+    # ====================================================
+    # Use best hparams learned from previous hpt job
+    # ====================================================
     if args.train_with_best_hyperparameters:
         logging.info(f'train_with_best_hyperparameters engaged...')
+        logging.info(f" train_with_best_hyperparameters: {args.train_with_best_hyperparameters}")
         best_hyperparameters = json.loads(
             best_hyperparameters_blob.download_as_string()
         )
@@ -238,7 +215,9 @@ def execute_task(
         if "steps-per-loop" in best_hyperparameters:
             args.step_per_loop = int(best_hyperparameters["steps-per-loop"])
 
-    # Define RL environment.
+    # ====================================================
+    # Define RL environment
+    # ====================================================
     env = my_per_arm_py_env.MyMovieLensPerArmPyEnvironment(
         project_number = args.project_number
         , data_path = args.data_path
@@ -284,6 +263,8 @@ def execute_task(
     # Perform on-policy training with the simulation MovieLens environment.
     if args.profiler_dir is not None:
         tf.profiler.experimental.start(args.profiler_dir)
+        
+    start_time = time.time()
   
     metric_results = policy_util.train(
         agent=agent
@@ -296,7 +277,11 @@ def execute_task(
         , artifacts_dir=args.artifacts_dir
         if not args.run_hyperparameter_tuning else None
         , model_dir = MODEL_DIR
+        , log_dir = log_dir
     )
+    
+    end_time = time.time()
+    runtime_mins = int((end_time - start_time) / 60)
     
     if args.profiler_dir is not None:
         tf.profiler.experimental.stop()
@@ -308,6 +293,43 @@ def execute_task(
             , metric_value=metric_results["AverageReturnMetric"][-1]
             # , global_step=args.training_loops
         )
+        
+    if args.run_hyperparameter_tuning:
+        logging.info("hp-tuning engaged; not logging training output to Vertex Experiments")
+    else:
+        logging.info(f"Logging data to experiment run: {args.experiment_run}")
+        
+        # gather the metrics for the last epoch to be saved in metrics
+        exp_metrics = {
+            "AverageReturnMetric" : float(metric_results["AverageReturnMetric"][-1])
+            , "FinalRegretMetric" : float(metric_results["RegretMetric"][-1])
+        }
+        
+        # gather the param values
+        exp_params = {
+            "runtime": runtime_mins
+            , "batch_size": args.batch_size
+            , "training_loops": args.training_loops
+            , "steps_pre_loop": args.steps_per_loop
+            , "rank_k": args.rank_k
+            , "num_actions": args.num_actions
+            , "per_arm": PER_ARM
+            , "tikhonov_weight": args.tikhonov_weight
+            , "agent_alpha": args.agent_alpha
+        }
+        
+        with aiplatform.start_run(
+            args.experiment_run
+        ) as my_run:
+            
+            aiplatform.log_params(exp_params)
+            
+            aiplatform.log_metrics(exp_metrics)
+            
+            aiplatform.end_run()
+            
+        logging.info(f"EXPERIMENT RUN: '{args.experiment_run}' has ended")
+            
 
 def main() -> None:
     """
@@ -324,9 +346,9 @@ def main() -> None:
     storage_client = storage.Client(project=project_number)
     
     vertex_ai.init(
-        project=project_number,
-        location='us-central1',
-        # experiment=args.experiment_name
+        project=project_number
+        , location='us-central1'
+        , experiment=args.experiment_name
     )
     
     # =============================================
@@ -386,6 +408,7 @@ def main() -> None:
     # ====================================================
     
     if args.train_with_best_hyperparameters:
+        logging.info(f" best_hyperparameters_path: {args.best_hyperparameters_path}")
         storage_client = storage.Client(args.project_id)
         bucket = storage_client.bucket(args.bucket_name)
         best_hyperparameters_blob = bucket.blob(args.best_hyperparameters_path)
