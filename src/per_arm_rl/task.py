@@ -40,6 +40,9 @@ from tf_agents.bandits.environments import movielens_py_environment
 from tf_agents.bandits.metrics import tf_metrics as tf_bandit_metrics
 from tf_agents.environments import tf_py_environment
 
+# import traceback
+# from google.cloud.aiplatform.training_utils import cloud_profiler
+
 tf.compat.v1.enable_v2_behavior()
 
 if tf.__version__[0] != "2":
@@ -61,104 +64,37 @@ def get_args(
     """
     parser = argparse.ArgumentParser()
     
-    parser.add_argument(
-        "--project_id", type=str, default='hybrid-vertex'
-    )
+    parser.add_argument("--project_id", type=str, default='hybrid-vertex')
     # Whether to execute hyperparameter tuning or training
-    parser.add_argument(
-        "--run-hyperparameter-tuning", action="store_true"
-        , help="Whether to perform hyperparameter tuning instead of regular training."
-    )
-    # Whether to train using the best hyperparameters learned from a previous
+    parser.add_argument("--run-hyperparameter-tuning", action="store_true")
     # hyperparameter tuning job.
-    parser.add_argument(
-        "--train-with-best-hyperparameters", action="store_true"
-        , help="Whether to train using the best hyperparameters learned from a previous hyperparameter tuning job."
-    )
+    parser.add_argument("--train-with-best-hyperparameters", action="store_true")
     # Path parameters
-    parser.add_argument(
-        "--artifacts-dir", type=str
-        , help="Extra directory where model artifacts are saved."
-    )
-    parser.add_argument(
-        "--profiler-dir", default=None, type=str
-        , help="Directory for TensorBoard Profiler artifacts."
-    )
-    parser.add_argument(
-        "--data-path", type=str, help="Path to MovieLens 100K's 'u.data' file."
-    )
-    parser.add_argument(
-        "--best-hyperparameters-bucket", type=str
-        , help="Path to MovieLens 100K's 'u.data' file."
-    )
-    parser.add_argument(
-        "--best-hyperparameters-path", type=str
-        , help="Path to JSON file containing the best hyperparameters."
-    )
+    parser.add_argument("--artifacts-dir", type=str, help="Extra directory where model artifacts are saved.")
+    # parser.add_argument("--profiler-dir", default=None, type=str, help="Directory for TensorBoard Profiler artifacts.")
+    parser.add_argument("--data-path", type=str, help="Path to MovieLens 100K's 'u.data' file.")
+    parser.add_argument("--best-hyperparameters-bucket", type=str, help="Path to MovieLens 100K's 'u.data' file.")
+    parser.add_argument("--best-hyperparameters-path", type=str)
     # Hyperparameters
-    parser.add_argument(
-        "--batch-size", default=8, type=int
-        , help="Training and prediction batch size."
-    )
-    parser.add_argument(
-        "--training_loops", default=4, type=int
-        , help="Number of training iterations."
-    )
-    parser.add_argument(
-        "--steps-per-loop", default=2, type=int
-        , help="Number of driver steps per training iteration."
-    )
-    # MovieLens simulation environment parameters
-    parser.add_argument(
-        "--rank-k", default=20, type=int
-        , help="Rank for matrix factorization in the MovieLens environment; also the observation dimension."
-    )
-    parser.add_argument(
-        "--num-actions", default=20, type=int
-        , help="Number of actions (movie items) to choose from."
-    )
+    parser.add_argument("--batch-size", default=8, type=int)
+    parser.add_argument("--training_loops", default=4, type=int, help="Number of training iterations.")
+    parser.add_argument( "--steps-per-loop", default=2, type=int)
+    parser.add_argument("--rank-k", default=20, type=int)
+    parser.add_argument("--num-actions", default=20, type=int, help="Number of actions (movie items) to choose from.")
     # LinUCB agent parameters
-    parser.add_argument(
-        "--tikhonov-weight", default=0.001, type=float
-        , help="LinUCB Tikhonov regularization weight."
-    )
-    parser.add_argument(
-        "--agent-alpha", default=10.0, type=float
-        , help="LinUCB exploration parameter that multiplies the confidence intervals."
-    )
-    parser.add_argument(
-        "--bucket_name", default="tmp", type=str
-    )
-
-    parser.add_argument(
-        "--data_gcs_prefix", default="data", type=str
-    )
-    
-    parser.add_argument(
-        "--data_path", default="gs://tmp/tmp", type=str
-    )
-    
-    parser.add_argument(
-        "--project_number", default="934903580331", type=str
-    )
-    parser.add_argument(
-        "--distribute", default="single", type=str, help=""
-    )
-    parser.add_argument(
-        "--artifacts_dir", default="gs://BUCKET/EXPERIMENT/RUN_NAME/artifacts", type=str
-    )
-    parser.add_argument(
-        "--root_dir", default="gs://BUCKET/EXPERIMENT/RUN_NAME/root", type=str
-    )
-    parser.add_argument(
-        "--experiment_name", default="tmp-experiment", type=str
-    )
-    parser.add_argument(
-        "--experiment_run", default="tmp-experiment-run", type=str
-    )
-    parser.add_argument(
-        "--log_dir", type=str
-    )
+    parser.add_argument("--tikhonov-weight", default=0.001, type=float, help="LinUCB Tikhonov regularization weight.")
+    parser.add_argument("--agent-alpha", default=10.0, type=float)
+    parser.add_argument("--bucket_name", default="tmp", type=str)
+    parser.add_argument("--data_gcs_prefix", default="data", type=str)
+    parser.add_argument("--data_path", default="gs://tmp/tmp", type=str)
+    parser.add_argument("--project_number", default="934903580331", type=str)
+    parser.add_argument("--distribute", default="single", type=str, help="")
+    parser.add_argument("--artifacts_dir", default="gs://BUCKET/EXPERIMENT/RUN_NAME/artifacts", type=str)
+    parser.add_argument("--root_dir", default="gs://BUCKET/EXPERIMENT/RUN_NAME/root", type=str)
+    parser.add_argument("--experiment_name", default="tmp-experiment", type=str)
+    parser.add_argument("--experiment_run", default="tmp-experiment-run", type=str)
+    parser.add_argument("--log_dir", type=str)
+    parser.add_argument("--profiler", action='store_true', help="include for True; ommit for False")
     return parser.parse_args(raw_args)
 
 def execute_task(
@@ -261,8 +197,8 @@ def execute_task(
     metrics = [regret_metric]
 
     # Perform on-policy training with the simulation MovieLens environment.
-    if args.profiler_dir is not None:
-        tf.profiler.experimental.start(args.profiler_dir)
+    if args.profiler:
+        tf.profiler.experimental.start(log_dir)
         
     start_time = time.time()
   
@@ -274,16 +210,16 @@ def execute_task(
         , additional_metrics=metrics
         , run_hyperparameter_tuning=args.run_hyperparameter_tuning
         , root_dir=root_dir if not args.run_hyperparameter_tuning else None
-        , artifacts_dir=args.artifacts_dir
-        if not args.run_hyperparameter_tuning else None
+        , artifacts_dir=args.artifacts_dir if not args.run_hyperparameter_tuning else None
         , model_dir = MODEL_DIR
         , log_dir = log_dir
+        , profiler = args.profiler
     )
     
     end_time = time.time()
     runtime_mins = int((end_time - start_time) / 60)
     
-    if args.profiler_dir is not None:
+    if args.profiler:
         tf.profiler.experimental.stop()
 
     # Report training metrics to Vertex AI for hyperparameter tuning

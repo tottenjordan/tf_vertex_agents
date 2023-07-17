@@ -17,7 +17,7 @@ import collections
 from typing import Callable, Dict, List, Optional, TypeVar
 
 import logging
-logging.disable(logging.WARNING)
+# logging.disable(logging.WARNING)
 
 import tensorflow as tf
 
@@ -30,6 +30,10 @@ from tf_agents.metrics import tf_metrics
 from tf_agents.metrics.tf_metric import TFStepMetric
 from tf_agents.policies import policy_saver
 
+# import traceback
+# from google.cloud.aiplatform.training_utils import cloud_profiler
+
+
 T = TypeVar("T")
 
 def train(
@@ -38,6 +42,7 @@ def train(
     , training_loops: int
     , steps_per_loop: int
     , log_dir: str
+    , profiler: bool
     , additional_metrics: Optional[List[TFStepMetric]] = None
     , training_data_spec_transformation_fn: Optional[Callable[[T],T]] = None
     , run_hyperparameter_tuning: bool = False
@@ -94,6 +99,24 @@ def train(
         log_dir, flush_millis=10 * 1000
     )
     train_summary_writer.set_as_default()
+    
+    logging.info(f" profiler: {profiler}")
+    # if profiler:
+    #     profiler_options = tf.profiler.experimental.ProfilerOptions(
+    #         host_tracer_level = 3
+    #         , python_tracer_level = 1
+    #         , device_tracer_level = 1
+    #     )
+    
+    # if profiler:
+    #     tensorboard_callback = tf.keras.callbacks.TensorBoard(
+    #         log_dir=log_dir,
+    #         histogram_freq=args.hist_frequency, 
+    #         write_graph=True,
+    #         profile_batch=(25, 30),
+    #         update_freq='epoch', 
+    #     )
+    #     logging.info(f'Tensorboard callback should profile batches...')
     
     # ====================================================
     # get data spec
@@ -175,6 +198,23 @@ def train(
     # ====================================================
     # training_loop
     # ====================================================
+#     if profiler:
+#         logging.info('Initializing profiler ...')
+        
+#         try:
+#             cloud_profiler.init()
+#         except:
+#             ex_type, ex_value, ex_traceback = sys.exc_info()
+#             print("*** Unexpected:", ex_type.__name__, ex_value)
+#             traceback.print_tb(ex_traceback, limit=10, file=sys.stdout)
+        
+#         logging.info('The profiler initiated...')
+        
+#         start_profiling_step = 10
+#         stop_profiling_step = 20
+#         logging.info(f'start_profiling_step: {start_profiling_step}')
+#         logging.info(f'start_profiling_step: {stop_profiling_step}')
+    
     training_loop = trainer._get_training_loop(
         driver = driver
         , replay_buffer = replay_buffer
@@ -186,10 +226,22 @@ def train(
         saver = policy_saver.PolicySaver(agent.policy)
 
     for train_step in range(training_loops):
+        # # start profiler
+        # if profiler:
+        #     if train_step == start_profiling_step:
+        #         tf.profiler.experimental.start(logdir=log_dir, options = profiler_options)
+        
+        # training loop
         training_loop(
             train_step = train_step
             , metrics = metrics
         )
+        
+        # # end profiler
+        # if profiler:
+        #     if train_step == stop_profiling_step:
+        #         tf.profiler.experimental.stop(save=True)
+
         # log tensorboard
         for metric in metrics:
             metric.tf_summaries(
