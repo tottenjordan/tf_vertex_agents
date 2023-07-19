@@ -143,27 +143,6 @@ class MyMovieLensPerArmPyEnvironment(bandit_py_environment.BanditPyEnvironment):
         
         train_dataset = tf.data.TFRecordDataset(train_files)
         train_dataset = train_dataset.map(data_utils.parse_tfrecord)
-
-        # train_dataset = tf.data.Dataset.from_tensor_slices(train_files).prefetch(
-        #     tf.data.AUTOTUNE
-        # )
-        # train_dataset = train_dataset.interleave(     # Parallelize data reading
-        #     data_utils.full_parse
-        #     , cycle_length=tf.data.AUTOTUNE
-        #     , block_length=64                         # TODO - paramertize
-        #     , num_parallel_calls=tf.data.AUTOTUNE
-        #     , deterministic=False
-        # ).repeat().batch(                             # vectorize mapped function
-        #     self._batch_size,
-        #     drop_remainder=True,
-        # ).map(
-        #     data_utils.parse_tfrecord, 
-        #     num_parallel_calls=tf.data.AUTOTUNE
-        # ).prefetch(
-        #     tf.data.AUTOTUNE                          # GLOBAL_BATCH_SIZE*3 # tf.data.AUTOTUNE
-        # ).with_options(
-        #     options
-        # )
         
         self.dataset = train_dataset
         # =============================================
@@ -212,7 +191,7 @@ class MyMovieLensPerArmPyEnvironment(bandit_py_environment.BanditPyEnvironment):
                 array_spec.ArraySpec(shape=[self._rank_k + 2], dtype=np.float32),     # creating +space for user age and occupation
             PER_ARM_KEY:
                 array_spec.ArraySpec(
-                    shape=[self._num_actions, self._rank_k + 1], dtype=np.float32),     # creating +1 space for movie genre
+                    shape=[self._num_actions, self._rank_k + 1], dtype=np.float32),   # creating +1 space for movie genre
         }
         self._time_step_spec = ts.time_step_spec(observation_spec)
 

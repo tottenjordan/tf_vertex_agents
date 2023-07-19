@@ -218,3 +218,28 @@ def load_movielens_ratings(
             float(movie_gen_lookup_dict[row['movie_genres'].numpy()]) + .0001
         ) 
     return ratings_matrix, np.array(user_age_int), np.array(user_occ_int), np.array(mov_gen_int)
+
+# ====================================================
+# upload object to GCS
+# ====================================================
+
+# upload files to Google Cloud Storage
+def upload_blob(
+    project_id, 
+    bucket_name, 
+    source_file_name, 
+    destination_blob_name
+):
+    """Uploads a file to the bucket."""
+    # bucket_name = "your-bucket-name" (no 'gs://')
+    # source_file_name = "local/path/to/file" (file to upload)
+    # destination_blob_name = "folder/paths-to/storage-object-name"
+    storage_client = storage.Client(project=project_id)
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+
+    blob.upload_from_filename(source_file_name)
+
+    print(
+        f"File {source_file_name} uploaded to gs://{bucket_name}/{destination_blob_name}."
+    )
