@@ -97,3 +97,13 @@ def prepare_worker_pool_specs(
         worker_pool_specs.append(workers_spec)
 
     return worker_pool_specs
+
+from tf_agents.eval import metric_utils
+from tf_agents.metrics import export_utils
+
+def _export_metrics_and_summaries(step, metrics):
+    """Exports metrics and tf summaries."""
+    metric_utils.log_metrics(metrics)
+    export_utils.export_metrics(step=step, metrics=metrics)
+    for metric in metrics:
+        metric.tf_summaries(train_step=step)
