@@ -107,3 +107,55 @@ def _export_metrics_and_summaries(step, metrics):
     export_utils.export_metrics(step=step, metrics=metrics)
     for metric in metrics:
         metric.tf_summaries(train_step=step)
+        
+from tf_agents.bandits.specs import utils as bandit_spec_utils
+from tf_agents.networks import encoding_network
+from tf_agents.networks import network
+from tf_agents.networks import q_network
+from tf_agents.specs import tensor_spec
+from tf_agents.typing import types
+
+def _remove_num_actions_dim_from_spec(
+    observation_spec: types.NestedTensorSpec) -> types.NestedTensorSpec:
+  """Removes the extra `num_actions` dimension from the observation spec."""
+  obs_spec_no_num_actions = {
+      bandit_spec_utils.GLOBAL_FEATURE_KEY:
+          observation_spec[bandit_spec_utils.GLOBAL_FEATURE_KEY],
+      bandit_spec_utils.PER_ARM_FEATURE_KEY:
+          tensor_spec.remove_outer_dims_nest(
+              observation_spec[bandit_spec_utils.PER_ARM_FEATURE_KEY], 1)
+  }
+  if bandit_spec_utils.NUM_ACTIONS_FEATURE_KEY in observation_spec:
+    obs_spec_no_num_actions.update({
+        bandit_spec_utils.NUM_ACTIONS_FEATURE_KEY:
+            observation_spec[bandit_spec_utils.NUM_ACTIONS_FEATURE_KEY]
+    })
+  return obs_spec_no_num_actions
+
+
+def _add_outer_dimension(x):
+    """Adds an extra outer dimension."""
+    if isinstance(x, dict):
+        for key, value in x.items():
+            x[key] = tf.expand_dims(value, 1)
+        return x
+    return tf.expand_dims(x, 1)
+
+
+# ==========================
+# train loop functions
+# ==========================
+from tf_agents.bandits.replay_buffers import bandit_replay_buffer
+from tf_agents.drivers import dynamic_step_driver
+from tf_agents.eval import metric_utils
+from tf_agents.metrics import export_utils
+from tf_agents.metrics import tf_metrics
+from tf_agents.policies import policy_saver
+
+def _get_replay_buffer(data_spec, batch_size, steps_per_loop,
+                       async_steps_per_loop):
+  """Return a `TFUniformReplayBuffer` for the given `agent`."""
+  return bandit_replay_buffer.BanditReplayBuffer(
+      data_spec=data_spec,
+      batch_size=batch_size,
+      max_length=steps_per_loop * async_steps_per_loop)
