@@ -468,12 +468,16 @@ def execute_task(args: argparse.Namespace) -> None:
     # ====================================================
     # Vocab Files
     # ====================================================
-    logging.info(f'Downloading vocab file...')
-
     EXISTING_VOCAB_FILE = f'gs://{args.bucket_name}/{args.vocab_prefix_path}/{args.vocab_filename}'
-    print(f"Downloading vocab...")
+    logging.info(f'Downloading vocab file from: {EXISTING_VOCAB_FILE}...')
+    
+    data_utils.download_blob(
+        project_id=args.project,
+        bucket_name=args.bucket_name, 
+        source_blob_name=f"{args.vocab_prefix_path}/{args.vocab_filename}", 
+        args.vocab_filename
+    )
 
-    os.system(f'gsutil cp {EXISTING_VOCAB_FILE} .')
     print(f"Downloaded vocab from: {EXISTING_VOCAB_FILE}\n")
 
     filehandler = open(f"{args.vocab_filename}", 'rb')
