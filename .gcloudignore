@@ -1,0 +1,17 @@
+.gcloudignore
+/WIP/
+# /img/
+*.pkl
+*.png
+*.ipynb
+.git
+.github
+.ipynb_checkpoints/*
+*__pycache__
+*cpython-37.pyc
+/hptuning/*
+/imgs/*
+/00-archived/*
+README.md
+.gitignore
+.DS_Store
