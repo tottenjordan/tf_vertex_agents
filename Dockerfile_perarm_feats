@@ -1,0 +1,23 @@
+
+FROM python:3.10
+
+ENV PYTHONUNBUFFERED True
+
+ENV APP_HOME /workspace
+
+WORKDIR $APP_HOME
+
+COPY requirements.txt $APP_HOME/requirements.txt
+
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r $APP_HOME/requirements.txt
+
+# ADD src $APP_HOME/src
+# RUN ls src
+COPY src/perarm_features $APP_HOME/src/perarm_features
+COPY src/per_arm_rl $APP_HOME/src/per_arm_rl
+
+RUN export PYTHONPATH=${PYTHONPATH}:${APP_HOME}/
+
+# Sets up the entry point to invoke the task.
+ENTRYPOINT ["python3", "-m", "src.perarm_features.task"]

@@ -15,6 +15,16 @@ def _is_chief(task_type, task_id):
         results = None
     return results
 
+def get_arch_from_string(arch_string):
+    
+    q = arch_string.replace(']', '')
+    q = q.replace('[', '')
+    q = q.replace(" ", "")
+    
+    return [
+        int(x) for x in q.split(',')
+    ]
+
 def get_train_strategy(distribute_arg):
 
     # Single Machine, single compute device
