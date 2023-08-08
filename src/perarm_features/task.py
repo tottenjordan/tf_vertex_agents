@@ -10,6 +10,7 @@ import functools
 from typing import List, Union
 from pprint import pprint
 import pickle as pkl
+import numpy as np
 
 # logging
 import logging
@@ -44,6 +45,7 @@ from tf_agents.drivers import dynamic_step_driver
 from tf_agents.replay_buffers import tf_uniform_replay_buffer
 from tf_agents.specs import tensor_spec
 from tf_agents.trajectories import time_step as ts
+from tf_agents.train.utils import train_utils as tfa_train_utils
 
 nest = tf.nest
 
@@ -57,6 +59,15 @@ if tf.__version__[0] != "2":
 
 
 PER_ARM = True  # Use the non-per-arm version of the MovieLens environment.
+
+# clients
+project_number = os.environ["CLOUD_ML_PROJECT_ID"]
+storage_client = storage.Client(project=project_number)
+# vertex_ai.init(
+#     project=project_number,
+#     location='us-central1',
+#     experiment=args.experiment_name
+# )
 
 # ====================================================
 # get train & val datasets
@@ -91,16 +102,16 @@ def get_user_id_emb_model(vocab_dict):
     )
 
     user_id_lookup = tf.keras.layers.StringLookup(
-        max_tokens=len(vocab_dict['user_id']) + NUM_OOV_BUCKETS,
-        num_oov_indices=NUM_OOV_BUCKETS,
+        max_tokens=len(vocab_dict['user_id']) + data_config.NUM_OOV_BUCKETS,
+        num_oov_indices=data_config.NUM_OOV_BUCKETS,
         mask_token=None,
         vocabulary=vocab_dict['user_id'],
     )(user_id_input_layer)
 
     user_id_embedding = tf.keras.layers.Embedding(
         # Let's use the explicit vocabulary lookup.
-        input_dim=len(vocab_dict['user_id']) + NUM_OOV_BUCKETS,
-        output_dim=GLOBAL_EMBEDDING_SIZE
+        input_dim=len(vocab_dict['user_id']) + data_config.NUM_OOV_BUCKETS,
+        output_dim=data_config.GLOBAL_EMBEDDING_SIZE
     )(user_id_lookup)
     
     user_id_embedding = tf.reduce_sum(user_id_embedding, axis=-2)
@@ -118,14 +129,14 @@ def get_user_age_emb_model(vocab_dict):
 
     user_age_lookup = tf.keras.layers.IntegerLookup(
         vocabulary=vocab_dict['bucketized_user_age'],
-        num_oov_indices=NUM_OOV_BUCKETS,
+        num_oov_indices=data_config.NUM_OOV_BUCKETS,
         oov_value=0,
     )(user_age_input_layer)
 
     user_age_embedding = tf.keras.layers.Embedding(
         # Let's use the explicit vocabulary lookup.
-        input_dim=len(vocab_dict['bucketized_user_age']) + NUM_OOV_BUCKETS,
-        output_dim=GLOBAL_EMBEDDING_SIZE
+        input_dim=len(vocab_dict['bucketized_user_age']) + data_config.NUM_OOV_BUCKETS,
+        output_dim=data_config.GLOBAL_EMBEDDING_SIZE
     )(user_age_lookup)
 
     user_age_embedding = tf.reduce_sum(user_age_embedding, axis=-2)
@@ -141,16 +152,16 @@ def get_user_occ_emb_model(vocab_dict):
         dtype=tf.string
     )
     user_occ_lookup = tf.keras.layers.StringLookup(
-        max_tokens=len(vocab_dict['user_occupation_text']) + NUM_OOV_BUCKETS,
-        num_oov_indices=NUM_OOV_BUCKETS,
+        max_tokens=len(vocab_dict['user_occupation_text']) + data_config.NUM_OOV_BUCKETS,
+        num_oov_indices=data_config.NUM_OOV_BUCKETS,
         mask_token=None,
         vocabulary=vocab_dict['user_occupation_text'],
     )(user_occ_input_layer)
     
     user_occ_embedding = tf.keras.layers.Embedding(
         # Let's use the explicit vocabulary lookup.
-        input_dim=len(vocab_dict['user_occupation_text']) + NUM_OOV_BUCKETS,
-        output_dim=GLOBAL_EMBEDDING_SIZE
+        input_dim=len(vocab_dict['user_occupation_text']) + data_config.NUM_OOV_BUCKETS,
+        output_dim=data_config.GLOBAL_EMBEDDING_SIZE
     )(user_occ_lookup)
     
     user_occ_embedding = tf.reduce_sum(user_occ_embedding, axis=-2)
@@ -172,8 +183,8 @@ def get_ts_emb_model(vocab_dict):
 
     user_ts_embedding = tf.keras.layers.Embedding(
         # Let's use the explicit vocabulary lookup.
-        input_dim=len(vocab_dict['timestamp_buckets'].tolist()) + NUM_OOV_BUCKETS,
-        output_dim=GLOBAL_EMBEDDING_SIZE
+        input_dim=len(vocab_dict['timestamp_buckets'].tolist()) + data_config.NUM_OOV_BUCKETS,
+        output_dim=data_config.GLOBAL_EMBEDDING_SIZE
     )(user_ts_lookup)
 
     user_ts_embedding = tf.reduce_sum(user_ts_embedding, axis=-2)
@@ -195,16 +206,16 @@ def get_mv_id_emb_model(vocab_dict):
     )
 
     mv_id_lookup = tf.keras.layers.StringLookup(
-        max_tokens=len(vocab_dict['movie_id']) + NUM_OOV_BUCKETS,
-        num_oov_indices=NUM_OOV_BUCKETS,
+        max_tokens=len(vocab_dict['movie_id']) + data_config.NUM_OOV_BUCKETS,
+        num_oov_indices=data_config.NUM_OOV_BUCKETS,
         mask_token=None,
         vocabulary=vocab_dict['movie_id'],
     )(mv_id_input_layer)
 
     mv_id_embedding = tf.keras.layers.Embedding(
         # Let's use the explicit vocabulary lookup.
-        input_dim=len(vocab_dict['movie_id']) + NUM_OOV_BUCKETS,
-        output_dim=MV_EMBEDDING_SIZE
+        input_dim=len(vocab_dict['movie_id']) + data_config.NUM_OOV_BUCKETS,
+        output_dim=data_config.MV_EMBEDDING_SIZE
     )(mv_id_lookup)
 
     mv_id_embedding = tf.reduce_sum(mv_id_embedding, axis=-2)
@@ -222,14 +233,14 @@ def get_mv_gen_emb_model(vocab_dict):
 
     mv_genre_lookup = tf.keras.layers.IntegerLookup(
         vocabulary=vocab_dict['movie_genres'],
-        num_oov_indices=NUM_OOV_BUCKETS,
+        num_oov_indices=data_config.NUM_OOV_BUCKETS,
         oov_value=0,
     )(mv_genre_input_layer)
 
     mv_genre_embedding = tf.keras.layers.Embedding(
         # Let's use the explicit vocabulary lookup.
-        input_dim=len(vocab_dict['movie_genres']) + NUM_OOV_BUCKETS,
-        output_dim=MV_EMBEDDING_SIZE
+        input_dim=len(vocab_dict['movie_genres']) + data_config.NUM_OOV_BUCKETS,
+        output_dim=data_config.MV_EMBEDDING_SIZE
     )(mv_genre_lookup)
 
     mv_genre_embedding = tf.reduce_sum(mv_genre_embedding, axis=-2)
@@ -284,8 +295,8 @@ def _get_agent(agent_type, network_type, environment):
             time_step_spec=environment.time_step_spec(),
             action_spec=environment.action_spec(),
             reward_network=network,
-            optimizer=tf.compat.v1.train.AdamOptimizer(learning_rate=LR),
-            epsilon=EPSILON,
+            optimizer=tf.compat.v1.train.AdamOptimizer(learning_rate=data_config.LR),
+            epsilon=data_config.EPSILON,
             observation_and_action_constraint_splitter=(
                 observation_and_action_constraint_splitter
             ),
@@ -371,6 +382,7 @@ def get_args(raw_args: List[str]) -> argparse.Namespace:
 
     # Path parameters
     parser.add_argument("--project_number", default="934903580331", type=str)
+    parser.add_argument("--project", default="hybrid-vertex", type=str)
     parser.add_argument("--bucket_name", default="tmp", type=str)
     parser.add_argument("--artifacts_dir", type=str)
     parser.add_argument("--root_dir", default=None, type=str, help="Dir for storing checkpoints")
@@ -391,7 +403,7 @@ def get_args(raw_args: List[str]) -> argparse.Namespace:
     parser.add_argument("--rank_k", default=20, type=int)
     parser.add_argument("--num_actions", default=20, type=int, help="Number of actions (movie items) to choose from.")
     parser.add_argument("--reward_param", help="hidden_param (list)")
-    parser.add_argument("--async_steps_per_loop", default=1, help="")
+    parser.add_argument("--async_steps_per_loop", type=int, default=1, help="")
 
     return parser.parse_args(raw_args)
 
@@ -415,16 +427,15 @@ def execute_task(args: argparse.Namespace) -> None:
     # ====================================================
     REWARD_PARAM = train_utils.get_arch_from_string(args.reward_param)
     logging.info(f'REWARD_PARAM = {REWARD_PARAM}')
-#     project_number = os.environ["CLOUD_ML_PROJECT_ID"]
     
-#     # clients
-#     storage_client = storage.Client(project=project_number)
+    # clients
+    # storage_client = storage.Client(project=args.project)
     
-#     vertex_ai.init(
-#         project=project_number,
-#         location='us-central1',
-#         experiment=args.experiment_name
-#     )
+    # vertex_ai.init(
+    #     project=project_number,
+    #     location='us-central1',
+    #     experiment=args.experiment_name
+    # )
     
     # ====================================================
     # Set Device Strategy
@@ -472,10 +483,10 @@ def execute_task(args: argparse.Namespace) -> None:
     logging.info(f'Downloading vocab file from: {EXISTING_VOCAB_FILE}...')
     
     data_utils.download_blob(
-        project_id=args.project,
-        bucket_name=args.bucket_name, 
-        source_blob_name=f"{args.vocab_prefix_path}/{args.vocab_filename}", 
-        args.vocab_filename
+        project_id = args.project,
+        bucket_name = args.bucket_name, 
+        source_blob_name = f"{args.vocab_prefix_path}/{args.vocab_filename}", 
+        destination_file_name= args.vocab_filename
     )
 
     print(f"Downloaded vocab from: {EXISTING_VOCAB_FILE}\n")
@@ -535,7 +546,7 @@ def execute_task(args: argparse.Namespace) -> None:
         mvid_model = get_mv_id_emb_model(VOCAB_DICT)
         mvgen_model = get_mv_gen_emb_model(VOCAB_DICT)
         
-        for x in dataset.batch(1).take(1):
+        for x in train_dataset.batch(1).take(1):
             mv_id_value = x['movie_id']
             mv_gen_value = x['movie_genres'][0]
 
@@ -600,7 +611,7 @@ def execute_task(args: argparse.Namespace) -> None:
     # cretae agent
     # ====================================================
     # with strategy.scope():
-    train_step = train_utils.create_train_step()
+    train_step = tfa_train_utils.create_train_step()
 
     agent, network = _get_agent(
         agent_type=args.agent_type, 
@@ -624,8 +635,8 @@ def execute_task(args: argparse.Namespace) -> None:
         steps_per_loop = args.steps_per_loop,
         log_interval = 1,
         # regret_metric = regret_metric,
-        log_dir=args.log_dir,
-        model_dir=args.artifact_dir,
+        log_dir=log_dir,
+        model_dir=args.artifacts_dir,
         root_dir=args.root_dir,
         async_steps_per_loop = args.async_steps_per_loop,
         resume_training_loops = False,

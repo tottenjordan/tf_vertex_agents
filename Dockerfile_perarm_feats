@@ -7,15 +7,20 @@ ENV APP_HOME /workspace
 
 WORKDIR $APP_HOME
 
-COPY requirements.txt $APP_HOME/requirements.txt
+# COPY requirements.txt $APP_HOME/requirements.txt
+COPY /requirements.txt $APP_HOME/requirements.txt
 
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r $APP_HOME/requirements.txt
+
+RUN ls $APP_HOME
 
 # ADD src $APP_HOME/src
 # RUN ls src
 COPY src/perarm_features $APP_HOME/src/perarm_features
 COPY src/per_arm_rl $APP_HOME/src/per_arm_rl
+
+RUN ls $APP_HOME
 
 RUN export PYTHONPATH=${PYTHONPATH}:${APP_HOME}/
 

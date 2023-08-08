@@ -17,6 +17,9 @@ from typing import Dict
 
 import tensorflow as tf
 
+from google.cloud import aiplatform as vertex_ai
+from google.cloud import storage
+
 # ============================================
 # features
 # ============================================
