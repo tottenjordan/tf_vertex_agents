@@ -24,10 +24,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 import tensorflow as tf
 
-# TF-Agent env
-from tf_agents.bandits.environments import environment_utilities
-from tf_agents.bandits.environments import stationary_stochastic_per_arm_py_environment as p_a_env
-from tf_agents.environments import tf_py_environment
+# # TF-Agent env
+# from tf_agents.bandits.environments import environment_utilities
+# from tf_agents.bandits.environments import stationary_stochastic_per_arm_py_environment as p_a_env
+# from tf_agents.environments import tf_py_environment
 
 # TF-Agent agents & networks
 from tf_agents.bandits.agents import lin_ucb_agent
@@ -47,9 +47,12 @@ from tf_agents.specs import tensor_spec
 from tf_agents.trajectories import time_step as ts
 from tf_agents.train.utils import train_utils as tfa_train_utils
 
+from tf_agents.bandits.specs import utils as bandit_spec_utils
+from tf_agents.trajectories import trajectory
+
 nest = tf.nest
 
-from . import trainer_common as trainer_common
+from . import train_perarm as trainer_common
 from src.per_arm_rl import data_utils
 from src.per_arm_rl import train_utils
 from src.per_arm_rl import data_config
@@ -252,22 +255,30 @@ def get_mv_gen_emb_model(vocab_dict):
 # get agent
 # ====================================================
 observation_and_action_constraint_splitter = None
+# global_step = tf.compat.v1.train.get_or_create_global_step()
 
-def _get_agent(agent_type, network_type, environment):
+def _get_agent(
+    agent_type, 
+    network_type, 
+    time_step_spec, 
+    action_spec, 
+    observation_spec,
+    global_step
+):
     network = None
 
     if agent_type == 'LinUCB':
         agent = lin_ucb_agent.LinearUCBAgent(
-            time_step_spec=environment.time_step_spec(),
-            action_spec=environment.action_spec(),
+            time_step_spec=time_step_spec,
+            action_spec=action_spec,
             alpha=data_config.AGENT_ALPHA,
             accepts_per_arm_features=PER_ARM,
             dtype=tf.float32,
         )
     elif agent_type == 'LinTS':
         agent = lin_ts_agent.LinearThompsonSamplingAgent(
-            time_step_spec=environment.time_step_spec(),
-            action_spec=environment.action_spec(),
+            time_step_spec=time_step_spec,
+            action_spec=action_spec,
             alpha=data_config.AGENT_ALPHA,
             observation_and_action_constraint_splitter=(
                 observation_and_action_constraint_splitter
@@ -276,10 +287,10 @@ def _get_agent(agent_type, network_type, environment):
             dtype=tf.float32,
         )
     elif agent_type == 'epsGreedy':
-        obs_spec = environment.observation_spec()
+        # obs_spec = environment.observation_spec()
         if network_type == 'commontower':
             network = global_and_arm_feature_network.create_feed_forward_common_tower_network(
-                observation_spec = obs_spec, 
+                observation_spec = observation_spec, 
                 global_layers = data_config.GLOBAL_LAYERS, 
                 arm_layers = data_config.ARM_LAYERS, 
                 common_layers = data_config.COMMON_LAYERS,
@@ -287,13 +298,13 @@ def _get_agent(agent_type, network_type, environment):
             )
         elif network_type == 'dotproduct':
             network = global_and_arm_feature_network.create_feed_forward_dot_product_network(
-                observation_spec = obs_spec, 
+                observation_spec = observation_spec, 
                 global_layers = data_config.GLOBAL_LAYERS, 
                 arm_layers = data_config.ARM_LAYERS
             )
         agent = neural_epsilon_greedy_agent.NeuralEpsilonGreedyAgent(
-            time_step_spec=environment.time_step_spec(),
-            action_spec=environment.action_spec(),
+            time_step_spec=time_step_spec,
+            action_spec=action_spec,
             reward_network=network,
             optimizer=tf.compat.v1.train.AdamOptimizer(learning_rate=data_config.LR),
             epsilon=data_config.EPSILON,
@@ -301,14 +312,16 @@ def _get_agent(agent_type, network_type, environment):
                 observation_and_action_constraint_splitter
             ),
             accepts_per_arm_features=PER_ARM,
-            emit_policy_info=policy_utilities.InfoFields.PREDICTED_REWARDS_MEAN,
+            emit_policy_info=(policy_utilities.InfoFields.PREDICTED_REWARDS_MEAN),
+            train_step_counter=global_step,
+            name='OffpolicyNeuralEpsGreedyAgent'
         )
 
     elif agent_type == 'NeuralLinUCB':
-        obs_spec = environment.observation_spec()
+        # obs_spec = environment.observation_spec()
         network = (
             global_and_arm_feature_network.create_feed_forward_common_tower_network(
-                observation_spec = obs_spec, 
+                observation_spec = observation_spec, 
                 global_layers = data_config.GLOBAL_LAYERS, 
                 arm_layers = data_config.ARM_LAYERS, 
                 common_layers = data_config.COMMON_LAYERS,
@@ -316,8 +329,8 @@ def _get_agent(agent_type, network_type, environment):
             )
         )
         agent = neural_linucb_agent.NeuralLinUCBAgent(
-            time_step_spec=environment.time_step_spec(),
-            action_spec=environment.action_spec(),
+            time_step_spec=time_step_spec,
+            action_spec=action_spec,
             encoding_network=network,
             encoding_network_num_train_steps=data_config.EPS_PHASE_STEPS,
             encoding_dim=data_config.ENCODING_DIM,
@@ -342,28 +355,28 @@ def _get_agent(agent_type, network_type, environment):
 # ====================================================
 # get rewards functions
 # ====================================================
-def _all_rewards(observation, hidden_param):
-    """Outputs rewards for all actions, given an observation."""
-    hidden_param = tf.cast(hidden_param, dtype=tf.float32)
-    global_obs = observation['global']
-    per_arm_obs = observation['per_arm']
-    num_actions = tf.shape(per_arm_obs)[1]
-    tiled_global = tf.tile(
-        tf.expand_dims(global_obs, axis=1), [1, num_actions, 1])
-    concatenated = tf.concat([tiled_global, per_arm_obs], axis=-1)
-    rewards = tf.linalg.matvec(concatenated, hidden_param)
-    return rewards
+# def _all_rewards(observation, hidden_param):
+#     """Outputs rewards for all actions, given an observation."""
+#     hidden_param = tf.cast(hidden_param, dtype=tf.float32)
+#     global_obs = observation['global']
+#     per_arm_obs = observation['per_arm']
+#     num_actions = tf.shape(per_arm_obs)[1]
+#     tiled_global = tf.tile(
+#         tf.expand_dims(global_obs, axis=1), [1, num_actions, 1])
+#     concatenated = tf.concat([tiled_global, per_arm_obs], axis=-1)
+#     rewards = tf.linalg.matvec(concatenated, hidden_param)
+#     return rewards
 
-def optimal_reward(observation, hidden_param):
-    """Outputs the maximum expected reward for every element in the batch."""
-    return tf.reduce_max(
-        _all_rewards(observation, hidden_param), axis=1
-    )
+# def optimal_reward(observation, hidden_param):
+#     """Outputs the maximum expected reward for every element in the batch."""
+#     return tf.reduce_max(
+#         _all_rewards(observation, hidden_param), axis=1
+#     )
 
-def optimal_action(observation, hidden_param):
-    return tf.argmax(
-        _all_rewards(observation, hidden_param), axis=1, output_type=tf.int32
-    )
+# def optimal_action(observation, hidden_param):
+#     return tf.argmax(
+#         _all_rewards(observation, hidden_param), axis=1, output_type=tf.int32
+#     )
 
 # ====================================================
 # Args
@@ -402,8 +415,13 @@ def get_args(raw_args: List[str]) -> argparse.Namespace:
     parser.add_argument("--steps_per_loop", default=2, type=int)
     parser.add_argument("--rank_k", default=20, type=int)
     parser.add_argument("--num_actions", default=20, type=int, help="Number of actions (movie items) to choose from.")
-    parser.add_argument("--reward_param", help="hidden_param (list)")
+    # parser.add_argument("--reward_param", help="hidden_param (list)")
     parser.add_argument("--async_steps_per_loop", type=int, default=1, help="")
+    parser.add_argument("--global_dim", type=int, default=1, help="")
+    parser.add_argument("--per_arm_dim", type=int, default=1, help="")
+    parser.add_argument("--resume_training_loops", action='store_true', help="include for True; ommit for False")
+    parser.add_argument("--split", default=None, type=str, help="data split")
+    parser.add_argument("--log_interval", type=int, default=1, help="")
 
     return parser.parse_args(raw_args)
 
@@ -425,8 +443,8 @@ def execute_task(args: argparse.Namespace) -> None:
     # ====================================================
     # Set env variables
     # ====================================================
-    REWARD_PARAM = train_utils.get_arch_from_string(args.reward_param)
-    logging.info(f'REWARD_PARAM = {REWARD_PARAM}')
+    # REWARD_PARAM = train_utils.get_arch_from_string(args.reward_param)
+    # logging.info(f'REWARD_PARAM = {REWARD_PARAM}')
     
     # clients
     # storage_client = storage.Client(project=args.project)
@@ -503,7 +521,7 @@ def execute_task(args: argparse.Namespace) -> None:
     # ====================================================
     # get global_context_sampling_fn
     # ====================================================
-    def global_context_sampling_fn():
+    def _get_global_context_features(x):
         """
         This function generates a single global observation vector.
         """
@@ -512,33 +530,33 @@ def execute_task(args: argparse.Namespace) -> None:
         user_occ_model = get_user_occ_emb_model(VOCAB_DICT)
         user_ts_model = get_ts_emb_model(VOCAB_DICT)
         
-        for x in train_dataset.batch(1).take(1):
-            user_id_value = x['user_id']
-            user_age_value = x['bucketized_user_age']
-            user_occ_value = x['user_occupation_text']
-            user_ts_value = x['timestamp']
+        # for x in train_dataset.batch(1).take(1):
+        user_id_value = x['user_id']
+        user_age_value = x['bucketized_user_age']
+        user_occ_value = x['user_occupation_text']
+        user_ts_value = x['timestamp']
 
-            _id = user_id_model(user_id_value)
-            _age = user_age_model(user_age_value)
-            _occ = user_occ_model(user_occ_value)
-            _ts = user_ts_model(user_ts_value)
+        _id = user_id_model(user_id_value)
+        _age = user_age_model(user_age_value)
+        _occ = user_occ_model(user_occ_value)
+        _ts = user_ts_model(user_ts_value)
 
-            # to numpy array
-            _id = np.array(_id.numpy()[0])
-            _age = np.array(_age.numpy()[0])
-            _occ = np.array(_occ.numpy()[0])
-            _ts = np.array(_ts.numpy()[0])
+        # to numpy array
+        _id = np.array(_id.numpy())
+        _age = np.array(_age.numpy())
+        _occ = np.array(_occ.numpy())
+        _ts = np.array(_ts.numpy())
 
-            concat = np.concatenate(
-                [_id, _age, _occ, _ts], axis=-1
-            ).astype(np.float32)
+        concat = np.concatenate(
+            [_id, _age, _occ, _ts], axis=-1
+        ).astype(np.float32)
 
-            return concat
+        return concat
     
     # ====================================================
     # get per_arm_context_sampling_fn
     # ====================================================
-    def per_arm_context_sampling_fn():
+    def _get_per_arm_features(x):
         """
         This function generates a single per-arm observation vector
         """
@@ -546,77 +564,160 @@ def execute_task(args: argparse.Namespace) -> None:
         mvid_model = get_mv_id_emb_model(VOCAB_DICT)
         mvgen_model = get_mv_gen_emb_model(VOCAB_DICT)
         
-        for x in train_dataset.batch(1).take(1):
-            mv_id_value = x['movie_id']
-            mv_gen_value = x['movie_genres'][0]
+        # for x in train_dataset.batch(1).take(1):
+        mv_id_value = x['movie_id']
+        mv_gen_value = x['movie_genres'] #[0]
 
-            _mid = mvid_model(mv_id_value)
-            _mgen = mvgen_model(mv_gen_value)
+        _mid = mvid_model(mv_id_value)
+        _mgen = mvgen_model(mv_gen_value)
 
-            # to numpy array
-            _mid = np.array(_mid.numpy()[0])
-            _mgen = np.array(_mgen.numpy()[0])
+        # to numpy array
+        _mid = np.array(_mid.numpy())
+        _mgen = np.array(_mgen.numpy())
 
-            concat = np.concatenate([_mid, _mgen], axis=-1).astype(np.float32)
+        concat = np.concatenate([_mid, _mgen], axis=-1).astype(np.float32)
 
-            return concat
+        return concat
         
     # ====================================================
     # get reward_fn & action_fn
     # ====================================================
-    class LinearNormalReward(object):
+    def _get_rewards(element):
+        """Calculates reward for the actions."""
+
+        def _calc_reward(x):
+            """Calculates reward for a single action."""
+            r0 = lambda: tf.constant(-10.0)
+            r1 = lambda: tf.constant(-5.0)
+            r2 = lambda: tf.constant(2.0)
+            r3 = lambda: tf.constant(3.0)
+            r4 = lambda: tf.constant(4.0)
+            r5 = lambda: tf.constant(10.0)
+            c1 = tf.equal(x, 1.0)
+            c2 = tf.equal(x, 2.0)
+            c3 = tf.equal(x, 3.0)
+            c4 = tf.equal(x, 4.0)
+            c5 = tf.equal(x, 5.0)
+            return tf.case(
+                [(c1, r1), (c2, r2), (c3, r3),(c4, r4),(c5, r5)], 
+                default=r0, exclusive=True
+            )
+
+        return tf.map_fn(
+            fn=_calc_reward, 
+            elems=element['user_rating'], 
+            dtype=tf.float32
+        )
         
-        def __init__(self, theta):
-            self.theta = theta
+#     reward_fn = LinearNormalReward(REWARD_PARAM)
+#     num_actions_fn = lambda: args.num_actions
+#     # new
+#     optimal_reward_fn = functools.partial(
+#         optimal_reward, hidden_param=REWARD_PARAM
+#     )
+#     optimal_action_fn = functools.partial(
+#         optimal_action, hidden_param=REWARD_PARAM
+#     )
 
-        def __call__(self, x):
-            mu = np.dot(x, self.theta)
-            return np.random.normal(mu, 1)
-        
-    reward_fn = LinearNormalReward(REWARD_PARAM)
-    num_actions_fn = lambda: args.num_actions
-    # new
-    optimal_reward_fn = functools.partial(
-        optimal_reward, hidden_param=REWARD_PARAM
-    )
-    optimal_action_fn = functools.partial(
-        optimal_action, hidden_param=REWARD_PARAM
-    )
+#     suboptimal_arms_metric = tf_bandit_metrics.SuboptimalArmsMetric(
+#         optimal_action_fn
+#     )
 
-    suboptimal_arms_metric = tf_bandit_metrics.SuboptimalArmsMetric(
-        optimal_action_fn
-    )
+#     regret_metric = tf_bandit_metrics.RegretMetric(optimal_reward_fn)
 
-    regret_metric = tf_bandit_metrics.RegretMetric(optimal_reward_fn)
-
-    metrics = [regret_metric, suboptimal_arms_metric]
+#     metrics = [regret_metric, suboptimal_arms_metric]
     
     # ====================================================
-    # Define RL environment
+    # trajectory_fn
     # ====================================================
-    per_arm_py_env = p_a_env.StationaryStochasticPerArmPyEnvironment(
-        global_context_sampling_fn = global_context_sampling_fn,
-        arm_context_sampling_fn = per_arm_context_sampling_fn,
-        max_num_actions = args.num_actions,
-        reward_fn = reward_fn, # _get_rewards
-        num_actions_fn = num_actions_fn,
-        batch_size=args.batch_size
+    def _add_outer_dimension(x):
+        """Adds an extra outer dimension."""
+        if isinstance(x, dict):
+            for key, value in x.items():
+                x[key] = tf.expand_dims(value, 1)
+            return x
+        return tf.expand_dims(x, 1)
+
+    def _trajectory_fn(element):
+
+        """Converts a dataset element into a trajectory."""
+        global_features = _get_global_context_features(element)
+        arm_features = _get_per_arm_features(element)
+
+        # Adds a time dimension.
+        arm_features = _add_outer_dimension(arm_features)
+
+        # obs spec
+        observation = {
+            bandit_spec_utils.GLOBAL_FEATURE_KEY:
+                _add_outer_dimension(global_features), #timedim bloat
+            # bandit_spec_utils.PER_ARM_FEATURE_KEY:
+            #     arm_features
+        }
+
+        reward = _add_outer_dimension(_get_rewards(element))
+
+        # To emit the predicted rewards in policy_info, we need to create dummy
+        # rewards to match the definition in TensorSpec for the ones specified in
+        # emit_policy_info set.
+        dummy_rewards = tf.zeros([args.batch_size, 1, args.num_actions])
+        policy_info = policy_utilities.PerArmPolicyInfo(
+            chosen_arm_features=arm_features,
+            # Pass dummy mean rewards here to match the model_spec for emitting
+            # mean rewards in policy info
+            predicted_rewards_mean=dummy_rewards
+        )
+
+        if args.agent_type == 'neural_ucb':
+            policy_info = policy_info._replace(
+                predicted_rewards_optimistic=dummy_rewards
+            )
+
+        return trajectory.single_step(
+            observation=observation,
+            action=tf.zeros_like(
+                reward, dtype=tf.int32
+            ),  # Arm features are copied from policy info, put dummy zeros here
+            policy_info=policy_info,
+            reward=reward,
+            discount=tf.zeros_like(reward)
+        )
+    
+    # ====================================================
+    # create agent
+    # ====================================================
+    global_step = tf.compat.v1.train.get_or_create_global_step()
+    
+    observation_spec = {
+        'global': tf.TensorSpec([args.global_dim], tf.float32),
+        'per_arm': tf.TensorSpec([args.num_actions, args.per_arm_dim], tf.float32) #excluding action dim here
+    }
+    logging.info(f"observation_spec: {observation_spec}")
+    
+    action_spec = tensor_spec.BoundedTensorSpec(
+        shape=[], 
+        dtype=tf.int32,
+        minimum=tf.constant(0),            
+        maximum=args.num_actions-1, #n degrees of freedom and will dictate the expected mean reward spec shape
+        name="action_spec"
     )
-    per_arm_tf_env = tf_py_environment.TFPyEnvironment(per_arm_py_env)
+    logging.info(f"action_spec: {action_spec}")
     
-    logging.info('observation spec: ', per_arm_tf_env.observation_spec())
-    logging.info('reward_spec: ', per_arm_tf_env.reward_spec())
+    time_step_spec = ts.time_step_spec(
+        observation_spec = observation_spec, 
+    )
+    logging.info(f"time_step_spec: {time_step_spec}")
     
-    # ====================================================
-    # cretae agent
-    # ====================================================
     # with strategy.scope():
     train_step = tfa_train_utils.create_train_step()
 
     agent, network = _get_agent(
         agent_type=args.agent_type, 
         network_type=args.network_type, 
-        environment=per_arm_tf_env
+        time_step_spec=time_step_spec, 
+        action_spec=action_spec, 
+        observation_spec=observation_spec,
+        global_step = global_step,
     )
         
     # ====================================================
@@ -627,75 +728,72 @@ def execute_task(args: argparse.Namespace) -> None:
 
     metric_results = trainer_common.train_perarm(
         agent = agent,
-        # replay_buffer = replay_buffer,
-        # driver = driver,
-        environment = per_arm_tf_env,
-        # step_metric = step_metric,
         num_iterations = args.training_loops,
         steps_per_loop = args.steps_per_loop,
-        log_interval = 1,
-        # regret_metric = regret_metric,
-        log_dir=log_dir,
+        log_interval = args.log_interval,
+        batch_size=args.batch_size,
+        bucket_name=args.bucket_name,
+        data_dir_prefix_path=args.data_dir_prefix_path,
+        split=args.split,
+        _trajectory_fn = _trajectory_fn,
+        # dirs
+        log_dir=args.log_dir,
         model_dir=args.artifacts_dir,
         root_dir=args.root_dir,
         async_steps_per_loop = args.async_steps_per_loop,
-        resume_training_loops = False,
-        get_replay_buffer_fn = None,
-        get_training_loop_fn = None,
-        training_data_spec_transformation_fn = None,
-        additional_metrics = metrics
+        resume_training_loops = args.resume_training_loops,
     )
 
     end_time = time.time()
     runtime_mins = int((end_time - start_time) / 60)
-    print(f"complete train job in {runtime_mins} minutes")
+    logging.info(f"complete train job in {runtime_mins} minutes")
     
     # ====================================================
     # log Vertex Experiments
     # ====================================================
-    SESSION_id = "".join(random.choices(string.ascii_lowercase + string.digits, k=3)) # handle restarts 
+#     SESSION_id = "".join(random.choices(string.ascii_lowercase + string.digits, k=3)) # handle restarts 
     
-    if task_type == 'chief':
-        logging.info(f" task_type logging experiments: {task_type}")
-        logging.info(f" task_id logging experiments: {task_id}")
-        logging.info(f" logging data to experiment run: {args.experiment_run}-{SESSION_id}")
+#     if task_type == 'chief':
+#         logging.info(f" task_type logging experiments: {task_type}")
+#         logging.info(f" task_id logging experiments: {task_id}")
+#         logging.info(f" logging data to experiment run: {args.experiment_run}-{SESSION_id}")
         
-        with vertex_ai.start_run(
-            f'{args.experiment_run}-{SESSION_id}', 
-            # tensorboard=args.tb_resource_name
-        ) as my_run:
+#         with vertex_ai.start_run(
+#             f'{args.experiment_run}-{SESSION_id}', 
+#             # tensorboard=args.tb_resource_name
+#         ) as my_run:
             
-            logging.info(f"logging metrics...")
-            # gather the metrics for the last epoch to be saved in metrics
-            my_run.log_metrics(
-                {
-                    "AverageReturnMetric" : float(metric_results["AverageReturnMetric"][-1])
-                    , "FinalRegretMetric" : float(metric_results["RegretMetric"][-1])
-                }
-            )
+#             logging.info(f"logging metrics...")
+#             # gather the metrics for the last epoch to be saved in metrics
+#             my_run.log_metrics(
+#                 {
+#                     "AverageReturnMetric" : float(metric_results["AverageReturnMetric"][-1])
+#                     , "FinalRegretMetric" : float(metric_results["RegretMetric"][-1])
+#                 }
+#             )
 
-            logging.info(f"logging metaparams...")
-            my_run.log_params(
-                {
-                    "agent_type": agent.name,
-                    "network": network,
-                    "runtime": runtime_mins,
-                    "batch_size": args.batch_size, 
-                    "training_loops": args.training_loops,
-                    "steps_pre_loop": args.steps_per_loop,
-                    # "rank_k": RANK_K,
-                    "num_actions": args.num_actions,
-                    "per_arm": str(PER_ARM),
-                    "global_lyrs": str(data_config.GLOBAL_LAYERS),
-                    "arm_lyrs": str(data_config.ARM_LAYERS),
-                    "common_lyrs": str(data_config.COMMON_LAYERS),
-                    "encoding_dim": data_config.ENCODING_DIM,
-                    "eps_steps": data_config.EPS_PHASE_STEPS,
-                }
-            )
+#             logging.info(f"logging metaparams...")
+#             my_run.log_params(
+#                 {
+#                     "agent_type": agent.name,
+#                     "network": network,
+#                     "runtime": runtime_mins,
+#                     "batch_size": args.batch_size, 
+#                     "training_loops": args.training_loops,
+#                     "steps_pre_loop": args.steps_per_loop,
+#                     # "rank_k": RANK_K,
+#                     "num_actions": args.num_actions,
+#                     "per_arm": str(PER_ARM),
+#                     "global_lyrs": str(data_config.GLOBAL_LAYERS),
+#                     "arm_lyrs": str(data_config.ARM_LAYERS),
+#                     "common_lyrs": str(data_config.COMMON_LAYERS),
+#                     "encoding_dim": data_config.ENCODING_DIM,
+#                     "eps_steps": data_config.EPS_PHASE_STEPS,
+#                 }
+#             )
 
-            vertex_ai.end_run()
-            logging.info(f"EXPERIMENT RUN: {args.experiment_run}-{SESSION_id} has ended")
+#             vertex_ai.end_run()
+#             logging.info(f"EXPERIMENT RUN: {args.experiment_run}-{SESSION_id} has ended")
             
 def main() -> None:
     """
