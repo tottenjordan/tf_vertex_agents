@@ -11,7 +11,7 @@ EPSILON         = 0.01
 LR              = 0.05
 
 # Parameters for NeuralLinUCB
-ENCODING_DIM    = 5
+ENCODING_DIM    = 1
 EPS_PHASE_STEPS = 1000
 
 # ================================
@@ -22,12 +22,12 @@ EPS_PHASE_STEPS = 1000
 # if AGENT_TYPE == 'NeuralLinUCB':
 #     NETWORK_TYPE = 'commontower'
     
-GLOBAL_LAYERS   = [16, 4]
-ARM_LAYERS      = [16, 4]
-COMMON_LAYERS   = [4]
+GLOBAL_LAYERS   = [64, 32]
+ARM_LAYERS      = [64, 32]
+COMMON_LAYERS   = [32, 16]
 
 # TODO - parametrize
 NUM_OOV_BUCKETS        = 1
-GLOBAL_EMBEDDING_SIZE  = 4
-MV_EMBEDDING_SIZE      = 8 #32
+GLOBAL_EMBEDDING_SIZE  = 16
+MV_EMBEDDING_SIZE      = 32 #32
 

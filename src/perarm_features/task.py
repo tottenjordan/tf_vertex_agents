@@ -96,7 +96,7 @@ def _get_train_dataset(bucket_name, data_dir_prefix_path, split):
 # -- TODO: parameterize
 # ====================================================
 
-def get_user_id_emb_model(vocab_dict):
+def get_user_id_emb_model(vocab_dict, num_oov_buckets, global_emb_size):
     
     user_id_input_layer = tf.keras.Input(
         name="user_id",
@@ -105,16 +105,16 @@ def get_user_id_emb_model(vocab_dict):
     )
 
     user_id_lookup = tf.keras.layers.StringLookup(
-        max_tokens=len(vocab_dict['user_id']) + data_config.NUM_OOV_BUCKETS,
-        num_oov_indices=data_config.NUM_OOV_BUCKETS,
+        max_tokens=len(vocab_dict['user_id']) + num_oov_buckets,
+        num_oov_indices=num_oov_buckets,
         mask_token=None,
         vocabulary=vocab_dict['user_id'],
     )(user_id_input_layer)
 
     user_id_embedding = tf.keras.layers.Embedding(
         # Let's use the explicit vocabulary lookup.
-        input_dim=len(vocab_dict['user_id']) + data_config.NUM_OOV_BUCKETS,
-        output_dim=data_config.GLOBAL_EMBEDDING_SIZE
+        input_dim=len(vocab_dict['user_id']) + num_oov_buckets,
+        output_dim=global_emb_size
     )(user_id_lookup)
     
     user_id_embedding = tf.reduce_sum(user_id_embedding, axis=-2)
@@ -122,7 +122,7 @@ def get_user_id_emb_model(vocab_dict):
     
     return user_id_model
 
-def get_user_age_emb_model(vocab_dict):
+def get_user_age_emb_model(vocab_dict, num_oov_buckets, global_emb_size):
     
     user_age_input_layer = tf.keras.Input(
         name="bucketized_user_age",
@@ -132,14 +132,14 @@ def get_user_age_emb_model(vocab_dict):
 
     user_age_lookup = tf.keras.layers.IntegerLookup(
         vocabulary=vocab_dict['bucketized_user_age'],
-        num_oov_indices=data_config.NUM_OOV_BUCKETS,
+        num_oov_indices=num_oov_buckets,
         oov_value=0,
     )(user_age_input_layer)
 
     user_age_embedding = tf.keras.layers.Embedding(
         # Let's use the explicit vocabulary lookup.
-        input_dim=len(vocab_dict['bucketized_user_age']) + data_config.NUM_OOV_BUCKETS,
-        output_dim=data_config.GLOBAL_EMBEDDING_SIZE
+        input_dim=len(vocab_dict['bucketized_user_age']) + num_oov_buckets,
+        output_dim=global_emb_size
     )(user_age_lookup)
 
     user_age_embedding = tf.reduce_sum(user_age_embedding, axis=-2)
@@ -147,7 +147,7 @@ def get_user_age_emb_model(vocab_dict):
     
     return user_age_model
 
-def get_user_occ_emb_model(vocab_dict):
+def get_user_occ_emb_model(vocab_dict, num_oov_buckets, global_emb_size):
     
     user_occ_input_layer = tf.keras.Input(
         name="user_occupation_text",
@@ -155,16 +155,16 @@ def get_user_occ_emb_model(vocab_dict):
         dtype=tf.string
     )
     user_occ_lookup = tf.keras.layers.StringLookup(
-        max_tokens=len(vocab_dict['user_occupation_text']) + data_config.NUM_OOV_BUCKETS,
-        num_oov_indices=data_config.NUM_OOV_BUCKETS,
+        max_tokens=len(vocab_dict['user_occupation_text']) + num_oov_buckets,
+        num_oov_indices=num_oov_buckets,
         mask_token=None,
         vocabulary=vocab_dict['user_occupation_text'],
     )(user_occ_input_layer)
     
     user_occ_embedding = tf.keras.layers.Embedding(
         # Let's use the explicit vocabulary lookup.
-        input_dim=len(vocab_dict['user_occupation_text']) + data_config.NUM_OOV_BUCKETS,
-        output_dim=data_config.GLOBAL_EMBEDDING_SIZE
+        input_dim=len(vocab_dict['user_occupation_text']) + num_oov_buckets,
+        output_dim=global_emb_size
     )(user_occ_lookup)
     
     user_occ_embedding = tf.reduce_sum(user_occ_embedding, axis=-2)
@@ -172,7 +172,7 @@ def get_user_occ_emb_model(vocab_dict):
     
     return user_occ_model
 
-def get_ts_emb_model(vocab_dict):
+def get_ts_emb_model(vocab_dict, num_oov_buckets, global_emb_size):
     
     user_ts_input_layer = tf.keras.Input(
         name="timestamp",
@@ -186,8 +186,8 @@ def get_ts_emb_model(vocab_dict):
 
     user_ts_embedding = tf.keras.layers.Embedding(
         # Let's use the explicit vocabulary lookup.
-        input_dim=len(vocab_dict['timestamp_buckets'].tolist()) + data_config.NUM_OOV_BUCKETS,
-        output_dim=data_config.GLOBAL_EMBEDDING_SIZE
+        input_dim=len(vocab_dict['timestamp_buckets'].tolist()) + num_oov_buckets,
+        output_dim=global_emb_size
     )(user_ts_lookup)
 
     user_ts_embedding = tf.reduce_sum(user_ts_embedding, axis=-2)
@@ -200,7 +200,7 @@ def get_ts_emb_model(vocab_dict):
 # -- TODO: parameterize
 # ====================================================
 
-def get_mv_id_emb_model(vocab_dict):
+def get_mv_id_emb_model(vocab_dict, num_oov_buckets, mv_emb_size):
     
     mv_id_input_layer = tf.keras.Input(
         name="movie_id",
@@ -209,16 +209,16 @@ def get_mv_id_emb_model(vocab_dict):
     )
 
     mv_id_lookup = tf.keras.layers.StringLookup(
-        max_tokens=len(vocab_dict['movie_id']) + data_config.NUM_OOV_BUCKETS,
-        num_oov_indices=data_config.NUM_OOV_BUCKETS,
+        max_tokens=len(vocab_dict['movie_id']) + num_oov_buckets,
+        num_oov_indices=num_oov_buckets,
         mask_token=None,
         vocabulary=vocab_dict['movie_id'],
     )(mv_id_input_layer)
 
     mv_id_embedding = tf.keras.layers.Embedding(
         # Let's use the explicit vocabulary lookup.
-        input_dim=len(vocab_dict['movie_id']) + data_config.NUM_OOV_BUCKETS,
-        output_dim=data_config.MV_EMBEDDING_SIZE
+        input_dim=len(vocab_dict['movie_id']) + num_oov_buckets,
+        output_dim=mv_emb_size
     )(mv_id_lookup)
 
     mv_id_embedding = tf.reduce_sum(mv_id_embedding, axis=-2)
@@ -226,7 +226,7 @@ def get_mv_id_emb_model(vocab_dict):
     
     return mv_id_model
 
-def get_mv_gen_emb_model(vocab_dict):
+def get_mv_gen_emb_model(vocab_dict, num_oov_buckets, mv_emb_size):
     
     mv_genre_input_layer = tf.keras.Input(
         name="movie_genres",
@@ -236,14 +236,14 @@ def get_mv_gen_emb_model(vocab_dict):
 
     mv_genre_lookup = tf.keras.layers.IntegerLookup(
         vocabulary=vocab_dict['movie_genres'],
-        num_oov_indices=data_config.NUM_OOV_BUCKETS,
+        num_oov_indices=num_oov_buckets,
         oov_value=0,
     )(mv_genre_input_layer)
 
     mv_genre_embedding = tf.keras.layers.Embedding(
         # Let's use the explicit vocabulary lookup.
-        input_dim=len(vocab_dict['movie_genres']) + data_config.NUM_OOV_BUCKETS,
-        output_dim=data_config.MV_EMBEDDING_SIZE
+        input_dim=len(vocab_dict['movie_genres']) + num_oov_buckets,
+        output_dim=mv_emb_size
     )(mv_genre_lookup)
 
     mv_genre_embedding = tf.reduce_sum(mv_genre_embedding, axis=-2)
@@ -263,7 +263,15 @@ def _get_agent(
     time_step_spec, 
     action_spec, 
     observation_spec,
-    global_step
+    global_step,
+    global_layers,
+    arm_layers,
+    common_layers,
+    agent_alpha,
+    learning_rate,
+    epsilon,
+    encoding_dim,
+    eps_phase_steps
 ):
     network = None
 
@@ -271,7 +279,7 @@ def _get_agent(
         agent = lin_ucb_agent.LinearUCBAgent(
             time_step_spec=time_step_spec,
             action_spec=action_spec,
-            alpha=data_config.AGENT_ALPHA,
+            alpha=agent_alpha,
             accepts_per_arm_features=PER_ARM,
             dtype=tf.float32,
         )
@@ -279,7 +287,7 @@ def _get_agent(
         agent = lin_ts_agent.LinearThompsonSamplingAgent(
             time_step_spec=time_step_spec,
             action_spec=action_spec,
-            alpha=data_config.AGENT_ALPHA,
+            alpha=agent_alpha,
             observation_and_action_constraint_splitter=(
                 observation_and_action_constraint_splitter
             ),
@@ -291,23 +299,25 @@ def _get_agent(
         if network_type == 'commontower':
             network = global_and_arm_feature_network.create_feed_forward_common_tower_network(
                 observation_spec = observation_spec, 
-                global_layers = data_config.GLOBAL_LAYERS, 
-                arm_layers = data_config.ARM_LAYERS, 
-                common_layers = data_config.COMMON_LAYERS,
+                global_layers = global_layers, 
+                arm_layers = arm_layers, 
+                common_layers = common_layers,
                 # output_dim = 1
             )
         elif network_type == 'dotproduct':
             network = global_and_arm_feature_network.create_feed_forward_dot_product_network(
                 observation_spec = observation_spec, 
-                global_layers = data_config.GLOBAL_LAYERS, 
-                arm_layers = data_config.ARM_LAYERS
+                global_layers = global_layers, 
+                arm_layers = arm_layers
             )
         agent = neural_epsilon_greedy_agent.NeuralEpsilonGreedyAgent(
             time_step_spec=time_step_spec,
             action_spec=action_spec,
             reward_network=network,
-            optimizer=tf.compat.v1.train.AdamOptimizer(learning_rate=data_config.LR),
-            epsilon=data_config.EPSILON,
+            optimizer=tf.compat.v1.train.AdamOptimizer(
+                learning_rate=learning_rate
+            ),
+            epsilon=epsilon,
             observation_and_action_constraint_splitter=(
                 observation_and_action_constraint_splitter
             ),
@@ -322,22 +332,24 @@ def _get_agent(
         network = (
             global_and_arm_feature_network.create_feed_forward_common_tower_network(
                 observation_spec = observation_spec, 
-                global_layers = data_config.GLOBAL_LAYERS, 
-                arm_layers = data_config.ARM_LAYERS, 
-                common_layers = data_config.COMMON_LAYERS,
-                output_dim = data_config.ENCODING_DIM
+                global_layers = global_layers, 
+                arm_layers = arm_layers, 
+                common_layers = common_layers,
+                output_dim = encoding_dim
             )
         )
         agent = neural_linucb_agent.NeuralLinUCBAgent(
             time_step_spec=time_step_spec,
             action_spec=action_spec,
             encoding_network=network,
-            encoding_network_num_train_steps=data_config.EPS_PHASE_STEPS,
-            encoding_dim=data_config.ENCODING_DIM,
-            optimizer=tf.compat.v1.train.AdamOptimizer(learning_rate=data_config.LR),
+            encoding_network_num_train_steps=eps_phase_steps,
+            encoding_dim=encoding_dim,
+            optimizer=tf.compat.v1.train.AdamOptimizer(
+                learning_rate=learning_rate
+            ),
             alpha=1.0,
             gamma=1.0,
-            epsilon_greedy=data_config.EPSILON,
+            epsilon_greedy=epsilon,
             accepts_per_arm_features=PER_ARM,
             debug_summaries=True,
             summarize_grads_and_vars=True,
@@ -415,13 +427,24 @@ def get_args(raw_args: List[str]) -> argparse.Namespace:
     parser.add_argument("--steps_per_loop", default=2, type=int)
     parser.add_argument("--rank_k", default=20, type=int)
     parser.add_argument("--num_actions", default=20, type=int, help="Number of actions (movie items) to choose from.")
-    # parser.add_argument("--reward_param", help="hidden_param (list)")
+    # agent & network config
     parser.add_argument("--async_steps_per_loop", type=int, default=1, help="")
     parser.add_argument("--global_dim", type=int, default=1, help="")
     parser.add_argument("--per_arm_dim", type=int, default=1, help="")
     parser.add_argument("--resume_training_loops", action='store_true', help="include for True; ommit for False")
     parser.add_argument("--split", default=None, type=str, help="data split")
     parser.add_argument("--log_interval", type=int, default=1, help="")
+    parser.add_argument('--global_layers', type=str, required=False)
+    parser.add_argument('--arm_layers', type=str, required=False)
+    parser.add_argument('--common_layers', type=str, required=False)
+    parser.add_argument("--num_oov_buckets", type=int, default=1, help="")
+    parser.add_argument("--global_emb_size", type=int, default=1, help="")
+    parser.add_argument("--mv_emb_size", type=int, default=1, help="")
+    parser.add_argument("--agent_alpha", type=float, default=0.1, help="")
+    parser.add_argument("--learning_rate", type=float, default=0.01, help="")
+    parser.add_argument("--epsilon", type=float, default=0.01, help="")
+    parser.add_argument("--encoding_dim", type=int, default=1, help="")
+    parser.add_argument("--eps_phase_steps", type=int, default=1000, help="")
 
     return parser.parse_args(raw_args)
 
@@ -439,7 +462,8 @@ def execute_task(args: argparse.Namespace) -> None:
         Google Cloud Storage.
       hypertune_client: Client for submitting hyperparameter tuning metrics.
     """
-    
+    logging.info("logging args....")
+    logging.info(args)
     # ====================================================
     # Set env variables
     # ====================================================
@@ -454,6 +478,12 @@ def execute_task(args: argparse.Namespace) -> None:
     #     location='us-central1',
     #     experiment=args.experiment_name
     # )
+    GLOBAL_LAYERS = train_utils.get_arch_from_string(args.global_layers)
+    ARM_LAYERS = train_utils.get_arch_from_string(args.arm_layers)
+    COMMON_LAYERS = train_utils.get_arch_from_string(args.common_layers)
+    logging.info(f'GLOBAL_LAYERS = {GLOBAL_LAYERS}')
+    logging.info(f'ARM_LAYERS    = {ARM_LAYERS}')
+    logging.info(f'COMMON_LAYERS = {COMMON_LAYERS}')
     
     # ====================================================
     # Set Device Strategy
@@ -516,7 +546,9 @@ def execute_task(args: argparse.Namespace) -> None:
     # ====================================================
     # train dataset
     # ====================================================
-    train_dataset = _get_train_dataset(args.bucket_name, args.data_dir_prefix_path, split="train")
+    train_dataset = _get_train_dataset(
+        args.bucket_name, args.data_dir_prefix_path, split="train"
+    )
     
     # ====================================================
     # get global_context_sampling_fn
@@ -525,10 +557,26 @@ def execute_task(args: argparse.Namespace) -> None:
         """
         This function generates a single global observation vector.
         """
-        user_id_model = get_user_id_emb_model(VOCAB_DICT)
-        user_age_model = get_user_age_emb_model(VOCAB_DICT)
-        user_occ_model = get_user_occ_emb_model(VOCAB_DICT)
-        user_ts_model = get_ts_emb_model(VOCAB_DICT)
+        user_id_model = get_user_id_emb_model(
+            vocab_dict=VOCAB_DICT, 
+            num_oov_buckets=args.num_oov_buckets, 
+            global_emb_size=args.global_emb_size
+        )
+        user_age_model = get_user_age_emb_model(
+            vocab_dict=VOCAB_DICT, 
+            num_oov_buckets=args.num_oov_buckets, 
+            global_emb_size=args.global_emb_size
+        )
+        user_occ_model = get_user_occ_emb_model(
+            vocab_dict=VOCAB_DICT, 
+            num_oov_buckets=args.num_oov_buckets, 
+            global_emb_size=args.global_emb_size
+        )
+        user_ts_model = get_ts_emb_model(
+            vocab_dict=VOCAB_DICT, 
+            num_oov_buckets=args.num_oov_buckets, 
+            global_emb_size=args.global_emb_size
+        )
         
         # for x in train_dataset.batch(1).take(1):
         user_id_value = x['user_id']
@@ -561,8 +609,17 @@ def execute_task(args: argparse.Namespace) -> None:
         This function generates a single per-arm observation vector
         """
 
-        mvid_model = get_mv_id_emb_model(VOCAB_DICT)
-        mvgen_model = get_mv_gen_emb_model(VOCAB_DICT)
+        mvid_model = get_mv_id_emb_model(
+            vocab_dict=VOCAB_DICT, 
+            num_oov_buckets=args.num_oov_buckets, 
+            mv_emb_size=args.mv_emb_size
+        )
+            
+        mvgen_model = get_mv_gen_emb_model(
+            vocab_dict=VOCAB_DICT, 
+            num_oov_buckets=args.num_oov_buckets, 
+            mv_emb_size=args.mv_emb_size
+        )
         
         # for x in train_dataset.batch(1).take(1):
         mv_id_value = x['movie_id']
@@ -575,7 +632,9 @@ def execute_task(args: argparse.Namespace) -> None:
         _mid = np.array(_mid.numpy())
         _mgen = np.array(_mgen.numpy())
 
-        concat = np.concatenate([_mid, _mgen], axis=-1).astype(np.float32)
+        concat = np.concatenate(
+            [_mid, _mgen], axis=-1
+        ).astype(np.float32)
 
         return concat
         
@@ -587,12 +646,12 @@ def execute_task(args: argparse.Namespace) -> None:
 
         def _calc_reward(x):
             """Calculates reward for a single action."""
-            r0 = lambda: tf.constant(-10.0)
-            r1 = lambda: tf.constant(-5.0)
+            r0 = lambda: tf.constant(0.0)
+            r1 = lambda: tf.constant(1.0)
             r2 = lambda: tf.constant(2.0)
             r3 = lambda: tf.constant(3.0)
             r4 = lambda: tf.constant(4.0)
-            r5 = lambda: tf.constant(10.0)
+            r5 = lambda: tf.constant(5.0)
             c1 = tf.equal(x, 1.0)
             c2 = tf.equal(x, 2.0)
             c3 = tf.equal(x, 3.0)
@@ -718,6 +777,14 @@ def execute_task(args: argparse.Namespace) -> None:
         action_spec=action_spec, 
         observation_spec=observation_spec,
         global_step = global_step,
+        global_layers = GLOBAL_LAYERS,
+        arm_layers = ARM_LAYERS,
+        common_layers = COMMON_LAYERS,
+        agent_alpha = args.agent_alpha,
+        learning_rate = args.learning_rate,
+        epsilon = args.epsilon,
+        encoding_dim = args.encoding_dim,
+        eps_phase_steps = args.eps_phase_steps,
     )
         
     # ====================================================
@@ -784,11 +851,11 @@ def execute_task(args: argparse.Namespace) -> None:
 #                     # "rank_k": RANK_K,
 #                     "num_actions": args.num_actions,
 #                     "per_arm": str(PER_ARM),
-#                     "global_lyrs": str(data_config.GLOBAL_LAYERS),
-#                     "arm_lyrs": str(data_config.ARM_LAYERS),
-#                     "common_lyrs": str(data_config.COMMON_LAYERS),
-#                     "encoding_dim": data_config.ENCODING_DIM,
-#                     "eps_steps": data_config.EPS_PHASE_STEPS,
+#                     "global_lyrs": str(args.global_layers),
+#                     "arm_lyrs": str(args.arm_layers),
+#                     "common_lyrs": str(args.common_layers),
+#                     "encoding_dim": args.encoding_dim,
+#                     "eps_steps": args.eps_phase_steps,
 #                 }
 #             )
 

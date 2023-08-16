@@ -211,7 +211,7 @@ def train_perarm(
     list_o_loss = []
     
     agent.train_step_counter.assign(0)
-    iterator = iter(train_dataset.batch(batch_size))
+    iterator = iter(train_dataset.repeat(num_iterations).batch(batch_size))
     
     for epoch in range(num_iterations):
 
@@ -240,7 +240,7 @@ def train_perarm(
                 )
             )
 
-        if epoch > 0 and epoch % 100 == 0:
+        if epoch > 0 and epoch % 1000 == 0:
             saver.save(os.path.join(CHKPOINT_DIR, 'policy_%d' % step_metric.result()))
             print(f"saved policy to: {CHKPOINT_DIR}")
 
