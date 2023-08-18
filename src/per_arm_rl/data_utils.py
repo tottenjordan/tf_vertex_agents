@@ -17,9 +17,6 @@ from typing import Dict
 
 import tensorflow as tf
 
-from google.cloud import aiplatform as vertex_ai
-from google.cloud import storage
-
 # ============================================
 # features
 # ============================================
@@ -32,14 +29,14 @@ def get_all_features():
         'user_rating': tf.io.FixedLenFeature(shape=(), dtype=tf.float32),
         'bucketized_user_age': tf.io.FixedLenFeature(shape=(), dtype=tf.float32),
         'user_occupation_text': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
-        # 'user_occupation_label': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
-        # 'user_zip_code': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
-        # 'user_gender': tf.io.FixedLenFeature(shape=(), dtype=tf.bool),
+        'user_occupation_label': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
+        'user_zip_code': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+        'user_gender': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
         'timestamp': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
 
         # movie - per arm features
         'movie_id': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
-        # 'movie_title': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+        'movie_title': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
         'movie_genres': tf.io.FixedLenFeature(shape=(1,), dtype=tf.int64),
     }
     
@@ -76,13 +73,23 @@ def _int64_list_feature(value):
     value = value.numpy().tolist()[0]
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
+def _simple_string(value):
+    """
+    Gender Feature - True = Male in the training dataset
+    """
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[str(value).encode('utf-8')]))
+
 def _string_array(value, shape=1):
     """
     Returns a bytes_list from a string / byte.
     """
-    value = value.numpy()[0] # .tolist()[0]
+    value = value.numpy() # .tolist()[0]
+    # try:
+    #     value = value.numpy()
+    # except:
+    #     pass
     if type(value) == list:
-        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[str(v).encode('utf-8') for v in value]))
+        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[str(v) for v in value]))
     else:
         return tf.train.Feature(bytes_list=tf.train.BytesList(value=[str(value).encode('utf-8')]))
 
@@ -107,14 +114,14 @@ def build_example(data) -> tf.train.Example:
         , "user_rating": _float_feature(data['user_rating'])
         , "bucketized_user_age": _float_feature(data['bucketized_user_age'])
         , "user_occupation_text": _bytes_feature(data['user_occupation_text'])
-        # , "user_occupation_label": _int64_feature(data['user_occupation_label'])
-        # , "user_zip_code": _string_array(data['user_zip_code'])
-        # , "user_gender": BOOL_TODO(data['user_gender'])
+        , "user_occupation_label": _int64_feature(data['user_occupation_label'])
+        , "user_zip_code": _bytes_feature(data['user_zip_code'])
+        , "user_gender": _string_array(data['user_gender'])
         , "timestamp": _int64_feature(data['timestamp'])
         
         # movie - per arm features
         , "movie_id": _bytes_feature(data['movie_id'])
-        # , "movie_title": _string_array(data['movie_title'])
+        , "movie_title": _bytes_feature(data['movie_title'])
         , "movie_genres": _int64_list_feature(data['movie_genres'])
     }
     example_proto = tf.train.Example(
@@ -221,41 +228,3 @@ def load_movielens_ratings(
             float(movie_gen_lookup_dict[row['movie_genres'].numpy()]) + .0001
         ) 
     return ratings_matrix, np.array(user_age_int), np.array(user_occ_int), np.array(mov_gen_int)
-
-# ====================================================
-# upload object to GCS
-# ====================================================
-
-# upload files to Google Cloud Storage
-def upload_blob(
-    project_id, 
-    bucket_name, 
-    source_file_name, 
-    destination_blob_name
-):
-    """Uploads a file to the bucket."""
-    # bucket_name = "your-bucket-name" (no 'gs://')
-    # source_file_name = "local/path/to/file" (file to upload)
-    # destination_blob_name = "folder/paths-to/storage-object-name"
-    storage_client = storage.Client(project=project_id)
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(destination_blob_name)
-
-    blob.upload_from_filename(source_file_name)
-
-    print(
-        f"File {source_file_name} uploaded to gs://{bucket_name}/{destination_blob_name}."
-    )
-    
-def download_blob(project_id, bucket_name, source_blob_name, destination_file_name):
-    """Downloads a blob from the bucket."""
-    storage_client = storage.Client(project=project_id)
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(source_blob_name)
-    blob.download_to_filename(destination_file_name)
-
-    print(
-        "Downloaded storage object {} from bucket {} to local file {}.".format(
-            source_blob_name, bucket_name, destination_file_name
-        )
-    )
