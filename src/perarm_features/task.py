@@ -53,6 +53,8 @@ from tf_agents.trajectories import trajectory
 from tf_agents.policies import py_tf_eager_policy
 from tf_agents.train.utils import strategy_utils
 
+from tensorflow.python.client import device_lib
+
 nest = tf.nest
 
 from . import train_perarm as train_perarm
@@ -161,6 +163,7 @@ def get_args(raw_args: List[str]) -> argparse.Namespace:
     parser.add_argument("--eps_phase_steps", type=int, default=1000, help="")
     parser.add_argument("--use_gpu", action='store_true', help="include for True; ommit for False")
     parser.add_argument("--use_tpu", action='store_true', help="include for True; ommit for False")
+    parser.add_argument("--profiler", action='store_true', help="include for True; ommit for False")
 
     return parser.parse_args(raw_args)
 
@@ -183,6 +186,25 @@ def main(args: argparse.Namespace):
     print(args)
     
     # =============================================
+    # limiting GPU growth
+    # =============================================
+    print("limiting GPU growth....")
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        try:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            print(f'detected: {len(gpus)} GPUs')
+        except RuntimeError as e:
+            # Memory growth must be set before GPUs have been initialized
+            print(e)
+                
+    # tf.debugging.set_log_device_placement(True) # logs all tf ops and their device placement;
+    os.environ['TF_GPU_THREAD_MODE']='gpu_private'
+    os.environ['TF_GPU_THREAD_COUNT']= '1'
+    os.environ['TF_GPU_ALLOCATOR']='cuda_malloc_async'
+    
+    # =============================================
     # set GCP clients
     # =============================================
     from google.cloud import aiplatform as vertex_ai
@@ -199,34 +221,33 @@ def main(args: argparse.Namespace):
     # ====================================================
     # Set env variables
     # ====================================================
-    # REWARD_PARAM = train_utils.get_arch_from_string(args.reward_param)
-    # logging.info(f'REWARD_PARAM = {REWARD_PARAM}')
-    
-    # clients
-    # storage_client = storage.Client(project=args.project)
-    
-    # vertex_ai.init(
-    #     project=project_number,
-    #     location='us-central1',
-    #     experiment=args.experiment_name
-    # )
+
     GLOBAL_LAYERS = train_utils.get_arch_from_string(args.global_layers)
     ARM_LAYERS = train_utils.get_arch_from_string(args.arm_layers)
     COMMON_LAYERS = train_utils.get_arch_from_string(args.common_layers)
+    
     print(f'GLOBAL_LAYERS = {GLOBAL_LAYERS}')
     print(f'ARM_LAYERS    = {ARM_LAYERS}')
     print(f'COMMON_LAYERS = {COMMON_LAYERS}')
     
+    TOTAL_TRAIN_TAKE = args.training_loops * args.batch_size
+    print(f'TOTAL_TRAIN_TAKE = {TOTAL_TRAIN_TAKE}')
     # ====================================================
     # Set Device Strategy
     # ====================================================
     print("Detecting devices....")
     print("Setting device strategy...")
     
+    # TODO: add TPU support
+    
     # GPU - All variables and Agents need to be created under strategy.scope()
-    distribution_strategy = strategy_utils.get_strategy(tpu=args.use_tpu, use_gpu=args.use_gpu)
+    if args.use_gpu:
+        distribution_strategy = tf.distribute.MirroredStrategy()
+    else:
+        distribution_strategy = tf.distribute.get_strategy()
+        
+    # distribution_strategy = strategy_utils.get_strategy(tpu=args.use_tpu, use_gpu=args.use_gpu)
     print(f"distribution_strategy: {distribution_strategy}")
-    print(f'Setting task_type and task_id...')
     
     if distribution_strategy == 'multiworker':
         task_type, task_id = (
@@ -514,26 +535,27 @@ def main(args: argparse.Namespace):
     )
     print(f"time_step_spec: {time_step_spec}")
 
-    # with strategy.scope():
-    # train_step = tfa_train_utils.create_train_step()
-    global_step = tf.compat.v1.train.get_or_create_global_step()
+    with distribution_strategy.scope():
+        # train_step = tfa_train_utils.create_train_step()
+        global_step = tf.compat.v1.train.get_or_create_global_step()
 
-    agent, network = agent_factory._get_agent(
-        agent_type=args.agent_type, 
-        network_type=args.network_type, 
-        time_step_spec=time_step_spec, 
-        action_spec=action_spec, 
-        observation_spec=observation_spec,
-        global_step = global_step,
-        global_layers = GLOBAL_LAYERS,
-        arm_layers = ARM_LAYERS,
-        common_layers = COMMON_LAYERS,
-        agent_alpha = args.agent_alpha,
-        learning_rate = args.learning_rate,
-        epsilon = args.epsilon,
+        agent, network = agent_factory._get_agent(
+            agent_type=args.agent_type, 
+            network_type=args.network_type, 
+            time_step_spec=time_step_spec, 
+            action_spec=action_spec, 
+            observation_spec=observation_spec,
+            global_step = global_step,
+            global_layers = GLOBAL_LAYERS,
+            arm_layers = ARM_LAYERS,
+            common_layers = COMMON_LAYERS,
+            agent_alpha = args.agent_alpha,
+            learning_rate = args.learning_rate,
+            epsilon = args.epsilon,
         encoding_dim = args.encoding_dim,
         eps_phase_steps = args.eps_phase_steps,
     )
+    agent.initialize()
     print(f"agent: {agent}")
     print(f"network: {network}")
     
@@ -557,7 +579,7 @@ def main(args: argparse.Namespace):
     if args.num_eval_steps > 0:
         eval_ds = eval_ds.take(args.num_eval_steps)
         
-    # eval_ds = eval_ds.cache()
+    eval_ds = eval_ds.cache()
     print(f"eval_ds: {eval_ds}")
     
     # dist_eval_ds = distribution_strategy.experimental_distribute_dataset(eval_ds)
@@ -569,12 +591,12 @@ def main(args: argparse.Namespace):
     print(f"log_dir: {log_dir}")
     print(f"current thread has eager execution enabled: {tf.executing_eagerly()}")
     
-    # with distribution_strategy.scope():
+    with distribution_strategy.scope():
     
-    train_summary_writer = tf.compat.v2.summary.create_file_writer(
-        log_dir, flush_millis=10 * 1000
-    )
-    train_summary_writer.set_as_default()
+        train_summary_writer = tf.compat.v2.summary.create_file_writer(
+            log_dir, flush_millis=10 * 1000
+        )
+        train_summary_writer.set_as_default()
     
 #     # ====================================================
 #     # Evaluate the agent's policy once before training
@@ -634,6 +656,10 @@ def main(args: argparse.Namespace):
         resume_training_loops = args.resume_training_loops,
         use_gpu=args.use_gpu,
         use_tpu=args.use_tpu,
+        profiler=args.profiler,
+        train_summary_writer = train_summary_writer,
+        total_take = TOTAL_TRAIN_TAKE,
+        global_step = global_step,
     )
 
     end_time = time.time()
