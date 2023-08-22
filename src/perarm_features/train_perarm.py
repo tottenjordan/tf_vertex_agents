@@ -25,8 +25,10 @@ from tf_agents.metrics import tf_metrics
 from tf_agents.policies import policy_saver
 from tf_agents.replay_buffers import tf_uniform_replay_buffer
 from tf_agents.train.utils import strategy_utils
-
 from tf_agents.drivers import dynamic_step_driver
+
+from tf_agents.policies import py_tf_eager_policy
+from tf_agents.train.utils import strategy_utils
 
 # logging
 import logging
@@ -81,11 +83,11 @@ def restore_and_get_checkpoint_manager(root_dir, agent, metrics, step_metric):
     )
     latest = checkpoint_manager.latest_checkpoint
     if latest is not None:
-        logging.info('Restoring checkpoint from %s.', latest)
+        print('Restoring checkpoint from %s.', latest)
         checkpoint.restore(latest)
-        logging.info('Successfully restored to step %s.', step_metric.result())
+        print('Successfully restored to step %s.', step_metric.result())
     else:
-        logging.info(
+        print(
             'Did not find a pre-existing checkpoint. Starting from scratch.'
         )
     return checkpoint_manager
@@ -96,41 +98,49 @@ def restore_and_get_checkpoint_manager(root_dir, agent, metrics, step_metric):
 options = tf.data.Options()
 options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.AUTO
 
-def _get_train_dataset(bucket_name, data_dir_prefix_path, split):
+def _get_train_dataset(bucket_name, data_dir_prefix_path, split, batch_size):
     train_files = []
-    for blob in storage_client.list_blobs(f"{bucket_name}", prefix=f'{data_dir_prefix_path}/{split}'): # tmp TODO - "train"
+    for blob in storage_client.list_blobs(f"{bucket_name}", prefix=f'{data_dir_prefix_path}/{split}'):
         if '.tfrecord' in blob.name:
             train_files.append(blob.public_url.replace("https://storage.googleapis.com/", "gs://"))
             
-    logging.info(f"train_files: {train_files}")
+    print(f"train_files: {train_files}")
 
     train_dataset = tf.data.TFRecordDataset(train_files)
-    train_dataset = train_dataset.map(data_utils.parse_tfrecord)
+    # train_dataset.repeat().batch(batch_size)
+    train_dataset = train_dataset.map(data_utils.parse_tfrecord) #, num_parallel_calls=tf.data.AUTOTUNE)
     
     return train_dataset
 
 def train_perarm(
     agent,
-    # environment,
+    global_dim: int,
+    per_arm_dim: int, 
     num_iterations: int,
     steps_per_loop: int,
+    num_eval_steps: int,
     log_dir: str,
     model_dir: str,
     root_dir: str,
     batch_size: int,
+    eval_batch_size: int,
     bucket_name: str,
     data_dir_prefix_path: str,
-    split: str,
+    # split: str,
     _trajectory_fn = None,
+    # _run_bandit_eval_fn = None,
     log_interval: int = 1,
+    chkpt_interval: int = 1,
     async_steps_per_loop = 1,
     resume_training_loops = False,
     additional_metrics: Optional[List[TFStepMetric]] = None,
+    use_gpu = False,
+    use_tpu = False,
 ) -> Dict[str, List[float]]:
     
     # GPU - All variables and Agents need to be created under strategy.scope()
-    use_gpu = True
-    strategy = strategy_utils.get_strategy(tpu=False, use_gpu=use_gpu)
+    distribution_strategy = strategy_utils.get_strategy(tpu=use_tpu, use_gpu=use_gpu)
+    print(f"distribution_strategy: {distribution_strategy}")
     
     # ====================================================
     # train dataset
@@ -138,26 +148,44 @@ def train_perarm(
     train_dataset = _get_train_dataset(
         bucket_name=bucket_name, 
         data_dir_prefix_path=data_dir_prefix_path, 
-        split=split
+        split="train",
+        batch_size = batch_size
+        
     )
+    # train_dataset.cache()
+    # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
+    # train_dataset = distribution_strategy.experimental_distribute_dataset(train_dataset)
+    # train_ds_iterator = iter(train_dataset)
+    train_ds_iterator = iter(train_dataset.repeat(num_iterations).batch(batch_size))
+    print(f"train_ds_iterator: {train_ds_iterator}")
     
-    # ====================================================
-    # TB summary writer
-    # ====================================================
-    logging.info(f" log_dir: {log_dir}")
+#     val_dataset = _get_train_dataset(
+#         bucket_name=bucket_name, 
+#         data_dir_prefix_path=data_dir_prefix_path, 
+#         split="val"
+#     )
+#     eval_ds = val_dataset.batch(eval_batch_size) #.repeat(2)
     
-    train_summary_writer = tf.compat.v2.summary.create_file_writer(
-        log_dir, flush_millis=10 * 1000
-    )
-    train_summary_writer.set_as_default()
+#     if num_eval_steps > 0:
+#         eval_ds = eval_ds.take(num_eval_steps)
+
+#     # ====================================================
+#     # TB summary writer
+#     # ====================================================
+#     print(f"log_dir: {log_dir}")
+    
+#     train_summary_writer = tf.compat.v2.summary.create_file_writer(
+#         log_dir, flush_millis=10 * 1000
+#     )
+#     train_summary_writer.set_as_default()
     
     # ====================================================
     # metrics
     # ====================================================
     step_metric = tf_metrics.EnvironmentSteps()
     metrics = [
-        tf_metrics.NumberOfEpisodes(),
-        tf_metrics.AverageEpisodeLengthMetric(batch_size=batch_size),
+        # tf_metrics.NumberOfEpisodes(),
+        # tf_metrics.AverageEpisodeLengthMetric(batch_size=batch_size),
         tf_metrics.AverageReturnMetric(batch_size=batch_size)
     ]
     if additional_metrics:
@@ -182,7 +210,8 @@ def train_perarm(
     train_step_counter = tf.compat.v1.train.get_or_create_global_step()
     
     saver = policy_saver.PolicySaver(
-        agent.policy, train_step=train_step_counter
+        agent.policy, 
+        train_step=train_step_counter
     )
     
     if resume_training_loops:
@@ -203,51 +232,102 @@ def train_perarm(
     else:
         starting_loop = 0
         
+#     # ====================================================
+#     # Evaluate the agent's policy once before training
+#     # ====================================================
+#     # Reset the train step
+#     agent.train_step_counter.assign(0)
+
+#     pre_policy_tf = py_tf_eager_policy.PyTFEagerPolicy(
+#         agent.policy, use_tf_function=True
+#     )
+
+#     print(f"evaluating pre-trained Agent...")
+#     start_time = time.time()
+
+#     pre_val_loss, pre_preds, pre_tr_rewards = _run_bandit_eval_fn(
+#         policy = pre_policy_tf,
+#         data = eval_ds,
+#         eval_batch_size = eval_batch_size,
+#         per_arm_dim = per_arm_dim,
+#         global_dim = global_dim
+#     )
+#     runtime_mins = int((time.time() - start_time) / 60)
+#     print(f"pre-train val_loss: {pre_val_loss}")
+#     print(f"pre-train eval runtime : {runtime_mins}")
+    
+    # ====================================================
+    # train loop
+    # ====================================================  
     print(f"starting_loop: {starting_loop}")
 
-    #start the timer and training
+    # start the timer and training
     print(f"starting train loop...")
     start_time = time.time()
     list_o_loss = []
-    
-    agent.train_step_counter.assign(0)
-    iterator = iter(train_dataset.repeat(num_iterations).batch(batch_size))
-    
-    for epoch in range(num_iterations):
+        
+    for i in range(num_iterations):
 
-        data = next(iterator)
-        # print(f"print data: {data}")
-
+        data = next(train_ds_iterator)
         trajectories = _trajectory_fn(data)
-        # print(f"print trajectories: {trajectories}")
 
-        # All tensors in experience must be shaped [batch, time, ...] 
         step = agent.train_step_counter.numpy()
         loss = agent.train(experience=trajectories)
-        # agent.train(experience=trajectories)
         list_o_loss.append(loss.loss.numpy())
-
-        _export_metrics_and_summaries(
-            step=epoch, 
+        
+        train_utils._export_metrics_and_summaries(
+            step=i, 
             metrics=metrics
         )
 
         # print 
-        if log_interval and step % log_interval == 0:
+        if step % log_interval == 0:
             print(
                 'step = {0}: loss = {1}'.format(
                     step, round(loss.loss.numpy(), 2)
                 )
             )
 
-        if epoch > 0 and epoch % 1000 == 0:
+        if i > 0 and i % chkpt_interval == 0:
             saver.save(os.path.join(CHKPOINT_DIR, 'policy_%d' % step_metric.result()))
             print(f"saved policy to: {CHKPOINT_DIR}")
+            
+    runtime_mins = int((time.time() - start_time) / 60)
+    print(f"runtime_mins: {runtime_mins}")
 
     saver.save(model_dir)
     print(f"saved trained policy to: {model_dir}")
-
-    runtime_mins = int((time.time() - start_time) / 60)
-    print(f"runtime_mins: {runtime_mins}")
     
-    return list_o_loss
+#     # ====================================================
+#     # Evaluate the agent's policy once after training
+#     # ====================================================
+#     print(f"Load trained policy & evaluate...")
+#     print(f"load policy from model_dir: {model_dir}")
+    
+#     # post_policy_tf = py_tf_eager_policy.PyTFEagerPolicy(
+#     #     agent.policy, use_tf_function=True
+#     # )
+#     trained_policy = py_tf_eager_policy.SavedModelPyTFEagerPolicy(
+#         model_dir, 
+#         load_specs_from_pbtxt=True
+#     )
+#     print(f"trained_policy: {trained_policy}")
+#     print(f"evaluating trained Policy...")
+    
+#     start_time = time.time()
+
+#     val_loss, preds, tr_rewards = _run_bandit_eval_fn(
+#         policy = trained_policy,
+#         data = eval_ds,
+#         eval_batch_size = eval_batch_size,
+#         per_arm_dim = per_arm_dim,
+#         global_dim = global_dim
+#     )
+
+#     runtime_mins = int((time.time() - start_time) / 60)
+#     print(f"post-train val_loss: {val_loss}")
+#     print(f"post-train eval runtime : {runtime_mins}")
+    
+    return list_o_loss, agent  # agent | val_loss
+
+#, val_loss
