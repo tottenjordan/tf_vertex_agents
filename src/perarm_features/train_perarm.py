@@ -122,7 +122,7 @@ def _get_train_dataset(
         train_dataset = tf.data.TFRecordDataset(train_files)
     train_dataset = train_dataset.take(total_take)
     train_dataset = train_dataset.map(data_utils.parse_tfrecord) #, num_parallel_calls=tf.data.AUTOTUNE)
-    train_dataset = train_dataset.batch(batch_size)
+    train_dataset = train_dataset.batch(batch_size).repeat()
     # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
     # train_dataset = train_dataset.cache()
     return train_dataset
