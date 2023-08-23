@@ -19,3 +19,28 @@ There are 2 demos:
 > * Customizable and reproducible KFP components
 
 Each demo contains a notebook that carries out the full workflow and user instructions, and a src/ directory for Python modules and unit tests.
+
+
+## End-to-end MLOps pipeline for RL-specific implementations
+![](img/e2e_rl_pipeline.png)
+
+### pipeline highlights
+* `Generator`: generates [MovieLens](https://www.kaggle.com/prajitdatta/movielens-100k-dataset) simulation data
+* `Ingester`: ingests data
+* `Trainer`: trains the RL policy
+* Deploying trained policy to Vertex AI endpoint
+
+## (re)Training pipeline for RL-specific implementations
+![](img/retraining_pipeline_overview.png)
+
+### pipeline highlights
+* The re-training pipeline (executed recurrently) includes the `Ingester`, `Trainer`, and Deployment steps
+* it does not need initial training data from the `Generator`
+
+## To model production traffic we create these additional modules:
+* `Simulator` for initial training data, prediction requests and re-training
+* `Logger` to asynchronously log prediction inputs and results. 
+* Pipeline `Trigger` to trigger recurrent re-training
+
+
+When the `Simulator` sends prediction requests to the endpoint, the `Logger` is triggered by the hook in the prediction code to log prediction results to BigQuery as new training data. As this pipeline has a recurrent schedule, it utlizes the new training data in training a new policy, therefore closing the feedback loop. Theoretically speaking, if you set the pipeline scheduler to be infinitely frequent, then you would be approaching real-time, continuous training.
