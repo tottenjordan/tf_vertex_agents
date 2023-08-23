@@ -190,94 +190,111 @@ def get_mv_gen_emb_model(vocab_dict, num_oov_buckets, mv_emb_size):
     
     return mv_gen_model
 
-# # ====================================================
-# # get global_context_sampling_fn
-# # ====================================================
-# def _get_global_context_features(x):
-#     """
-#     This function generates a single global observation vector.
-#     """
-#     user_id_model = get_user_id_emb_model(
-#         vocab_dict=VOCAB_DICT, 
-#         num_oov_buckets=data_config.NUM_OOV_BUCKETS, 
-#         global_emb_size=data_config.GLOBAL_EMBEDDING_SIZE
-#     )
-#     user_age_model = get_user_age_emb_model(
-#         vocab_dict=VOCAB_DICT, 
-#         num_oov_buckets=data_config.NUM_OOV_BUCKETS, 
-#         global_emb_size=data_config.GLOBAL_EMBEDDING_SIZE
-#     )
-#     user_occ_model = get_user_occ_emb_model(
-#         vocab_dict=VOCAB_DICT, 
-#         num_oov_buckets=data_config.NUM_OOV_BUCKETS, 
-#         global_emb_size=data_config.GLOBAL_EMBEDDING_SIZE
-#     )
-#     user_ts_model = get_ts_emb_model(
-#         vocab_dict=VOCAB_DICT, 
-#         num_oov_buckets=data_config.NUM_OOV_BUCKETS, 
-#         global_emb_size=data_config.GLOBAL_EMBEDDING_SIZE
-#     )
+# ====================================================
+# get global_context_sampling_fn
+# ====================================================
 
-#     # for x in train_dataset.batch(1).take(1):
-#     user_id_value = x['user_id']
-#     user_age_value = x['bucketized_user_age']
-#     user_occ_value = x['user_occupation_text']
-#     user_ts_value = x['timestamp']
+def _get_global_context_features_fn(
+    vocab_dict, num_oov_buckets, global_emb_size, elements
+):
 
-#     _id = user_id_model(user_id_value)
-#     _age = user_age_model(user_age_value)
-#     _occ = user_occ_model(user_occ_value)
-#     _ts = user_ts_model(user_ts_value)
+    def _get_global_context_features(x):
+        """
+        This function generates a single global observation vector.
+        """
+        user_id_model = get_user_id_emb_model(
+            vocab_dict=vocab_dict, 
+            num_oov_buckets=num_oov_buckets, 
+            global_emb_size=global_emb_size
+        )
+        user_age_model = get_user_age_emb_model(
+            vocab_dict=vocab_dict, 
+            num_oov_buckets=num_oov_buckets, 
+            global_emb_size=global_emb_size
+        )
+        user_occ_model = get_user_occ_emb_model(
+            vocab_dict=vocab_dict, 
+            num_oov_buckets=num_oov_buckets, 
+            global_emb_size=global_emb_size
+        )
+        user_ts_model = get_ts_emb_model(
+            vocab_dict=vocab_dict, 
+            num_oov_buckets=num_oov_buckets, 
+            global_emb_size=global_emb_size
+        )
 
-#     # to numpy array
-#     _id = np.array(_id.numpy())
-#     _age = np.array(_age.numpy())
-#     _occ = np.array(_occ.numpy())
-#     _ts = np.array(_ts.numpy())
+        # for x in train_dataset.batch(1).take(1):
+        user_id_value = x['user_id']
+        user_age_value = x['bucketized_user_age']
+        user_occ_value = x['user_occupation_text']
+        user_ts_value = x['timestamp']
 
-#     concat = np.concatenate(
-#         [_id, _age, _occ, _ts], axis=-1
-#     ).astype(np.float32)
+        _id = user_id_model(user_id_value)
+        _age = user_age_model(user_age_value)
+        _occ = user_occ_model(user_occ_value)
+        _ts = user_ts_model(user_ts_value)
 
-#     return concat
+        # to numpy array
+        _id = np.array(_id.numpy())
+        _age = np.array(_age.numpy())
+        _occ = np.array(_occ.numpy())
+        _ts = np.array(_ts.numpy())
+
+        concat = np.concatenate(
+            [_id, _age, _occ, _ts], axis=-1
+        ).astype(np.float32)
+
+        return concat
+    
+    return _get_global_context_features(elements)
+    # return tf.map_fn(
+    #     fn=_get_global_context_features, 
+    #     elems=elements,
+    # )
 
     
-# # ====================================================
-# # get per_arm_context_sampling_fn
-# # ====================================================
-# def _get_per_arm_features(x):
-#     """
-#     This function generates a single per-arm observation vector
-#     """
+# ====================================================
+# get per_arm_context_sampling_fn
+# ====================================================
+def _get_per_arm_features_fn(
+    vocab_dict, num_oov_buckets, mv_emb_size, elements
+):
+    
+    def _get_per_arm_features(x):
+        """
+        This function generates a single per-arm observation vector
+        """
 
-#     mvid_model = get_mv_id_emb_model(
-#         vocab_dict=VOCAB_DICT, 
-#         num_oov_buckets=data_config.NUM_OOV_BUCKETS, 
-#         mv_emb_size=data_config.MV_EMBEDDING_SIZE
-#     )
+        mvid_model = get_mv_id_emb_model(
+            vocab_dict=vocab_dict, 
+            num_oov_buckets=num_oov_buckets, 
+            mv_emb_size=mv_emb_size
+        )
 
-#     mvgen_model = get_mv_gen_emb_model(
-#         vocab_dict=VOCAB_DICT, 
-#         num_oov_buckets=data_config.NUM_OOV_BUCKETS, 
-#         mv_emb_size=data_config.MV_EMBEDDING_SIZE
-#     )
+        mvgen_model = get_mv_gen_emb_model(
+            vocab_dict=vocab_dict, 
+            num_oov_buckets=num_oov_buckets, 
+            mv_emb_size=mv_emb_size
+        )
 
-#     # for x in train_dataset.batch(1).take(1):
-#     mv_id_value = x['movie_id']
-#     mv_gen_value = x['movie_genres'] #[0]
+        # for x in train_dataset.batch(1).take(1):
+        mv_id_value = x['movie_id']
+        mv_gen_value = x['movie_genres'] #[0]
 
-#     _mid = mvid_model(mv_id_value)
-#     _mgen = mvgen_model(mv_gen_value)
+        _mid = mvid_model(mv_id_value)
+        _mgen = mvgen_model(mv_gen_value)
 
-#     # to numpy array
-#     _mid = np.array(_mid.numpy())
-#     _mgen = np.array(_mgen.numpy())
+        # to numpy array
+        _mid = np.array(_mid.numpy())
+        _mgen = np.array(_mgen.numpy())
 
-#     concat = np.concatenate(
-#         [_mid, _mgen], axis=-1
-#     ).astype(np.float32)
+        concat = np.concatenate(
+            [_mid, _mgen], axis=-1
+        ).astype(np.float32)
 
-#     return concat
+        return concat
+    
+    return _get_per_arm_features(elements)
 
 # ====================================================
 # get agent
