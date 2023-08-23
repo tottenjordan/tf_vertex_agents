@@ -31,7 +31,7 @@ Each demo contains a notebook that carries out the full workflow and user instru
 * Deploying trained policy to Vertex AI endpoint
 
 ## (re)Training pipeline for RL-specific implementations
-![](img/retraining_pipeline_overview.png)
+![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/retraining_pipeline_overview.png)
 
 ### pipeline highlights
 * The re-training pipeline (executed recurrently) includes the `Ingester`, `Trainer`, and Deployment steps

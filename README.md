@@ -4,7 +4,7 @@
 
 ### Why reinforcement learning?
 * train algorithms that consider long-term (cumulative value) of decisions
-* explore & exploit tradeoffs between short and long term value (e.g., the difference between the short term value of "click-bait" vs the long-term value of overall user satisafaction, as highlighted in  [DNN for YouTube Recommendations](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf)
+* explore & exploit tradeoffs between short and long term value (e.g., the difference between the short term value of "click-bait" vs the long-term value of overall user satisafaction, as highlighted in  [DNN for YouTube Recommendations](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf))
 * make a sequence of decisions, where each decision, or action, possibly impacts future decisions
 
 > return a **distribution** over predictions rather than a single prediction
@@ -27,7 +27,11 @@ For custom training, we implement **off-policy training**, using a static set of
 
 ## RL flavors
 
-### Policy-based RL
+**Model-based RL:** build/exploit model while learning/acting
+
+**Model-free RL:** learn value function or policy directly from data
+
+### Model-based RL
 > Goal: learn a stochastic policy to maximize expected return
 
 * Policies accept some number of tensors as an observation and usually pass it through one or more neural networks
@@ -35,6 +39,21 @@ For custom training, we implement **off-policy training**, using a static set of
 * This Network is a FFN that takes images and emits logits over number_of_actions decisions.
 * Policy accepts the Network(s) and provides at least the `_distribution` method.
 * Side info becomes part of the Trajectory.  It can be used by metrics and is stored in replay buffers to be used by the training algorithm.
+
+### Model-free RL
+
+> TODO
+
+### Q-learning
+
+> TODO
+
+### Slate Optimization
+* given *K* candidates, find *N* items to fill user's recommendation slate
+* Items in the slate impact user response (reward) of others 
+* Value of slate depends on user choice model
+
+> joint optimization of the slate
 
 # Design in TF-Agents
 
