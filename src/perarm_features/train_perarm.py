@@ -101,7 +101,14 @@ options = tf.data.Options()
 options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
 options.threading.max_intra_op_parallelism = 1 # TODO
 
-def _get_train_dataset(bucket_name, data_dir_prefix_path, split, total_take, batch_size):
+def _get_train_dataset(
+    bucket_name, 
+    data_dir_prefix_path, 
+    split, 
+    total_take, 
+    batch_size,
+    cache: bool = True,
+):
     train_files = []
     for blob in storage_client.list_blobs(f"{bucket_name}", prefix=f'{data_dir_prefix_path}/{split}'):
         if '.tfrecord' in blob.name:
@@ -109,7 +116,10 @@ def _get_train_dataset(bucket_name, data_dir_prefix_path, split, total_take, bat
             
     print(f"train_files: {train_files}")
 
-    train_dataset = tf.data.TFRecordDataset(train_files).cache() #.take(total_take)
+    if cache:
+        train_dataset = tf.data.TFRecordDataset(train_files).cache() #.take(total_take)
+    else:
+        train_dataset = tf.data.TFRecordDataset(train_files)
     train_dataset = train_dataset.take(total_take)
     train_dataset = train_dataset.map(data_utils.parse_tfrecord) #, num_parallel_calls=tf.data.AUTOTUNE)
     train_dataset = train_dataset.batch(batch_size)
@@ -124,7 +134,6 @@ def train_perarm(
     num_iterations: int,
     steps_per_loop: int,
     num_eval_steps: int,
-    total_take: int,
     log_dir: str,
     model_dir: str,
     root_dir: str,
@@ -144,10 +153,12 @@ def train_perarm(
     use_tpu = False,
     profiler = False,
     global_step = None,
+    total_train_take: int = 10000,
     train_summary_writer: Optional[tf.summary.SummaryWriter] = None,
 ) -> Dict[str, List[float]]:
     
-    train_summary_writer.set_as_default()
+    if train_summary_writer:
+        train_summary_writer.set_as_default()
     
     # GPU - All variables and Agents need to be created under strategy.scope()
     distribution_strategy = strategy_utils.get_strategy(tpu=use_tpu, use_gpu=use_gpu)
@@ -160,7 +171,7 @@ def train_perarm(
         bucket_name=bucket_name, 
         data_dir_prefix_path=data_dir_prefix_path, 
         split="train",
-        total_take=total_take,
+        total_take=total_train_take,
         batch_size = batch_size
     )
     # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
