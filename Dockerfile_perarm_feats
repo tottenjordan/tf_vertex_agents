@@ -1,5 +1,4 @@
 
-# FROM python:3.10
 FROM tensorflow/tensorflow:2.13.0-gpu
 
 ENV PYTHONUNBUFFERED True
@@ -15,13 +14,10 @@ RUN pip install --no-cache-dir -r $APP_HOME/requirements.txt
 
 RUN ls $APP_HOME
 
-# ADD src $APP_HOME/src
-# RUN ls src
 COPY src/perarm_features $APP_HOME/src/perarm_features
 COPY src/per_arm_rl $APP_HOME/src/per_arm_rl
 
 RUN apt update && apt -y install nvtop
-# RUN apt-get update && apt-get -y install nvtop
 
 RUN ls $APP_HOME
 
