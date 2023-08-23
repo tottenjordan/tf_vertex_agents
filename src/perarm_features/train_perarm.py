@@ -262,6 +262,7 @@ def train_perarm(
         
         data = next(train_ds_iterator)
         trajectories = _trajectory_fn(data)
+        # print(trajectories)
         # step = agent.train_step_counter.numpy()
         loss = agent.train(experience=trajectories)
         
@@ -269,6 +270,7 @@ def train_perarm(
     
     # (Optional) Optimize by wrapping some of the code in a graph using TF function.
     print('wrapping agent.train in tf-function')
+    # big perfromance boost right here
     agent.train = common.function(agent.train)
     
     print(f"starting_loop: {starting_loop}")
