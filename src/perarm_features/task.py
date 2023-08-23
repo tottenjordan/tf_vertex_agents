@@ -574,8 +574,10 @@ def main(args: argparse.Namespace):
         batch_size=args.eval_batch_size
     )
     eval_ds = val_dataset.batch(args.eval_batch_size)
+    
     # eval_ds = val_dataset.prefetch(tf.data.AUTOTUNE)
     # train_ds_iterator = iter(dist_train_ds)
+    
     if args.num_eval_steps > 0:
         eval_ds = eval_ds.take(args.num_eval_steps)
         
@@ -658,7 +660,7 @@ def main(args: argparse.Namespace):
         use_tpu=args.use_tpu,
         profiler=args.profiler,
         train_summary_writer = train_summary_writer,
-        total_take = TOTAL_TRAIN_TAKE,
+        total_train_take = TOTAL_TRAIN_TAKE,
         global_step = global_step,
     )
 
