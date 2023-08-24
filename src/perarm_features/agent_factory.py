@@ -40,6 +40,10 @@ logging.disable(logging.WARNING)
 
 class PerArmAgentFactory:
     
+    '''
+    TODO: make network an attribute to print
+    '''
+    
     def __init__(
         self,
         agent_type: str,

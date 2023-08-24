@@ -294,94 +294,6 @@ def main(args: argparse.Namespace):
     VOCAB_DICT = pkl.load(filehandler)
     filehandler.close()
     
-#     # ====================================================
-#     # get global_context_sampling_fn
-#     # ====================================================
-#     def _get_global_context_features(x):
-#         """
-#         This function generates a single global observation vector.
-#         """
-#         user_id_model = agent_factory.get_user_id_emb_model(
-#             vocab_dict=VOCAB_DICT, 
-#             num_oov_buckets=args.num_oov_buckets, 
-#             global_emb_size=args.global_emb_size
-#         )
-#         user_age_model = agent_factory.get_user_age_emb_model(
-#             vocab_dict=VOCAB_DICT, 
-#             num_oov_buckets=args.num_oov_buckets, 
-#             global_emb_size=args.global_emb_size
-#         )
-#         user_occ_model = agent_factory.get_user_occ_emb_model(
-#             vocab_dict=VOCAB_DICT, 
-#             num_oov_buckets=args.num_oov_buckets, 
-#             global_emb_size=args.global_emb_size
-#         )
-#         user_ts_model = agent_factory.get_ts_emb_model(
-#             vocab_dict=VOCAB_DICT, 
-#             num_oov_buckets=args.num_oov_buckets, 
-#             global_emb_size=args.global_emb_size
-#         )
-        
-#         # for x in train_dataset.batch(1).take(1):
-#         user_id_value = x['user_id']
-#         user_age_value = x['bucketized_user_age']
-#         user_occ_value = x['user_occupation_text']
-#         user_ts_value = x['timestamp']
-
-#         _id = user_id_model(user_id_value)
-#         _age = user_age_model(user_age_value)
-#         _occ = user_occ_model(user_occ_value)
-#         _ts = user_ts_model(user_ts_value)
-
-#         # to numpy array
-#         _id = np.array(_id.numpy())
-#         _age = np.array(_age.numpy())
-#         _occ = np.array(_occ.numpy())
-#         _ts = np.array(_ts.numpy())
-
-#         concat = np.concatenate(
-#             [_id, _age, _occ, _ts], axis=-1
-#         ).astype(np.float32)
-
-#         return concat
-    
-#     # ====================================================
-#     # get per_arm_context_sampling_fn
-#     # ====================================================
-#     def _get_per_arm_features(x):
-#         """
-#         This function generates a single per-arm observation vector
-#         """
-
-#         mvid_model = agent_factory.get_mv_id_emb_model(
-#             vocab_dict=VOCAB_DICT, 
-#             num_oov_buckets=args.num_oov_buckets, 
-#             mv_emb_size=args.mv_emb_size
-#         )
-            
-#         mvgen_model = agent_factory.get_mv_gen_emb_model(
-#             vocab_dict=VOCAB_DICT, 
-#             num_oov_buckets=args.num_oov_buckets, 
-#             mv_emb_size=args.mv_emb_size
-#         )
-        
-#         # for x in train_dataset.batch(1).take(1):
-#         mv_id_value = x['movie_id']
-#         mv_gen_value = x['movie_genres'] #[0]
-
-#         _mid = mvid_model(mv_id_value)
-#         _mgen = mvgen_model(mv_gen_value)
-
-#         # to numpy array
-#         _mid = np.array(_mid.numpy())
-#         _mgen = np.array(_mgen.numpy())
-
-#         concat = np.concatenate(
-#             [_mid, _mgen], axis=-1
-#         ).astype(np.float32)
-
-#         return concat
-    
     # ====================================================
     # trajectory_fn
     # ====================================================
@@ -555,25 +467,8 @@ def main(args: argparse.Namespace):
     from . import agent_factory as agent_factory
 
     with distribution_strategy.scope():
-        # train_step = tfa_train_utils.create_train_step()
-        global_step = tf.compat.v1.train.get_or_create_global_step()
 
-    #     agent, network = agent_factory._get_agent(
-    #         agent_type=args.agent_type, 
-    #         network_type=args.network_type, 
-    #         time_step_spec=time_step_spec, 
-    #         action_spec=action_spec, 
-    #         observation_spec=observation_spec,
-    #         global_step = global_step,
-    #         global_layers = GLOBAL_LAYERS,
-    #         arm_layers = ARM_LAYERS,
-    #         common_layers = COMMON_LAYERS,
-    #         agent_alpha = args.agent_alpha,
-    #         learning_rate = args.learning_rate,
-    #         epsilon = args.epsilon,
-    #     encoding_dim = args.encoding_dim,
-    #     eps_phase_steps = args.eps_phase_steps,
-    # )
+        global_step = tf.compat.v1.train.get_or_create_global_step()
     
         agent = agent_factory.PerArmAgentFactory._get_agent(
             agent_type=args.agent_type, 
@@ -594,7 +489,7 @@ def main(args: argparse.Namespace):
     
     agent.initialize()
     print(f"agent: {agent}")
-    # print(f"network: {network}")
+    print(f"network_type: {args.network_type}")
     
     # ====================================================
     # train dataset
@@ -621,9 +516,6 @@ def main(args: argparse.Namespace):
     eval_ds = eval_ds.cache()
     print(f"eval_ds: {eval_ds}")
     
-    # dist_eval_ds = distribution_strategy.experimental_distribute_dataset(eval_ds)
-    # print(f"dist_eval_ds: {dist_eval_ds}")
-    
     # ====================================================
     # TB summary writer
     # ====================================================
@@ -636,32 +528,6 @@ def main(args: argparse.Namespace):
             log_dir, flush_millis=10 * 1000
         )
         train_summary_writer.set_as_default()
-    
-#     # ====================================================
-#     # Evaluate the agent's policy once before training
-#     # ====================================================
-#     # Reset the train step
-#     agent.train_step_counter.assign(0)
-#     print(f"pre-trained_agent: {agent}")
-
-#     pre_policy_tf = py_tf_eager_policy.PyTFEagerPolicy(
-#         agent.policy, use_tf_function=True
-#     )
-
-#     print(f"evaluating pre-trained Agent...")
-#     print(f"pre_policy_tf: {pre_policy_tf}")
-#     start_time = time.time()
-
-#     pre_val_loss, pre_preds, pre_tr_rewards = _run_bandit_eval(
-#         policy = pre_policy_tf,
-#         data = eval_ds,
-#         eval_batch_size = args.eval_batch_size,
-#         per_arm_dim = args.per_arm_dim,
-#         global_dim = args.global_dim
-#     )
-#     runtime_mins = int((time.time() - start_time) / 60)
-#     print(f"pre-train val_loss: {pre_val_loss}")
-#     print(f"pre-train eval runtime : {runtime_mins}")
 
     # ====================================================
     # train loop
@@ -712,9 +578,6 @@ def main(args: argparse.Namespace):
     print(f"Load trained policy & evaluate...")
     print(f"load policy from model_dir: {args.artifacts_dir}")
     
-    # post_policy_tf = py_tf_eager_policy.PyTFEagerPolicy(
-    #     trained_agent.policy, use_tf_function=True
-    # )
     trained_policy = py_tf_eager_policy.SavedModelPyTFEagerPolicy(
         args.artifacts_dir, 
         load_specs_from_pbtxt=True
@@ -781,30 +644,6 @@ def main(args: argparse.Namespace):
 
             vertex_ai.end_run()
             print(f"EXPERIMENT RUN: {args.experiment_run}-{SESSION_id} has ended")
-            
-# def main() -> None:
-#     """
-#     Entry point for training or hyperparameter tuning.
-#     """
-#     args = get_args(sys.argv[1:])
-#     logging.info('Args: %s', args)
-    
-#     # =============================================
-#     # set GCP clients
-#     # =============================================
-#     from google.cloud import aiplatform as vertex_ai
-#     from google.cloud import storage
-
-#     project_number = os.environ["CLOUD_ML_PROJECT_ID"]
-#     storage_client = storage.Client(project=project_number)
-    
-#     vertex_ai.init(
-#         project=project_number
-#         , location='us-central1'
-#         , experiment=args.experiment_name
-#     )
-            
-#     execute_task(args = args)
 
 if __name__ == "__main__":
     logging.basicConfig(
