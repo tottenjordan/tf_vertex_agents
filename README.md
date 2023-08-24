@@ -79,3 +79,9 @@ Policy.__init__(time_step_spec, action_spec, network, ...)
 
 ![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/getting_profiler.png)
 
+### Input pipeline bottleneck analysis
+
+> TODO
+
+![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/tb_input_bottleneck_analysis.png)
+
