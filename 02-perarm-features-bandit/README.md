@@ -19,7 +19,7 @@ We have to implement specs to create the agent, policies, network etc.
 
 > TODO
 
-![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/agent_profiler_v1.png)
+![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/getting_profiler.png)
 
 
 # Why generalize bandits to neural network models?
