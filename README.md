@@ -73,3 +73,9 @@ Policy.__init__(time_step_spec, action_spec, network, ...)
 ### Trajectory
 * batch of tensors representing `observations`, `actions`, `rewards`, `discounts`
 
+# Profiling Agents
+
+> TODO
+
+![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/getting_profiler.png)
+
