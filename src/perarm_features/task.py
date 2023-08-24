@@ -294,103 +294,114 @@ def main(args: argparse.Namespace):
     VOCAB_DICT = pkl.load(filehandler)
     filehandler.close()
     
-    # ====================================================
-    # get global_context_sampling_fn
-    # ====================================================
-    def _get_global_context_features(x):
-        """
-        This function generates a single global observation vector.
-        """
-        user_id_model = agent_factory.get_user_id_emb_model(
-            vocab_dict=VOCAB_DICT, 
-            num_oov_buckets=args.num_oov_buckets, 
-            global_emb_size=args.global_emb_size
-        )
-        user_age_model = agent_factory.get_user_age_emb_model(
-            vocab_dict=VOCAB_DICT, 
-            num_oov_buckets=args.num_oov_buckets, 
-            global_emb_size=args.global_emb_size
-        )
-        user_occ_model = agent_factory.get_user_occ_emb_model(
-            vocab_dict=VOCAB_DICT, 
-            num_oov_buckets=args.num_oov_buckets, 
-            global_emb_size=args.global_emb_size
-        )
-        user_ts_model = agent_factory.get_ts_emb_model(
-            vocab_dict=VOCAB_DICT, 
-            num_oov_buckets=args.num_oov_buckets, 
-            global_emb_size=args.global_emb_size
-        )
+#     # ====================================================
+#     # get global_context_sampling_fn
+#     # ====================================================
+#     def _get_global_context_features(x):
+#         """
+#         This function generates a single global observation vector.
+#         """
+#         user_id_model = agent_factory.get_user_id_emb_model(
+#             vocab_dict=VOCAB_DICT, 
+#             num_oov_buckets=args.num_oov_buckets, 
+#             global_emb_size=args.global_emb_size
+#         )
+#         user_age_model = agent_factory.get_user_age_emb_model(
+#             vocab_dict=VOCAB_DICT, 
+#             num_oov_buckets=args.num_oov_buckets, 
+#             global_emb_size=args.global_emb_size
+#         )
+#         user_occ_model = agent_factory.get_user_occ_emb_model(
+#             vocab_dict=VOCAB_DICT, 
+#             num_oov_buckets=args.num_oov_buckets, 
+#             global_emb_size=args.global_emb_size
+#         )
+#         user_ts_model = agent_factory.get_ts_emb_model(
+#             vocab_dict=VOCAB_DICT, 
+#             num_oov_buckets=args.num_oov_buckets, 
+#             global_emb_size=args.global_emb_size
+#         )
         
-        # for x in train_dataset.batch(1).take(1):
-        user_id_value = x['user_id']
-        user_age_value = x['bucketized_user_age']
-        user_occ_value = x['user_occupation_text']
-        user_ts_value = x['timestamp']
+#         # for x in train_dataset.batch(1).take(1):
+#         user_id_value = x['user_id']
+#         user_age_value = x['bucketized_user_age']
+#         user_occ_value = x['user_occupation_text']
+#         user_ts_value = x['timestamp']
 
-        _id = user_id_model(user_id_value)
-        _age = user_age_model(user_age_value)
-        _occ = user_occ_model(user_occ_value)
-        _ts = user_ts_model(user_ts_value)
+#         _id = user_id_model(user_id_value)
+#         _age = user_age_model(user_age_value)
+#         _occ = user_occ_model(user_occ_value)
+#         _ts = user_ts_model(user_ts_value)
 
-        # to numpy array
-        _id = np.array(_id.numpy())
-        _age = np.array(_age.numpy())
-        _occ = np.array(_occ.numpy())
-        _ts = np.array(_ts.numpy())
+#         # to numpy array
+#         _id = np.array(_id.numpy())
+#         _age = np.array(_age.numpy())
+#         _occ = np.array(_occ.numpy())
+#         _ts = np.array(_ts.numpy())
 
-        concat = np.concatenate(
-            [_id, _age, _occ, _ts], axis=-1
-        ).astype(np.float32)
+#         concat = np.concatenate(
+#             [_id, _age, _occ, _ts], axis=-1
+#         ).astype(np.float32)
 
-        return concat
+#         return concat
     
-    # ====================================================
-    # get per_arm_context_sampling_fn
-    # ====================================================
-    def _get_per_arm_features(x):
-        """
-        This function generates a single per-arm observation vector
-        """
+#     # ====================================================
+#     # get per_arm_context_sampling_fn
+#     # ====================================================
+#     def _get_per_arm_features(x):
+#         """
+#         This function generates a single per-arm observation vector
+#         """
 
-        mvid_model = agent_factory.get_mv_id_emb_model(
-            vocab_dict=VOCAB_DICT, 
-            num_oov_buckets=args.num_oov_buckets, 
-            mv_emb_size=args.mv_emb_size
-        )
+#         mvid_model = agent_factory.get_mv_id_emb_model(
+#             vocab_dict=VOCAB_DICT, 
+#             num_oov_buckets=args.num_oov_buckets, 
+#             mv_emb_size=args.mv_emb_size
+#         )
             
-        mvgen_model = agent_factory.get_mv_gen_emb_model(
-            vocab_dict=VOCAB_DICT, 
-            num_oov_buckets=args.num_oov_buckets, 
-            mv_emb_size=args.mv_emb_size
-        )
+#         mvgen_model = agent_factory.get_mv_gen_emb_model(
+#             vocab_dict=VOCAB_DICT, 
+#             num_oov_buckets=args.num_oov_buckets, 
+#             mv_emb_size=args.mv_emb_size
+#         )
         
-        # for x in train_dataset.batch(1).take(1):
-        mv_id_value = x['movie_id']
-        mv_gen_value = x['movie_genres'] #[0]
+#         # for x in train_dataset.batch(1).take(1):
+#         mv_id_value = x['movie_id']
+#         mv_gen_value = x['movie_genres'] #[0]
 
-        _mid = mvid_model(mv_id_value)
-        _mgen = mvgen_model(mv_gen_value)
+#         _mid = mvid_model(mv_id_value)
+#         _mgen = mvgen_model(mv_gen_value)
 
-        # to numpy array
-        _mid = np.array(_mid.numpy())
-        _mgen = np.array(_mgen.numpy())
+#         # to numpy array
+#         _mid = np.array(_mid.numpy())
+#         _mgen = np.array(_mgen.numpy())
 
-        concat = np.concatenate(
-            [_mid, _mgen], axis=-1
-        ).astype(np.float32)
+#         concat = np.concatenate(
+#             [_mid, _mgen], axis=-1
+#         ).astype(np.float32)
 
-        return concat
+#         return concat
     
     # ====================================================
     # trajectory_fn
     # ====================================================
+    from . import emb_features as emb_features
+    
+    embs = emb_features.EmbeddingModel(
+        vocab_dict = VOCAB_DICT,
+        num_oov_buckets = args.num_oov_buckets,
+        global_emb_size = args.global_emb_size,
+        mv_emb_size = args.mv_emb_size,
+    )
 
     def _trajectory_fn(element):
 
         """Converts a dataset element into a trajectory."""
-        global_features = _get_global_context_features(element)
-        arm_features = _get_per_arm_features(element)
+        # global_features = _get_global_context_features(element)
+        # arm_features = _get_per_arm_features(element)
+        
+        global_features = embs._get_global_context_features(element)
+        arm_features = embs._get_per_arm_features(element)
 
         # Adds a time dimension.
         arm_features = train_utils._add_outer_dimension(arm_features)
@@ -449,8 +460,13 @@ def main(args: argparse.Namespace):
 
         for x in data:
             # get feature tensors
-            global_feat_infer = _get_global_context_features(x)
-            arm_feat_infer = _get_per_arm_features(x)
+            
+            # global_feat_infer = _get_global_context_features(x)
+            # arm_feat_infer = _get_per_arm_features(x)
+            
+            global_feat_infer = embs._get_global_context_features(x)
+            arm_feat_infer = embs._get_per_arm_features(x)
+            
             rewards = reward_factory._get_rewards(x)
 
             # reshape arm features
@@ -534,30 +550,51 @@ def main(args: argparse.Namespace):
         observation_spec = observation_spec, 
     )
     print(f"time_step_spec: {time_step_spec}")
+    
+    # TODO - cleanup
+    from . import agent_factory as agent_factory
 
     with distribution_strategy.scope():
         # train_step = tfa_train_utils.create_train_step()
         global_step = tf.compat.v1.train.get_or_create_global_step()
 
-        agent, network = agent_factory._get_agent(
+    #     agent, network = agent_factory._get_agent(
+    #         agent_type=args.agent_type, 
+    #         network_type=args.network_type, 
+    #         time_step_spec=time_step_spec, 
+    #         action_spec=action_spec, 
+    #         observation_spec=observation_spec,
+    #         global_step = global_step,
+    #         global_layers = GLOBAL_LAYERS,
+    #         arm_layers = ARM_LAYERS,
+    #         common_layers = COMMON_LAYERS,
+    #         agent_alpha = args.agent_alpha,
+    #         learning_rate = args.learning_rate,
+    #         epsilon = args.epsilon,
+    #     encoding_dim = args.encoding_dim,
+    #     eps_phase_steps = args.eps_phase_steps,
+    # )
+    
+        agent = agent_factory.PerArmAgentFactory._get_agent(
             agent_type=args.agent_type, 
             network_type=args.network_type, 
             time_step_spec=time_step_spec, 
             action_spec=action_spec, 
             observation_spec=observation_spec,
-            global_step = global_step,
             global_layers = GLOBAL_LAYERS,
             arm_layers = ARM_LAYERS,
             common_layers = COMMON_LAYERS,
             agent_alpha = args.agent_alpha,
             learning_rate = args.learning_rate,
             epsilon = args.epsilon,
-        encoding_dim = args.encoding_dim,
-        eps_phase_steps = args.eps_phase_steps,
-    )
+            train_step_counter = global_step,
+            output_dim = args.encoding_dim,
+            eps_phase_steps = args.eps_phase_steps,
+        )
+    
     agent.initialize()
     print(f"agent: {agent}")
-    print(f"network: {network}")
+    # print(f"network: {network}")
     
     # ====================================================
     # train dataset
@@ -726,7 +763,7 @@ def main(args: argparse.Namespace):
             my_run.log_params(
                 {
                     "agent_type": agent.name,
-                    "network": network,
+                    "network": args.network_type,
                     "runtime": runtime_mins,
                     "batch_size": args.batch_size, 
                     "training_loops": args.training_loops,
