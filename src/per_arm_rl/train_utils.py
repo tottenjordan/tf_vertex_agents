@@ -6,6 +6,12 @@ logging.disable(logging.WARNING)
 
 from google.cloud import storage
 
+from . import data_utils as data_utils
+from . import data_config as data_config
+
+project_number='hybrid-vertex'
+storage_client = storage.Client(project=project_number)
+
 # ====================================================
 # get train & val datasets
 # ====================================================
@@ -13,8 +19,37 @@ options = tf.data.Options()
 options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
 options.threading.max_intra_op_parallelism = 1 # TODO
 
+# def _get_train_dataset(
+#     project_id,
+#     bucket_name, 
+#     data_dir_prefix_path, 
+#     split, 
+#     total_take, 
+#     batch_size,
+#     cache: bool = True,
+# ):
+    
+#     storage_client = storage.Client(project=project_id)
+
+#     train_files = []
+#     for blob in storage_client.list_blobs(f"{bucket_name}", prefix=f'{data_dir_prefix_path}/{split}'):
+#         if '.tfrecord' in blob.name:
+#             train_files.append(blob.public_url.replace("https://storage.googleapis.com/", "gs://"))
+            
+#     print(f"train_files: {train_files}")
+
+#     if cache:
+#         train_dataset = tf.data.TFRecordDataset(train_files).cache() #.take(total_take)
+#     else:
+#         train_dataset = tf.data.TFRecordDataset(train_files)
+#     train_dataset = train_dataset.take(total_take)
+#     train_dataset = train_dataset.map(data_utils.parse_tfrecord) #, num_parallel_calls=tf.data.AUTOTUNE)
+#     train_dataset = train_dataset.batch(batch_size)
+#     # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
+#     # train_dataset = train_dataset.cache()
+#     return train_dataset
+
 def _get_train_dataset(
-    project_id,
     bucket_name, 
     data_dir_prefix_path, 
     split, 
@@ -22,9 +57,6 @@ def _get_train_dataset(
     batch_size,
     cache: bool = True,
 ):
-    
-    storage_client = storage.Client(project=project_id)
-
     train_files = []
     for blob in storage_client.list_blobs(f"{bucket_name}", prefix=f'{data_dir_prefix_path}/{split}'):
         if '.tfrecord' in blob.name:
@@ -36,11 +68,29 @@ def _get_train_dataset(
         train_dataset = tf.data.TFRecordDataset(train_files).cache() #.take(total_take)
     else:
         train_dataset = tf.data.TFRecordDataset(train_files)
-    train_dataset = train_dataset.take(total_take)
+    # train_dataset = train_dataset.take(total_take)
     train_dataset = train_dataset.map(data_utils.parse_tfrecord) #, num_parallel_calls=tf.data.AUTOTUNE)
-    train_dataset = train_dataset.batch(batch_size)
+    train_dataset = train_dataset.batch(batch_size).repeat()
     # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
     # train_dataset = train_dataset.cache()
+    return train_dataset
+
+
+
+def _get_eval_dataset(bucket_name, data_dir_prefix_path, split, batch_size):
+    train_files = []
+    for blob in storage_client.list_blobs(
+        f"{bucket_name}", prefix=f'{data_dir_prefix_path}/{split}'
+    ):
+        if '.tfrecord' in blob.name:
+            train_files.append(blob.public_url.replace("https://storage.googleapis.com/", "gs://"))
+            
+    logging.info(f"train_files: {train_files}")
+
+    train_dataset = tf.data.TFRecordDataset(train_files)
+    # train_dataset.repeat().batch(batch_size)
+    train_dataset = train_dataset.map(data_utils.parse_tfrecord) #, num_parallel_calls=tf.data.AUTOTUNE)
+    
     return train_dataset
 
 
@@ -173,13 +223,9 @@ from tf_agents.eval import metric_utils
 from tf_agents.metrics import export_utils
 
 def _export_metrics_and_summaries(step, metrics):
-    """
-    Exports metrics and tf summaries.
-    """
+    """Exports metrics and tf summaries."""
     metric_utils.log_metrics(metrics)
-    
     export_utils.export_metrics(step=step, metrics=metrics)
-    
     for metric in metrics:
         metric.tf_summaries(train_step=step)
         

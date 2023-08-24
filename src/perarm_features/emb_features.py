@@ -13,10 +13,6 @@ from pprint import pprint
 from typing import List, Union
 
 # TF-Agent agents & networks
-# from tf_agents.bandits.agents import lin_ucb_agent
-# from tf_agents.bandits.agents import neural_linucb_agent
-# from tf_agents.bandits.agents import neural_epsilon_greedy_agent
-# from tf_agents.bandits.networks import global_and_arm_feature_network
 from tf_agents.bandits.policies import policy_utilities
 
 from src.per_arm_rl import data_utils
