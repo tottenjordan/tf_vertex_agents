@@ -160,8 +160,10 @@ def train_perarm(
     if train_summary_writer:
         train_summary_writer.set_as_default()
     
-    # GPU - All variables and Agents need to be created under strategy.scope()
-    distribution_strategy = strategy_utils.get_strategy(tpu=use_tpu, use_gpu=use_gpu)
+    # GPU - All variables & Agents need to be created under strategy.scope()
+    distribution_strategy = strategy_utils.get_strategy(
+        tpu=use_tpu, use_gpu=use_gpu
+    )
     print(f"distribution_strategy: {distribution_strategy}")
     
     # ====================================================
@@ -257,27 +259,25 @@ def train_perarm(
     # ====================================================
     # train setp function
     # ====================================================
-    # @tf.function
+    # @tf.function # TODO: replace numpy with TF for perf boost
     def _train_step_fn():
         
         data = next(train_ds_iterator)
         trajectories = _trajectory_fn(data)
-        # print(trajectories)
-        # step = agent.train_step_counter.numpy()
         loss = agent.train(experience=trajectories)
         
         return loss #, step
     
-    # (Optional) Optimize by wrapping some of the code in a graph using TF function.
+    # (Optional) Optimize by wrapping some of the 
+    # code in a graph using TF function.
+    # Big perfromance boost right here
     print('wrapping agent.train in tf-function')
-    # big perfromance boost right here
     agent.train = common.function(agent.train)
     
     print(f"starting_loop: {starting_loop}")
 
     # start the timer and training
     print(f"starting train loop...")
-    
     list_o_loss = []
     
     # ====================================================
@@ -290,7 +290,9 @@ def train_perarm(
 
             step = agent.train_step_counter.numpy()
 
-            with tf.profiler.experimental.Trace("tr_step", step_num=step, _r=1):
+            with tf.profiler.experimental.Trace(
+                "tr_step", step_num=step, _r=1
+            ):
                 loss = _train_step_fn()
 
             list_o_loss.append(loss.loss.numpy())
@@ -309,7 +311,12 @@ def train_perarm(
                 )
 
             if i > 0 and i % chkpt_interval == 0:
-                saver.save(os.path.join(CHKPOINT_DIR, 'policy_%d' % step_metric.result()))
+                saver.save(
+                    os.path.join(
+                        CHKPOINT_DIR, 
+                        'policy_%d' % step_metric.result()
+                    )
+                )
                 print(f"saved policy to: {CHKPOINT_DIR}")
 
         tf.profiler.experimental.stop()
@@ -341,7 +348,12 @@ def train_perarm(
                 )
 
             if i > 0 and i % chkpt_interval == 0:
-                saver.save(os.path.join(CHKPOINT_DIR, 'policy_%d' % step_metric.result()))
+                saver.save(
+                    os.path.join(
+                        CHKPOINT_DIR, 
+                        'policy_%d' % step_metric.result()
+                    )
+                )
                 print(f"saved policy to: {CHKPOINT_DIR}")
             
         runtime_mins = int((time.time() - start_time) / 60)
