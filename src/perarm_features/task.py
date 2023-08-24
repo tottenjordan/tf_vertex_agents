@@ -356,7 +356,9 @@ def main(args: argparse.Namespace):
     
     observation_spec = {
         'global': tf.TensorSpec([args.global_dim], tf.float32),
-        'per_arm': tf.TensorSpec([args.num_actions, args.per_arm_dim], tf.float32) #excluding action dim here
+        'per_arm': tf.TensorSpec(
+            [args.num_actions, args.per_arm_dim], tf.float32
+        ) #excluding action dim here
     }
     print(f"observation_spec: {observation_spec}")
 
@@ -364,7 +366,9 @@ def main(args: argparse.Namespace):
         shape=[], 
         dtype=tf.int32,
         minimum=tf.constant(0),            
-        maximum=args.num_actions-1, # n degrees of freedom and will dictate the expected mean reward spec shape
+        maximum=args.num_actions-1, 
+        # n degrees of freedom and will dictate 
+        # the expected mean reward spec shape
         name="action_spec"
     )
     print(f"action_spec: {action_spec}")
