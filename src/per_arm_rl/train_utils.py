@@ -57,6 +57,10 @@ def _get_train_dataset(
     batch_size,
     cache: bool = True,
 ):
+    """
+    TODO: use `dataset.take(k).cache().repeat()`
+    """
+    
     train_files = []
     for blob in storage_client.list_blobs(f"{bucket_name}", prefix=f'{data_dir_prefix_path}/{split}'):
         if '.tfrecord' in blob.name:
@@ -64,13 +68,15 @@ def _get_train_dataset(
             
     print(f"train_files: {train_files}")
 
-    if cache:
-        train_dataset = tf.data.TFRecordDataset(train_files).cache() #.take(total_take)
-    else:
-        train_dataset = tf.data.TFRecordDataset(train_files)
+    train_dataset = tf.data.TFRecordDataset(train_files)
     # train_dataset = train_dataset.take(total_take)
-    train_dataset = train_dataset.map(data_utils.parse_tfrecord) #, num_parallel_calls=tf.data.AUTOTUNE)
-    train_dataset = train_dataset.batch(batch_size).repeat()
+    train_dataset = train_dataset.map(data_utils.parse_tfrecord)
+    
+    if cache:
+        train_dataset = train_dataset.batch(batch_size).cache().repeat()
+    else:
+        train_dataset = train_dataset.batch(batch_size).repeat()
+
     # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
     # train_dataset = train_dataset.cache()
     return train_dataset

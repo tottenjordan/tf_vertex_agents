@@ -83,22 +83,6 @@ storage_client = storage.Client(project=project_number)
 options = tf.data.Options()
 options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.AUTO
 
-# def _get_train_dataset(bucket_name, data_dir_prefix_path, split, batch_size):
-#     train_files = []
-#     for blob in storage_client.list_blobs(
-#         f"{bucket_name}", prefix=f'{data_dir_prefix_path}/{split}'
-#     ):
-#         if '.tfrecord' in blob.name:
-#             train_files.append(blob.public_url.replace("https://storage.googleapis.com/", "gs://"))
-            
-#     logging.info(f"train_files: {train_files}")
-
-#     train_dataset = tf.data.TFRecordDataset(train_files)
-#     # train_dataset.repeat().batch(batch_size)
-#     train_dataset = train_dataset.map(data_utils.parse_tfrecord) #, num_parallel_calls=tf.data.AUTOTUNE)
-    
-#     return train_dataset
-
 # ====================================================
 # Args
 # ====================================================

@@ -52,35 +52,6 @@ PER_ARM = True  # Use the non-per-arm version of the MovieLens environment.
 # clients
 project_number='hybrid-vertex' # TODO: param
 storage_client = storage.Client(project=project_number)
-        
-# # ====================================================
-# # checkpoint manager
-# # ====================================================
-# AGENT_CHECKPOINT_NAME = 'agent'
-# STEP_CHECKPOINT_NAME = 'step'
-# CHECKPOINT_FILE_PREFIX = 'ckpt'
-
-# def restore_and_get_checkpoint_manager(root_dir, agent, metrics, step_metric):
-#     """
-#     Restores from `root_dir` and returns a function that writes checkpoints.
-#     """
-#     trackable_objects = {metric.name: metric for metric in metrics}
-#     trackable_objects[AGENT_CHECKPOINT_NAME] = agent
-#     trackable_objects[STEP_CHECKPOINT_NAME] = step_metric
-#     checkpoint = tf.train.Checkpoint(**trackable_objects)
-#     checkpoint_manager = tf.train.CheckpointManager(
-#       checkpoint=checkpoint, directory=root_dir, max_to_keep=5
-#     )
-#     latest = checkpoint_manager.latest_checkpoint
-#     if latest is not None:
-#         print('Restoring checkpoint from %s.', latest)
-#         checkpoint.restore(latest)
-#         print('Successfully restored to step %s.', step_metric.result())
-#     else:
-#         print(
-#             'Did not find a pre-existing checkpoint. Starting from scratch.'
-#         )
-#     return checkpoint_manager
 
 # ====================================================
 # get train & val datasets
@@ -88,32 +59,6 @@ storage_client = storage.Client(project=project_number)
 options = tf.data.Options()
 options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
 options.threading.max_intra_op_parallelism = 1 # TODO
-
-# def _get_train_dataset(
-#     bucket_name, 
-#     data_dir_prefix_path, 
-#     split, 
-#     total_take, 
-#     batch_size,
-#     cache: bool = True,
-# ):
-#     train_files = []
-#     for blob in storage_client.list_blobs(f"{bucket_name}", prefix=f'{data_dir_prefix_path}/{split}'):
-#         if '.tfrecord' in blob.name:
-#             train_files.append(blob.public_url.replace("https://storage.googleapis.com/", "gs://"))
-            
-#     print(f"train_files: {train_files}")
-
-#     if cache:
-#         train_dataset = tf.data.TFRecordDataset(train_files).cache() #.take(total_take)
-#     else:
-#         train_dataset = tf.data.TFRecordDataset(train_files)
-#     # train_dataset = train_dataset.take(total_take)
-#     train_dataset = train_dataset.map(data_utils.parse_tfrecord) #, num_parallel_calls=tf.data.AUTOTUNE)
-#     train_dataset = train_dataset.batch(batch_size).repeat()
-#     # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
-#     # train_dataset = train_dataset.cache()
-#     return train_dataset
 
 def train_perarm(
     agent,
@@ -180,16 +125,6 @@ def train_perarm(
     
 #     if num_eval_steps > 0:
 #         eval_ds = eval_ds.take(num_eval_steps)
-
-#     # ====================================================
-#     # TB summary writer
-#     # ====================================================
-#     print(f"log_dir: {log_dir}")
-    
-#     train_summary_writer = tf.compat.v2.summary.create_file_writer(
-#         log_dir, flush_millis=10 * 1000
-#     )
-#     train_summary_writer.set_as_default()
     
     # ====================================================
     # metrics
