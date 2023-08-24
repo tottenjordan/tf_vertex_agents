@@ -1,6 +1,0 @@
-tf-agents==0.17.0
-tensorflow==2.12.0
-numpy
-six
-typing-extensions
-pillow
