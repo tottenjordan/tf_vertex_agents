@@ -34,3 +34,31 @@ def _get_rewards(element):
         elems=element['user_rating'], 
         dtype=tf.float32
     )
+
+# TODO
+def _get_discrete_rewards(element):
+    """Calculates reward for the actions."""
+
+    def _calc_reward(x):
+        """Calculates reward for a single action."""
+        r0 = lambda: tf.constant(0)
+        r1 = lambda: tf.constant(1)
+        r2 = lambda: tf.constant(2)
+        r3 = lambda: tf.constant(3)
+        r4 = lambda: tf.constant(4)
+        r5 = lambda: tf.constant(5)
+        c1 = tf.equal(x, 1.0)
+        c2 = tf.equal(x, 2.0)
+        c3 = tf.equal(x, 3.0)
+        c4 = tf.equal(x, 4.0)
+        c5 = tf.equal(x, 5.0)
+        return tf.case(
+            [(c1, r1), (c2, r2), (c3, r3),(c4, r4),(c5, r5)], 
+            default=r0, exclusive=True
+        )
+
+    return tf.map_fn(
+        fn=_calc_reward, 
+        elems=element['user_rating'], 
+        dtype=tf.float32
+    )

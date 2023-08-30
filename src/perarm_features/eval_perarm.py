@@ -6,6 +6,8 @@ import numpy as np
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
 
+from tf_agents.bandits.policies import policy_utilities
+
 # this project
 from . import emb_features as emb_features
 from . import reward_factory as reward_factory
@@ -42,6 +44,8 @@ def _run_bandit_eval(
     dummy_arm = tf.zeros([eval_batch_size, per_arm_dim], dtype=tf.float32)
 
     for x in data:
+        
+        filter_mask = None
         # get feature tensors
 
         global_feat_infer = embs._get_global_context_features(x)
@@ -76,15 +80,15 @@ def _run_bandit_eval(
             batch_dims=0, 
             axis=-1
         )
-        pred_reward = float(round(predicted_reward_tf.numpy()))
+        # pred_reward = float(round(predicted_reward_tf.numpy()))
+        pred_reward = predicted_reward_tf.numpy()
 
-        # When the uniform random policy is used, the loss is meaningless for evaluation
-        # > discard preds from uniform random policy
-        # > keep preds from greedy policy, 
-        # TODO: replace hard-coded values with parameterized filter/mask
-        if pred_reward < 0:
-            trouble_list.append(pred_reward)
-        elif pred_reward > 5:
+        filter_mask = tf.equal(
+            tf.squeeze(prediction.info.bandit_policy_type),
+            policy_utilities.BanditPolicyType.GREEDY
+        )
+
+        if filter_mask is None:
             trouble_list.append(pred_reward)
         else:
             predicted_rewards.append(pred_reward)
@@ -92,8 +96,25 @@ def _run_bandit_eval(
             pred_loss = tf.keras.metrics.mean_squared_error(
                 rewards, predicted_reward_tf
             )
+
             train_loss_results.append(pred_loss)
-            logged_rewards.append(actual_reward)
+
+        # When the uniform random policy is used, the loss is meaningless for evaluation
+        # > discard preds from uniform random policy
+        # > keep preds from greedy policy, 
+        # TODO: replace hard-coded values with parameterized filter/mask
+#         if pred_reward < 0:
+#             trouble_list.append(pred_reward)
+#         elif pred_reward > 5:
+#             trouble_list.append(pred_reward)
+#         else:
+#             predicted_rewards.append(pred_reward)
+
+#             pred_loss = tf.keras.metrics.mean_squared_error(
+#                 rewards, predicted_reward_tf
+#             )
+#             train_loss_results.append(pred_loss)
+#             logged_rewards.append(actual_reward)
 
     # calculate avg loss
     avg_eval_loss = tf.reduce_mean(train_loss_results)

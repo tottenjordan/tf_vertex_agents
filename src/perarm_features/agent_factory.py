@@ -21,6 +21,8 @@ from typing import (
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
 
+from tf_agents.agents import tf_agent
+
 # TF-Agent agents & networks
 from tf_agents.bandits.agents import lin_ucb_agent
 from tf_agents.bandits.agents import neural_linucb_agent
@@ -159,6 +161,19 @@ class PerArmAgentFactory:
             )
         elif agent_type == 'epsGreedy':
             # obs_spec = environment.observation_spec()
+            
+            # The following defines what side information we want to get
+            # as part of the policy info when we call policy network.
+            EMIT_POLICY_INFO = ('predicted_rewards_mean', 'bandit_policy_type')
+            
+            # The following makes it so that the model always returns the
+            # expected rewards even if the model is exploring. This means that
+            # the largest predicted rewards may not match the selected action
+            #  when the model is exploring (i.e. bandit_policy == UNIFORM == 2).
+            # To find other available info fields see:
+            #   /tf_agents/policies/utils.py
+            GREEDY_INFO_FIELDS = ('predicted_rewards_mean',)
+            
             if network_type == 'commontower':
                 network = global_and_arm_feature_network.create_feed_forward_common_tower_network(
                     observation_spec = self.observation_spec, 
@@ -185,11 +200,14 @@ class PerArmAgentFactory:
                     observation_and_action_constraint_splitter
                 ),
                 accepts_per_arm_features=self.PER_ARM,
-                emit_policy_info=(
-                    policy_utilities.InfoFields.PREDICTED_REWARDS_MEAN,
-                    policy_utilities.BanditPolicyType.GREEDY,
-                ),
+                emit_policy_info=EMIT_POLICY_INFO,
+                # (
+                    # 'predicted_rewards_mean', 'bandit_policy_type'      # <- use these
+                    # policy_utilities.InfoFields.PREDICTED_REWARDS_MEAN, # <- not these
+                    # policy_utilities.BanditPolicyType.GREEDY,           # <- not these
+                # ),
                 train_step_counter=train_step_counter,
+                info_fields_to_inherit_from_greedy=GREEDY_INFO_FIELDS, #('predicted_rewards_mean',),
                 name='NeuralEpsGreedyAgent'
             )
 
