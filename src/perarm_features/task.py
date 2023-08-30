@@ -314,7 +314,7 @@ def main(args: argparse.Namespace):
             # Pass dummy mean rewards here to match the model_spec for emitting
             # mean rewards in policy info
             predicted_rewards_mean=dummy_rewards,
-            bandit_policy_type=tf.zeros([HPARAMS['batch_size'], 1, 1], dtype=tf.int32)
+            bandit_policy_type=tf.zeros([args.batch_size, 1, 1], dtype=tf.int32)
         )
 
         if args.agent_type == 'neural_ucb':
