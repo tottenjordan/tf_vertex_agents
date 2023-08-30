@@ -222,3 +222,43 @@ class EmbeddingModel:
         ).astype(np.float32)
 
         return concat
+    
+    def _get_global_context_features_v2(self, x) -> np.ndarray:
+        """
+        This function generates a single global observation vector.
+        """
+
+        _id = np.array(self.user_id_model(x['user_id']).numpy())
+        _age = np.array(self.user_age_model(x['bucketized_user_age']).numpy())
+        _occ = np.array(self.user_occ_model(x['user_occupation_text']).numpy())
+        _ts = np.array(self.user_ts_model(x['timestamp']).numpy())
+
+        concat = np.concatenate(
+            [_id, _age, _occ, _ts], axis=-1
+        ).astype(np.float32)
+        
+        user_info = [
+            x['bucketized_user_age'].numpy(),
+            x['user_occupation_text'].numpy(),
+            x['timestamp'].numpy(),
+            x['user_zip_code'].numpy(),
+            x['user_gender'].numpy(),
+            x['movie_title'].numpy(),
+            x['user_rating'].numpy()
+        ]
+
+        return concat, user_info
+        
+#     def _get_per_arm_features_v2(self, x) -> np.ndarray:
+#         """
+#         This function generates a single global observation vector.
+#         """
+
+#         _mid = np.array(self.mv_id_model(x['movie_id']).numpy())
+#         _mgen = np.array(self.mv_gen_model(x['movie_genres']).numpy())
+
+#         concat = np.concatenate(
+#             [_mid, _mgen], axis=-1
+#         ).astype(np.float32)
+
+#         return concat

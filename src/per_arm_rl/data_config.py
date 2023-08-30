@@ -1,33 +1,12 @@
-# ================================
-# Agents
-# ================================
-# AGENT_TYPE      = 'epsGreedy' # 'LinUCB' | 'LinTS |, 'epsGreedy' | 'NeuralLinUCB'
 
-# Parameters for linear agents (LinUCB and LinTS).
-AGENT_ALPHA     = 0.1
+USER_AGE_LOOKUP       = {1.0: 0, 35.0: 1, 45.0: 2, 18.0: 3, 50.0: 4, 56.0: 5, 25.0: 6}
+USER_AGE_DIM          = 7
 
-# Parameters for neural agents (NeuralEpsGreedy and NerualLinUCB).
-EPSILON         = 0.01
-LR              = 0.05
+USER_OCC_LOOKUP       = {b'other': 0, b'entertainment': 1, b'writer': 2, b'healthcare': 3, b'none': 4, b'retired': 5, b'student': 6, b'executive': 7, b'educator': 8, b'marketing': 9, b'librarian': 10, b'doctor': 11, b'salesman': 12, b'engineer': 13, b'lawyer': 14, b'homemaker': 15, b'programmer': 16, b'technician': 17, b'administrator': 18, b'scientist': 19, b'artist': 20}
+USER_OCC_DIM          = 21
 
-# Parameters for NeuralLinUCB
-ENCODING_DIM    = 1
-EPS_PHASE_STEPS = 1000
+MOVIE_GEN_LOOKUP      = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 12: 11, 13: 12, 14: 13, 15: 14, 16: 15, 17: 16, 18: 17, 19: 18}
+MOVIE_GEN_DIM         = 19
 
-# ================================
-# Agent's Preprocess Network
-# ================================
-# NETWORK_TYPE    = "dotproduct" # 'commontower' | 'dotproduct'
-
-# if AGENT_TYPE == 'NeuralLinUCB':
-#     NETWORK_TYPE = 'commontower'
-    
-GLOBAL_LAYERS   = [64, 32]
-ARM_LAYERS      = [64, 32]
-COMMON_LAYERS   = [32, 16]
-
-# TODO - parametrize
-NUM_OOV_BUCKETS        = 1
-GLOBAL_EMBEDDING_SIZE  = 16
-MV_EMBEDDING_SIZE      = 32 #32
-
+MOVIELENS_NUM_MOVIES  = 1682
+MOVIELENS_NUM_USERS   = 943

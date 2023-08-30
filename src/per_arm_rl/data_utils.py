@@ -34,7 +34,7 @@ def get_all_features():
         'user_occupation_text': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
         # 'user_occupation_label': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
         # 'user_zip_code': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
-        # 'user_gender': tf.io.FixedLenFeature(shape=(), dtype=tf.bool),
+        # 'user_gender': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
         'timestamp': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
 
         # movie - per arm features
@@ -80,7 +80,7 @@ def _string_array(value, shape=1):
     """
     Returns a bytes_list from a string / byte.
     """
-    value = value.numpy()[0] # .tolist()[0]
+    value = value.numpy() #[0] # .tolist()[0]
     if type(value) == list:
         return tf.train.Feature(bytes_list=tf.train.BytesList(value=[str(v).encode('utf-8') for v in value]))
     else:
@@ -90,7 +90,7 @@ def _float_feature(value, shape=1):
     """
     Returns a float_list from a float / double.
     """
-    if type(value) == list:
+    if type(value) == np.ndarray: #list:
         return tf.train.Feature(float_list=tf.train.FloatList(value=value))
     else:
         return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
@@ -108,19 +108,44 @@ def build_example(data) -> tf.train.Example:
         , "bucketized_user_age": _float_feature(data['bucketized_user_age'])
         , "user_occupation_text": _bytes_feature(data['user_occupation_text'])
         # , "user_occupation_label": _int64_feature(data['user_occupation_label'])
-        # , "user_zip_code": _string_array(data['user_zip_code'])
-        # , "user_gender": BOOL_TODO(data['user_gender'])
+        # , "user_zip_code": _bytes_feature(data['user_zip_code'])
+        # , "user_gender": _string_array(data['user_gender'])
         , "timestamp": _int64_feature(data['timestamp'])
         
         # movie - per arm features
         , "movie_id": _bytes_feature(data['movie_id'])
-        # , "movie_title": _string_array(data['movie_title'])
+        # , "movie_title": _bytes_feature(data['movie_title'])
         , "movie_genres": _int64_list_feature(data['movie_genres'])
     }
     example_proto = tf.train.Example(
         features=tf.train.Features(feature=feature)
     )
     return example_proto
+
+def build_list_wise_example(data) -> tf.train.Example:
+    """
+    Returns: A `tf.train.Example` object holding the same data as `data_row`.
+    """
+    feature = {
+        # user - global context features 
+        "user_id": _bytes_feature(data['user_id'])
+        , "user_rating": _float_feature(data['user_rating'])
+        # , "bucketized_user_age": _float_feature(data['bucketized_user_age'])
+        # , "user_occupation_text": _bytes_feature(data['user_occupation_text'])
+        # , "user_occupation_label": _int64_feature(data['user_occupation_label'])
+        # , "user_zip_code": _bytes_feature(data['user_zip_code'])
+        # , "user_gender": _string_array(data['user_gender'])
+        # , "timestamp": _int64_feature(data['timestamp'])
+        
+        # movie - per arm features
+        # , "movie_id": _bytes_feature(data['movie_id'])
+        , "movie_title": _bytes_feature(data['movie_title'])
+        # , "movie_genres": _int64_list_feature(data['movie_genres'])
+    }
+    example_proto = tf.train.Example(
+        features=tf.train.Features(feature=feature)
+    )
+    return example_proto.SerializeToString()
 
 
 # ============================================
@@ -168,11 +193,17 @@ def get_dictionary_lookup_by_tf_data_key(key, dataset) -> Dict:
 # ============================================
 # TF-Record Writer
 # ============================================
-def write_tfrecords(tfrecord_file, dataset):
-    with tf.io.TFRecordWriter(tfrecord_file) as writer:
-        for data_row in dataset:
-            example = build_example(data_row)
-            writer.write(example.SerializeToString())
+def write_tfrecords(tfrecord_file, dataset, list_wise=False):
+    if list_wise:
+        with tf.io.TFRecordWriter(tfrecord_file) as writer:
+            for data_row in dataset:
+                example = build_list_wise_example(data_row)
+                writer.write(example.SerializeToString())
+    else:
+        with tf.io.TFRecordWriter(tfrecord_file) as writer:
+            for data_row in dataset:
+                example = build_example(data_row)
+                writer.write(example.SerializeToString())
 
 # ============================================
 # load movielens
