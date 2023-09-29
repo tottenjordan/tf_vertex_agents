@@ -50,6 +50,11 @@ from . import emb_features as ranking_bandit_policy
 import logging
 logging.disable(logging.WARNING)
 
+GLOBAL_FEATURE_KEY = bandit_spec_utils.GLOBAL_FEATURE_KEY
+PER_ARM_FEATURE_KEY = bandit_spec_utils.PER_ARM_FEATURE_KEY
+SINGLE_FEATURE_KEY = 'single'
+REPEATED_FEATURE_KEY = 'repeated'
+
 
 class PerArmAgentFactory:
     
@@ -244,6 +249,237 @@ class PerArmAgentFactory:
             
         return agent
     
+# # ==============================================
+# # repeated Network
+# # ==============================================
+# from tf_agents.networks import nest_map
+# from tf_agents.networks import network
+# from tf_agents.networks import sequential
+# from tf_agents.networks import utils as network_utils
+# from tf_agents.specs import tensor_spec
+# from tf_agents.typing import types
+# from tf_agents.utils import nest_utils
+    
+# class RepeatedNetwork(network.Network):
+#     """
+#     This network operates on observations with single and repeated features.
+
+#     The observations must follow the observation spec as follows:
+#     ```
+#     spec = {'global':
+#              {'single': TensorSpec(shape=[global_single_dim]),
+#               'repeated': [TensorSpec(shape=[num_repetitionsS1E1,
+#                                              global_repeated_dim1]),
+#                            TensorSpec(shape=[global_num_repetitionsS2E1,
+#                                              global_num_repetitionsS2E2,
+#                                              global_repeated_dim2]),
+#                            ...]
+#              },
+#           'per_arm': {'single': TensorSpec(shape=[num_arms, arm_single_dim]),
+#                       'repeated': [TensorSpec(shape=[num_arms,
+#                                                      arm_num_repetitionsS1E1,
+#                                                      arm_num_repetitionsS1E2,
+#                                                      arm_repeated_dim1]),
+#                                    TensorSpec(shape=[num_arms,
+#                                                      arm_num_repetitionsS2E1,
+#                                                      arm_repeated_dim2]),
+#                                    ...]
+#                      }
+#     }
+#     """
+#     def __init__(
+#         self,
+#         observation_spec: types.TensorSpec,
+#         reducer: Callable[[Any], Any],
+#         per_feature_layers: Sequence[int],
+#         global_layers: Sequence[int],
+#         arm_layers: Sequence[int],
+#         common_layers: Sequence[int],
+#         activation_fn: Callable[
+#             [types.Tensor], types.Tensor
+#         ] = tf.keras.activations.relu,
+#         name: Optional[Text] = None
+#     ):
+#         """Initializes the network.
+
+#         Args:
+#           observation_spec: The expected structure of the observation. Does not
+#             contain the batch size.
+#           reducer: A callable that reduces a tensor along given axes. Should be
+#             possible to call it with `reducer(t, axis=[...])`. Existing examples are
+#             all the `tf.reduce_***` functions, but users are free to define their
+#             own reducers.
+#           per_feature_layers: Sequence of ints; the layer sizes for the small subnet
+#             above every repeated feature.
+#           global_layers: Sequence of ints; the layer sizes for the global branch of
+#             the network
+#           arm_layers: Sequence of ints; the layer sizes for the per-arm branch of
+#             the network
+#           common_layers: Sequence of ints; the layer sizes for the final tower.
+#           activation_fn: A keras activation, specifying the activation function used
+#            in all layers. Defaults to relu.
+#           name: The name of this network instance.
+#         """
+#         super(RepeatedNetwork, self).__init__(state_spec=(), name=name)
+#         self._observation_spec = observation_spec
+#         self._reducer = reducer
+#         self._per_feature_layers = per_feature_layers
+#         self._global_layers = global_layers
+#         self._arm_layers = arm_layers
+#         self._common_layers = common_layers
+#         self._activation_fn = activation_fn
+#         self._num_arms = tf.nest.flatten(observation_spec[PER_ARM_FEATURE_KEY])[0].shape[0]
+        
+#         def tile_fn(inp):
+#             """
+#             This function is used to broadcast global outputs to the action dim.
+#             """
+#             rank = tf.rank(inp)
+#             multiples = tf.concat(
+#                 [[1, self._num_arms], tf.ones(rank - 1, dtype=tf.int32)], axis=0
+#             )
+#             return tf.tile(tf.expand_dims(inp, axis=1), multiples)
+
+#             tile_layer = tf.keras.layers.Lambda(tile_fn)
+            
+#             input_net = nest_map.NestMap(
+#                 {
+#                     GLOBAL_FEATURE_KEY: sequential.Sequential([global_net, tile_layer]),
+#                     PER_ARM_FEATURE_KEY: arm_net
+#                 }
+#             )
+
+#             common_net = sequential.Sequential(
+#                 [
+#                     tf.keras.layers.Dense(i, activation=activation_fn) 
+#                     for i in common_layers
+#                 ] + [tf.keras.layers.Dense(1, activation=None)]
+#             )
+            
+#             common_net_input_size = self._global_layers[-1] + self._arm_layers[-1]
+            
+#             self._networks_and_inputs.append((common_net, common_net_input_size))
+            
+#             self._network = sequential.Sequential(
+#                 [
+#                     input_net,
+#                     nest_map.NestFlatten(),
+#                     tf.keras.layers.Concatenate(), common_net
+#                 ]
+#             )
+#     def _build_one_branch(self, branch: Text) -> types.Network:
+#         """
+#         Builds one side of the network, the global or the per-arm.
+
+#         Args:
+#           branch: string determining which branch of the model to build. Possible
+#             values are `global` and `per_arm`.
+
+#         Returns:
+#           A subnetwork for the given branch.
+#         """
+#         obs_spec = self._observation_spec[branch]
+#         subnetworks = []
+#         for feature_spec in obs_spec[REPEATED_FEATURE_KEY]:
+#             subnetworks.append(
+#                 self._layers_reduce_sublayer(
+#                     layer_params=self._per_feature_layers,
+#                     reducer=tf.reduce_mean,
+#                     feature_spec=feature_spec,
+#                     is_per_arm=branch == PER_ARM_FEATURE_KEY
+#                 )
+#             )
+#         net_map = nest_map.NestMap(
+#             {
+#                 SINGLE_FEATURE_KEY: tf.keras.layers.Layer(),
+#                 REPEATED_FEATURE_KEY: subnetworks
+#             }
+#         )
+
+#         final_layer_params = (
+#             self._global_layers if branch == GLOBAL_FEATURE_KEY else self._arm_layers
+#         )
+
+#         final_layers = sequential.Sequential(
+#             [
+#                 tf.keras.layers.Dense(i, activation=self._activation_fn) 
+#                 for i in final_layer_params
+#             ]
+#         )
+#         self._networks_and_inputs.append(
+#             (final_layers, self._branch_layer_input_size(obs_spec))
+#         )
+
+#         return sequential.Sequential(
+#             [
+#                 net_map,
+#                 nest_map.NestFlatten(),
+#                 tf.keras.layers.Concatenate(), 
+#                 final_layers
+#             ]
+#         )
+
+#     def _layers_reduce_sublayer(
+#         self,
+#         layer_params: Sequence[int],
+#         reducer: Callable[[Any], Any],
+#         feature_spec: types.TensorSpec,
+#         is_per_arm: bool
+#     ) -> types.Network:
+        
+#         reduce_dims = _compute_reduce_dims(feature_spec.shape, is_per_arm)
+        
+#         reduce_layer = tf.keras.layers.Lambda(
+#             functools.partial(reducer, axis=reduce_dims)
+#         )
+
+#         layers = sequential.Sequential(
+#             [
+#                 tf.keras.layers.Dense(i, activation=self._activation_fn)
+#                 for i in layer_params
+#             ]
+#         )
+        
+#         self._networks_and_inputs.append((layers, feature_spec.shape[-1]))
+        
+#         return sequential.Sequential([layers, reduce_layer])
+    
+#     def call(self, observation, step_type=None, network_state=()):
+#         outer_rank = nest_utils.get_outer_rank(observation, self._observation_spec)
+#         batch_squash = network_utils.BatchSquash(outer_rank)
+#         observation = tf.nest.map_structure(batch_squash.flatten, observation)
+
+#         output, state = self._network(
+#             observation, step_type=step_type, network_state=network_state)
+#         output = batch_squash.unflatten(output)
+#         output = tf.squeeze(output, axis=-1)
+#         return output, state
+
+#     def create_variables(self):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
+#         for net, input_size in self._networks_and_inputs:
+#             input_spec = tensor_spec.TensorSpec(shape=(input_size,), dtype=tf.float32)
+#             net.create_variables(input_tensor_spec=input_spec)
+
+#     def _branch_layer_input_size(self, obs_spec):
+#         """
+#         Calculates the input size for the dense tower of a branch.
+#         """
+#         return len(obs_spec[REPEATED_FEATURE_KEY]) * self._per_feature_layers[
+#             -1] + obs_spec[SINGLE_FEATURE_KEY].shape[-1]
+
+
+#     def _compute_reduce_dims(spec_shape, is_per_arm):
+#         """
+#         Returns a range of dimensions that should be reduced by the reducer.
+#         """
+#         start_index = -len(spec_shape)
+        
+#         if is_per_arm:
+#             start_index += 1
+        
+#         return range(start_index, -1)
+
+
 # ==============================================
 # An agent that maintains linear 
 # estimates for rewards and their uncertainty.

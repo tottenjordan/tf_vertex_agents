@@ -24,6 +24,9 @@ from google.cloud import storage
 # features
 # ============================================
 
+# MAX_LIST_LENGTH = 3
+MAX_LIST_LENGTH = 5
+
 def get_all_features():
     
     feats = {
@@ -45,108 +48,17 @@ def get_all_features():
     
     return feats
 
-# ================================================
-# converting features to `tf.train.Example` proto
-# ================================================
-
-def _bytes_feature(value):
-    """
-    Get byte features
-    """
-    # value = tf.io.serialize_tensor(value)
-    # value = value.numpy()
-    if type(value) == list:
-        return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
-    else:
-        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[i.numpy() for i in [value]]))
-
-def _int64_feature(value):
-    """
-    Get int64 feature
-    """
-    if type(value) == list:
-        return tf.train.Feature(int64_list=tf.train.Int64List(value=[int(v) for v in value]))
-    else:
-        return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
-    
-def _int64_list_feature(value):
-    """
-    Get int64 list feature
-    """
-    value = value.numpy().tolist()[0]
-    return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
-
-def _string_array(value, shape=1):
-    """
-    Returns a bytes_list from a string / byte.
-    """
-    value = value.numpy() #[0] # .tolist()[0]
-    if type(value) == list:
-        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[str(v).encode('utf-8') for v in value]))
-    else:
-        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[str(value).encode('utf-8')]))
-
-def _float_feature(value, shape=1):
-    """
-    Returns a float_list from a float / double.
-    """
-    if type(value) == np.ndarray: #list:
-        return tf.train.Feature(float_list=tf.train.FloatList(value=value))
-    else:
-        return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
-
-    
-
-def build_example(data) -> tf.train.Example:
-    """
-    Returns: A `tf.train.Example` object holding the same data as `data_row`.
-    """
-    feature = {
-        # user - global context features 
-        "user_id": _bytes_feature(data['user_id'])
-        , "user_rating": _float_feature(data['user_rating'])
-        , "bucketized_user_age": _float_feature(data['bucketized_user_age'])
-        , "user_occupation_text": _bytes_feature(data['user_occupation_text'])
-        # , "user_occupation_label": _int64_feature(data['user_occupation_label'])
-        # , "user_zip_code": _bytes_feature(data['user_zip_code'])
-        # , "user_gender": _string_array(data['user_gender'])
-        , "timestamp": _int64_feature(data['timestamp'])
-        
-        # movie - per arm features
-        , "movie_id": _bytes_feature(data['movie_id'])
-        # , "movie_title": _bytes_feature(data['movie_title'])
-        , "movie_genres": _int64_list_feature(data['movie_genres'])
+def get_all_lw_features(MAX_LIST_LENGTH):
+    '''
+    listwise features
+    '''
+    feats = {
+        'user_id': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+        "movie_id": tf.io.FixedLenFeature(dtype=tf.string, shape=(MAX_LIST_LENGTH,)), 
+        "movie_genres": tf.io.FixedLenFeature(dtype=tf.int64, shape=(MAX_LIST_LENGTH,)), 
+        "user_rating": tf.io.FixedLenFeature(dtype=tf.float32, shape=(MAX_LIST_LENGTH,))
     }
-    example_proto = tf.train.Example(
-        features=tf.train.Features(feature=feature)
-    )
-    return example_proto
-
-def build_list_wise_example(data) -> tf.train.Example:
-    """
-    Returns: A `tf.train.Example` object holding the same data as `data_row`.
-    """
-    feature = {
-        # user - global context features 
-        "user_id": _bytes_feature(data['user_id'])
-        , "user_rating": _float_feature(data['user_rating'])
-        # , "bucketized_user_age": _float_feature(data['bucketized_user_age'])
-        # , "user_occupation_text": _bytes_feature(data['user_occupation_text'])
-        # , "user_occupation_label": _int64_feature(data['user_occupation_label'])
-        # , "user_zip_code": _bytes_feature(data['user_zip_code'])
-        # , "user_gender": _string_array(data['user_gender'])
-        # , "timestamp": _int64_feature(data['timestamp'])
-        
-        # movie - per arm features
-        # , "movie_id": _bytes_feature(data['movie_id'])
-        , "movie_title": _bytes_feature(data['movie_title'])
-        # , "movie_genres": _int64_list_feature(data['movie_genres'])
-    }
-    example_proto = tf.train.Example(
-        features=tf.train.Features(feature=feature)
-    )
-    return example_proto.SerializeToString()
-
+    return feats
 
 # ============================================
 # tf data parsing functions
@@ -167,11 +79,165 @@ def parse_tfrecord(example):
     )
     return example
 
+def parse_lw_tfrecord(example):
+    """
+    Reads a serialized example from GCS and converts to tfrecord
+    """
+    feats = get_all_lw_features(MAX_LIST_LENGTH)
+    
+    # example = tf.io.parse_single_example(
+    example = tf.io.parse_example(
+        example,
+        feats
+        # features=feats
+    )
+    return example
+
 # data loading and parsing
 def full_parse(data):
     # used for interleave - takes tensors and returns a tf.dataset
     data = tf.data.TFRecordDataset(data)
     return data
+
+# ================================================
+# converting features to `tf.train.Example` proto
+# ================================================
+
+def _bytes_feature(value):
+    """
+    Get byte features
+    """
+    # value = tf.io.serialize_tensor(value)
+    # value = value.numpy()
+    if type(value) == list:
+        return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
+    else:
+        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[i.numpy() for i in [value]]))
+    
+def _bytes_array_feature(value):
+    """
+    Get byte features
+    TODO - consolidate with above
+    """
+    # value = tf.io.serialize_tensor(value)
+    # value = value.numpy()
+    if type(value) == np.ndarray:
+        return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
+    else:
+        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[i.numpy() for i in [value]]))
+    
+# def _bytes_feature_v2(value):
+#     """Returns a bytes_list from a string / byte."""
+#     # if isinstance(value, type(tf.constant(0))):
+#     value = value.numpy() # BytesList won't unpack a string from an EagerTensor.
+#     # return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+#     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[i for i in value]))
+
+def _bytes_feature_v2(value):
+    """
+    Get byte features
+    """
+    # value = tf.io.serialize_tensor(value)
+    # value = value.numpy()
+    if type(value) == list:
+        return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
+    else:
+        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[i.numpy() for i in value]))
+
+def _int64_feature(value):
+    """
+    Get int64 feature
+    """
+    if type(value) == list:
+        return tf.train.Feature(int64_list=tf.train.Int64List(value=[int(v) for v in value]))
+    else:
+        return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
+    
+def _int64_list_feature(value):
+    """
+    Get int64 list feature
+    """
+    # value = value.numpy().tolist() #[0]
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=[int(v) for v in value]))
+
+def _string_array(value, shape=1):
+    """
+    Returns a bytes_list from a string / byte.
+    """
+    value = value.numpy() #[0] # .tolist()[0]
+    if type(value) == list:
+        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[str(v).encode('utf-8') for v in value]))
+    else:
+        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[str(value).encode('utf-8')]))
+
+def _float_feature(value, shape=1):
+    """
+    Returns a float_list from a float / double.
+    """
+    if type(value) == np.ndarray: #list:
+        return tf.train.Feature(float_list=tf.train.FloatList(value=value))
+    else:
+        return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
+    
+def _float_list_feature(value, shape=1):
+    """
+    Returns a float_list from a float / double.
+    TODO - consolidate with above
+    """
+    # value = value.numpy()
+
+    if type(value) == np.ndarray: # list
+        return tf.train.Feature(float_list=tf.train.FloatList(value=[int(v) for v in [value]]))
+    else:
+        vector = np.vectorize(float)
+        return tf.train.Feature(float_list=tf.train.FloatList(value=vector(value)))
+        # return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
+
+    
+
+def build_example(data) -> tf.train.Example:
+    """
+    Returns: A `tf.train.Example` object holding the same data as `data_row`.
+    """
+    feature = {
+        # user - global context features 
+        "user_id": _bytes_feature(data['user_id']),
+        "user_rating": _float_feature(data['user_rating']),
+        "bucketized_user_age": _float_feature(data['bucketized_user_age']),
+        "user_occupation_text": _bytes_feature(data['user_occupation_text']),
+        # "user_occupation_label": _int64_feature(data['user_occupation_label']),
+        # "user_zip_code": _bytes_feature(data['user_zip_code']),
+        # "user_gender": _string_array(data['user_gender']),
+        "timestamp": _int64_feature(data['timestamp']),
+        
+        # movie - per arm features
+        "movie_id": _bytes_feature(data['movie_id']),
+        # "movie_title": _bytes_feature(data['movie_title']),
+        "movie_genres": _int64_list_feature(data['movie_genres']),
+    }
+    example_proto = tf.train.Example(
+        features=tf.train.Features(feature=feature)
+    )
+    return example_proto
+
+def build_list_wise_example(data) -> tf.train.Example:
+    """
+    Returns: A `tf.train.Example` object holding the same data as `data_row`.
+    """
+    feature = {
+        # user - global context features 
+        "user_id": _bytes_feature(data['user_id']),
+        "user_rating": _float_list_feature(data['user_rating']),
+        
+        # movie - per arm features
+        "movie_id": _bytes_feature_v2(data['movie_id']),
+        "movie_genres": _int64_list_feature(data['movie_genres']),
+    }
+    example_proto = tf.train.Example(
+        features=tf.train.Features(feature=feature)
+    )
+    return example_proto # example_proto.SerializeToString()
+
 
 # ============================================
 # TF lookup dictionary
