@@ -26,7 +26,7 @@ The training observation contains the global features and the features of the it
 
 ### Historgrams
 
-![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/histograms_ranking.png)
+![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/tb_histo_grams_full.png)
 
 ### Distributions
 

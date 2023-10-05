@@ -24,8 +24,9 @@ from google.cloud import storage
 # features
 # ============================================
 
-# MAX_LIST_LENGTH = 3
-MAX_LIST_LENGTH = 5
+# TODO - fix this
+MAX_LIST_LENGTH = 3
+# MAX_LIST_LENGTH = 5
 
 def get_all_features():
     

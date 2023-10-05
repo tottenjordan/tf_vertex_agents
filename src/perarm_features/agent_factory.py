@@ -205,6 +205,8 @@ class PerArmAgentFactory:
                     observation_and_action_constraint_splitter
                 ),
                 accepts_per_arm_features=self.PER_ARM,
+                summarize_grads_and_vars=True,
+                enable_summaries=True,
                 emit_policy_info=EMIT_POLICY_INFO,
                 # (
                     # 'predicted_rewards_mean', 'bandit_policy_type'      # <- use these

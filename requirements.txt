@@ -1,8 +1,8 @@
 google-cloud-aiplatform
 google-cloud-storage
 numpy
-tensorflow==2.13.0
-tf-agents==0.17.0
+tensorflow==2.14.0
+tf-agents==0.18.0
 tensorboard
 tensorboard-plugin-profile
 tensorboard-plugin-wit
