@@ -7,7 +7,7 @@ tensorboard
 tensorboard-plugin-profile
 tensorboard-plugin-wit
 tensorboard-data-server
-tensorflow-io
+tensorflow-io==0.29.0
 urllib3
 pillow
 gsutil
