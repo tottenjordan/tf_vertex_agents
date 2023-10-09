@@ -12,3 +12,4 @@ urllib3
 pillow
 gsutil
 google-cloud-aiplatform[cloud_profiler]
+protobuf==3.20.3
