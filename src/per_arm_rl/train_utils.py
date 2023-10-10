@@ -55,11 +55,20 @@ def _get_train_dataset(
     split, 
     total_take, 
     batch_size,
+    num_replicas = 1,
     cache: bool = True,
 ):
     """
     TODO: use `dataset.take(k).cache().repeat()`
     """
+    
+    options = tf.data.Options()
+    options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+    # Disable intra-op parallelism to optimize for throughput instead of latency.
+    options.threading.max_intra_op_parallelism = 1 # TODO 
+    
+    GLOBAL_BATCH_SIZE = int(batch_size) * int(num_replicas)
+    logging.info(f'GLOBAL_BATCH_SIZE = {GLOBAL_BATCH_SIZE}')
     
     train_files = []
     for blob in storage_client.list_blobs(f"{bucket_name}", prefix=f'{data_dir_prefix_path}/{split}'):
@@ -68,12 +77,37 @@ def _get_train_dataset(
             
     print(f"train_files: {train_files}")
 
-    train_dataset = tf.data.TFRecordDataset(train_files)
+    train_dataset = tf.data.TFRecordDataset(train_files)          # original
     # train_dataset = train_dataset.take(total_take)
-    train_dataset = train_dataset.map(data_utils.parse_tfrecord)
+    train_dataset = train_dataset.map(data_utils.parse_tfrecord)  # original
+    
+    # tmp - test start
+    # train_dataset = tf.data.Dataset.from_tensor_slices(train_files).prefetch(
+    #     tf.data.AUTOTUNE,
+    # )
+    # train_dataset = train_dataset.interleave( # Parallelize data reading
+    #     data_utils.full_parse,
+    #     cycle_length=tf.data.AUTOTUNE,
+    #     block_length=64,
+    #     num_parallel_calls=tf.data.AUTOTUNE,
+    #     deterministic=False
+    # ).repeat().batch( #vectorize mapped function
+    #     GLOBAL_BATCH_SIZE,
+    #     drop_remainder=True,
+    # ).map(
+    #     data_utils.parse_tfrecord, 
+    #     num_parallel_calls=tf.data.AUTOTUNE
+    # ).prefetch(
+    #     tf.data.AUTOTUNE # GLOBAL_BATCH_SIZE*3 # tf.data.AUTOTUNE
+    # ).with_options(
+    #     options
+    # )
+
     
     if cache:
-        train_dataset = train_dataset.batch(batch_size).cache().repeat()
+        train_dataset = train_dataset.batch(batch_size).cache().repeat() # original
+        # train_dataset.cache()
+        # tmp - test end
     else:
         train_dataset = train_dataset.batch(batch_size).repeat()
 
