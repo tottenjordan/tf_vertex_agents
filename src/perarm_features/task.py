@@ -141,9 +141,13 @@ def get_args(raw_args: List[str]) -> argparse.Namespace:
     parser.add_argument("--epsilon", type=float, default=0.01, help="")
     parser.add_argument("--encoding_dim", type=int, default=1, help="")
     parser.add_argument("--eps_phase_steps", type=int, default=1000, help="")
+    parser.add_argument('--tf_gpu_thread_count', type=str, required=False)
     parser.add_argument("--use_gpu", action='store_true', help="include for True; ommit for False")
     parser.add_argument("--use_tpu", action='store_true', help="include for True; ommit for False")
     parser.add_argument("--profiler", action='store_true', help="include for True; ommit for False")
+    parser.add_argument("--sum_grads_vars", action='store_true', help="include for True; ommit for False")
+    parser.add_argument("--debug_summaries", action='store_true', help="include for True; ommit for False")
+    parser.add_argument("--cache_train", action='store_true', help="include for True; ommit for False")
 
     return parser.parse_args(raw_args)
 
@@ -168,21 +172,22 @@ def main(args: argparse.Namespace):
     # =============================================
     # limiting GPU growth
     # =============================================
-    print("limiting GPU growth....")
-    gpus = tf.config.list_physical_devices('GPU')
-    if gpus:
-        try:
-            for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
-            print(f'detected: {len(gpus)} GPUs')
-        except RuntimeError as e:
-            # Memory growth must be set before GPUs have been initialized
-            print(e)
-                
-    # tf.debugging.set_log_device_placement(True) # logs all tf ops and their device placement;
-    os.environ['TF_GPU_THREAD_MODE']='gpu_private'
-    os.environ['TF_GPU_THREAD_COUNT']= '1'
-    os.environ['TF_GPU_ALLOCATOR']='cuda_malloc_async'
+    if args.use_gpu:
+        print("limiting GPU growth....")
+        gpus = tf.config.list_physical_devices('GPU')
+        if gpus:
+            try:
+                for gpu in gpus:
+                    tf.config.experimental.set_memory_growth(gpu, True)
+                print(f'detected: {len(gpus)} GPUs')
+            except RuntimeError as e:
+                # Memory growth must be set before GPUs have been initialized
+                print(e)
+
+        # tf.debugging.set_log_device_placement(True) # logs all tf ops and their device placement;
+        os.environ['TF_GPU_THREAD_MODE']='gpu_private'
+        os.environ['TF_GPU_THREAD_COUNT']= f'{args.tf_gpu_thread_count}'
+        os.environ['TF_GPU_ALLOCATOR']='cuda_malloc_async'
     
     # =============================================
     # set GCP clients
@@ -218,15 +223,18 @@ def main(args: argparse.Namespace):
     print("Detecting devices....")
     print("Setting device strategy...")
     
-    # TODO: add TPU support
-    
     # GPU - All variables and Agents need to be created under strategy.scope()
     if args.use_gpu:
-        distribution_strategy = tf.distribute.MirroredStrategy()
-    else:
-        distribution_strategy = tf.distribute.get_strategy()
+        distribution_strategy = strategy_utils.get_strategy(tpu=args.use_tpu, use_gpu=args.use_gpu)
+        # distribution_strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
         
-    # distribution_strategy = strategy_utils.get_strategy(tpu=args.use_tpu, use_gpu=args.use_gpu)
+    if args.use_tpu:
+        cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu="local")
+        tf.config.experimental_connect_to_cluster(cluster_resolver)
+        tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
+        distribution_strategy = tf.distribute.TPUStrategy(cluster_resolver)
+        logging.info("All devices: ", tf.config.list_logical_devices('TPU'))
+        
     print(f"distribution_strategy: {distribution_strategy}")
     
     if distribution_strategy == 'multiworker':
@@ -236,7 +244,9 @@ def main(args: argparse.Namespace):
         )
     else:
         task_type, task_id = 'chief', None
-    
+        
+    NUM_REPLICAS = distribution_strategy.num_replicas_in_sync
+    print(f'NUM_REPLICAS = {NUM_REPLICAS}')
     print(f'task_type = {task_type}')
     print(f'task_id = {task_id}')
     # ====================================================
@@ -381,6 +391,8 @@ def main(args: argparse.Namespace):
             train_step_counter = global_step,
             output_dim = args.encoding_dim,
             eps_phase_steps = args.eps_phase_steps,
+            summarize_grads_and_vars = args.sum_grads_vars,
+            debug_summaries = args.debug_summaries
         )
     
     agent.initialize()
@@ -461,6 +473,8 @@ def main(args: argparse.Namespace):
         train_summary_writer = train_summary_writer,
         total_train_take = TOTAL_TRAIN_TAKE,
         global_step = global_step,
+        num_replicas = NUM_REPLICAS,
+        cache_train_data = args.cache_train
     )
 
     end_time = time.time()
@@ -473,6 +487,7 @@ def main(args: argparse.Namespace):
     # ====================================================
     print(f"Load trained policy & evaluate...")
     print(f"load policy from model_dir: {args.artifacts_dir}")
+ 
     
     trained_policy = py_tf_eager_policy.SavedModelPyTFEagerPolicy(
         args.artifacts_dir, 

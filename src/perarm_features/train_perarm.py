@@ -10,6 +10,9 @@ from datetime import datetime
 from collections import defaultdict
 from typing import Callable, Dict, List, Optional, TypeVar
 
+os.environ['TF_GPU_THREAD_MODE']='gpu_private'
+os.environ['TF_GPU_ALLOCATOR']='cuda_malloc_async'
+
 import collections
 from tf_agents.utils import common
 from tf_agents.bandits.specs import utils as bandit_spec_utils
@@ -87,17 +90,19 @@ def train_perarm(
     profiler = False,
     global_step = None,
     total_train_take: int = 10000,
+    num_replicas = 1,
+    cache_train_data = True,
     train_summary_writer: Optional[tf.summary.SummaryWriter] = None,
 ) -> Dict[str, List[float]]:
     
     if train_summary_writer:
         train_summary_writer.set_as_default()
     
-    # GPU - All variables & Agents need to be created under strategy.scope()
-    distribution_strategy = strategy_utils.get_strategy(
-        tpu=use_tpu, use_gpu=use_gpu
-    )
-    print(f"distribution_strategy: {distribution_strategy}")
+    # # GPU - All variables & Agents need to be created under strategy.scope()
+    # distribution_strategy = strategy_utils.get_strategy(
+    #     tpu=use_tpu, use_gpu=use_gpu
+    # )
+    # print(f"distribution_strategy: {distribution_strategy}")
     
     # ====================================================
     # train dataset
@@ -107,7 +112,9 @@ def train_perarm(
         data_dir_prefix_path=data_dir_prefix_path, 
         split="train",
         total_take=total_train_take,
-        batch_size = batch_size
+        batch_size = batch_size,
+        num_replicas = num_replicas,
+        cache = cache_train_data,
     )
     # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
     # train_dataset = train_dataset.cache()

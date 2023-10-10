@@ -101,6 +101,8 @@ class PerArmAgentFactory:
         train_step_counter: Optional[tf.Variable] = None,
         eps_phase_steps: Optional[int] = None,
         observation_and_action_constraint_splitter: Optional[types.Splitter] = None,
+        summarize_grads_and_vars: Optional[bool] = False,
+        debug_summaries: Optional[bool] = False
     ):
         """
         
@@ -114,6 +116,8 @@ class PerArmAgentFactory:
         self.network_type = network_type
         self.time_step_spec = time_step_spec
         self.action_spec = action_spec
+        self.summarize_grads_and_vars = summarize_grads_and_vars
+        self.debug_summaries = debug_summaries
         
         if global_layers is not None:
             self.global_layers = global_layers
@@ -205,8 +209,8 @@ class PerArmAgentFactory:
                     observation_and_action_constraint_splitter
                 ),
                 accepts_per_arm_features=self.PER_ARM,
-                summarize_grads_and_vars=True,
-                enable_summaries=True,
+                summarize_grads_and_vars=self.summarize_grads_and_vars,
+                enable_summaries=self.debug_summaries,
                 emit_policy_info=EMIT_POLICY_INFO,
                 # (
                     # 'predicted_rewards_mean', 'bandit_policy_type'      # <- use these
@@ -238,12 +242,12 @@ class PerArmAgentFactory:
                 optimizer=tf.compat.v1.train.AdamOptimizer(
                     learning_rate=self.learning_rate
                 ),
-                alpha=1.0,                                     # TODO - parameterize
-                gamma=1.0,                                     # TODO - parameterize
+                alpha=1.0,                                              # TODO - parameterize
+                gamma=1.0,                                              # TODO - parameterize
                 epsilon_greedy=self.epsilon,
                 accepts_per_arm_features=self.PER_ARM,
-                debug_summaries=True,                          # TODO - parameterize
-                summarize_grads_and_vars=True,                 # TODO - parameterize
+                debug_summaries=self.debug_summaries,                   # TODO - parameterize
+                summarize_grads_and_vars=self.summarize_grads_and_vars, # TODO - parameterize
                 emit_policy_info=(
                     policy_utilities.InfoFields.PREDICTED_REWARDS_MEAN
                 ),
