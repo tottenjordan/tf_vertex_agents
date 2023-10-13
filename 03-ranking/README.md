@@ -26,6 +26,8 @@ The training observation contains the global features and the features of the it
 * The item features are stored in the `per_arm` part of the observation, in the order of how they are recommended
 * Note: since this ordered list of items expresses what action was taken by the policy, the action value of the trajectory is not used by the agent
 
+> **TODO**
+
 ## The online learning paradigm
 * RL deployments that run batch training and push models at a specific cadence are commonly categorized into `off-policy learning`. And, they are prone to `system bias` because of the long delay from user feedback to model updates
 > * In RL terms, this means the algorithm accumulates *regret* as user’s preferences change
@@ -39,7 +41,7 @@ The training observation contains the global features and the features of the it
 * **Large output space** --> large exploration space without action space reduction
 * **Efficient bandits learning in real-time** --> modeling user and context with a *good* tradeoff between accuracy and learning efficiency
 
-#### Online + Offline
+### Online + Offline
 One approach is to use concepts from both online and offline:
 * Offline: dual-encoder models for learning user and item embeddings
 * Online: sparse [bipartite graph](https://www.geeksforgeeks.org/bipartite-graph/#:~:text=A%20Bipartite%20Graph%20is%20a,V%20and%20v%20to%20U.) created from offline embeddings
@@ -48,15 +50,21 @@ This can help with (a) the cold-start problem by connecting users with fresh con
 
 ## Understanding model variables and gradients during training with TensorBoard
 
+
 ### Historgrams
+
+> **TODO**
 
 ![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/tb_histo_grams_full.png)
 
+
 ### Distributions
+
+> **TODO**
 
 ![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/distributions_ranking.png)
 
-### Literature
+## Literature
 1. [Cascading Linear Submodular Bandits: Accounting for Position Bias and Diversity in Online Learning to Rank](http://auai.org/uai2019/proceedings/papers/248.pdf), G. Hiranandani, H. Singh, P. Gupta, I. A. Burhanuddin, Z. Wen and B. Kveton, 35th Conference on Uncertainty in Artificial Intelligence (2019)
 > * account for both position bias and diversity in forming the list of items to recommend
 2. [Contextual Combinatorial Cascading Bandits](http://proceedings.mlr.press/v48/lif16.html), , S. Li, B. Wang, S. Zhang, W. Chen, Proceedings of The 33rd International Conference on Machine Learning, PMLR 48:1245-1253, 2016
