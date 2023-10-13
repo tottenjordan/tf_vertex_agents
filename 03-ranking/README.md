@@ -14,7 +14,7 @@ Main differences:
 * Since this ordered list of items expresses what action was taken by the policy,
 the `action` value of the trajectory is not used by the agent.
 
-> Note: difference between the "per-arm" observation recieved by the policy vs the agent:
+*Note: difference between the "per-arm" observation recieved by the policy vs the agent:*
 
 > * While the agent receives the items in the recommendation slots, the policy receives the items that are available for recommendation. 
 > * The user is responsible for converting the observation to the syntax required by the agent.
