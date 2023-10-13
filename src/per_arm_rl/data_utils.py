@@ -12,21 +12,28 @@
 # See the License for the specific language governing permissions and
 
 import os
+import array
+import collections
 import numpy as np
-from typing import Dict
+from pprint import pprint
+from typing import Dict, List, Optional, Text, Tuple
 
 import tensorflow as tf
 
 from google.cloud import aiplatform as vertex_ai
 from google.cloud import storage
 
+# this repo dir
+from . import utils_config
+
 # ============================================
 # features
 # ============================================
 
 # TODO - fix this
-MAX_LIST_LENGTH = 3
+# MAX_LIST_LENGTH = 3
 # MAX_LIST_LENGTH = 5
+MAX_LIST_LENGTH = utils_config.NUM_EXAMPLES_PER_LIST
 
 def get_all_features():
     
@@ -86,6 +93,34 @@ def parse_lw_tfrecord(example):
     Reads a serialized example from GCS and converts to tfrecord
     """
     feats = get_all_lw_features(MAX_LIST_LENGTH)
+    
+    # example = tf.io.parse_single_example(
+    example = tf.io.parse_example(
+        example,
+        feats
+        # features=feats
+    )
+    return example
+
+def parse_lw_3_tfrecord(example):
+    """
+    Reads a serialized example from GCS and converts to tfrecord
+    """
+    feats = get_all_lw_features(3) # MAX_LIST_LENGTH
+    
+    # example = tf.io.parse_single_example(
+    example = tf.io.parse_example(
+        example,
+        feats
+        # features=feats
+    )
+    return example
+
+def parse_lw_5_tfrecord(example):
+    """
+    Reads a serialized example from GCS and converts to tfrecord
+    """
+    feats = get_all_lw_features(5) # MAX_LIST_LENGTH
     
     # example = tf.io.parse_single_example(
     example = tf.io.parse_example(
@@ -367,3 +402,96 @@ def download_blob(project_id, bucket_name, source_blob_name, destination_file_na
             source_blob_name, bucket_name, destination_file_name
         )
     )
+    
+# Listwise Ranking data utils
+
+def _create_feature_dict() -> Dict[Text, List[tf.Tensor]]:
+    """Helper function for creating an empty feature dict for defaultdict."""
+    return {"movie_id": [], "movie_genres": [], "user_rating": []}
+
+def _sample_list(
+    feature_lists: Dict[Text, List[tf.Tensor]],
+    num_examples_per_list: int,
+    random_state: Optional[np.random.RandomState] = None,
+) -> Tuple[tf.Tensor, tf.Tensor]:
+    """Function for sampling a list example from given feature lists."""
+    if random_state is None:
+        random_state = np.random.RandomState()
+
+    sampled_indices = random_state.choice(
+        range(len(feature_lists["movie_id"])),
+        size=num_examples_per_list,
+        replace=False,
+    )
+    sampled_movie_ids = [
+        feature_lists["movie_id"][idx] for idx in sampled_indices
+    ]
+    # sampled_movie_titles = [
+    #     feature_lists["movie_title"][idx] for idx in sampled_indices
+    # ]
+    sampled_genres = [
+        feature_lists["movie_genres"][idx]
+        for idx in sampled_indices
+    ]
+    sampled_ratings = [
+        feature_lists["user_rating"][idx]
+        for idx in sampled_indices
+    ]
+
+    return (
+        tf.stack(sampled_movie_ids, 0),
+        tf.stack(sampled_genres, 0),
+        tf.stack(sampled_ratings, 0),
+    )
+
+def create_listwise_ds(
+    rating_dataset: tf.data.Dataset,
+    num_list_per_user: int = 10,
+    num_examples_per_list: int = 10,
+    seed: Optional[int] = None,
+) -> tf.data.Dataset:
+    
+    """
+    Function for converting the MovieLens 100K dataset to a listwise dataset
+    """
+    random_state = np.random.RandomState(seed)
+
+    example_lists_by_user = collections.defaultdict(_create_feature_dict)
+
+    movie_id_vocab = set()
+    for example in rating_dataset:
+
+        user_id = example["user_id"].numpy()
+
+        example_lists_by_user[user_id]["movie_id"].append(
+            example["movie_id"]
+        )
+        example_lists_by_user[user_id]["movie_genres"].append(
+            example["movie_genres"][0]
+        )
+        example_lists_by_user[user_id]["user_rating"].append(
+            example["user_rating"]
+        )
+        movie_id_vocab.add(example["movie_id"].numpy())
+
+    tensor_slices = {"user_id": [], "movie_id": [], "movie_genres": [], "user_rating": []}
+
+    for user_id, feature_lists in example_lists_by_user.items():
+        for _ in range(num_list_per_user):
+
+            # Drop the user if they don't have enough ratings.
+            if len(feature_lists["movie_id"]) < num_examples_per_list:
+                continue
+
+            sampled_movie_ids, sampled_genres, sampled_ratings = _sample_list(
+                feature_lists,
+                num_examples_per_list,
+                random_state=random_state,
+            )
+
+            tensor_slices["user_id"].append(user_id)
+            tensor_slices["movie_id"].append(sampled_movie_ids)
+            tensor_slices["movie_genres"].append(sampled_genres)
+            tensor_slices["user_rating"].append(sampled_ratings)
+
+    return tf.data.Dataset.from_tensor_slices(tensor_slices)
