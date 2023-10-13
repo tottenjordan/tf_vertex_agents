@@ -1,0 +1,10 @@
+steps:
+- name: "gcr.io/kaniko-project/executor:latest"
+  args: ["--destination=gcr.io/hybrid-vertex/prediction-container:latest",
+         "--cache=false",
+         "--cache-ttl=99h"]
+  env: ["AIP_STORAGE_URI=gs://tf-agents-bandits-v2/artifacts",
+        "PROJECT_ID=hybrid-vertex",
+        "LOGGER_PUBSUB_TOPIC=logger-pubsub-topic"]
+options:
+  machineType: "E2_HIGHCPU_8"
