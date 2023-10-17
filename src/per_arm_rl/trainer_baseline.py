@@ -235,16 +235,7 @@ def train(
     # `step_metric` records the number of individual rounds of bandit interaction;
     # that is, (number of trajectories) * batch_size.
     step_metric = tf_metrics.EnvironmentSteps()
-    
-    optimal_reward_fn = functools.partial(
-        environment_utilities.compute_optimal_reward_with_movielens_environment
-        , environment=environment
-    )
-
-    regret_metric = tf_bandit_metrics.RegretMetric(optimal_reward_fn)
-    
     metrics = [
-        regret_metric,
         tf_metrics.NumberOfEpisodes(),
         tf_metrics.AverageEpisodeLengthMetric(batch_size=environment.batch_size),
     ] + list(additional_metrics)
@@ -264,9 +255,6 @@ def train(
         metrics += [
             tf_metrics.AverageReturnMetric(batch_size=environment.batch_size)
         ]
-        
-    metric_results = defaultdict(list)
-    # print(f"metric_results: {metric_results}")
 
     if training_data_spec_transformation_fn is not None:
         add_batch_fn = lambda data: replay_buffer.add_batch(  # pylint: disable=g-long-lambda
@@ -324,3 +312,174 @@ def train(
         checkpoint_manager.save()
         if save_policy & (i % 100 == 0):
             saver.save(os.path.join(root_dir, 'policy_%d' % step_metric.result()))
+
+# def train(
+#     root_dir,
+#     agent,
+#     environment,
+#     training_loops,
+#     steps_per_loop,
+#     async_steps_per_loop=None,
+#     additional_metrics=(),
+#     get_replay_buffer_fn=None,
+#     get_training_loop_fn=None,
+#     training_data_spec_transformation_fn=None,
+#     save_policy=True,
+#     resume_training_loops=False,
+# ):
+#     """Perform `training_loops` iterations of training.
+
+#     Checkpoint results.
+
+#     If one or more baseline_reward_fns are provided, the regret is computed
+#     against each one of them. Here is example baseline_reward_fn:
+
+#     def baseline_reward_fn(observation, per_action_reward_fns):
+#     rewards = ... # compute reward for each arm
+#     optimal_action_reward = ... # take the maximum reward
+#     return optimal_action_reward
+
+#     Args:
+#     root_dir: path to the directory where checkpoints and metrics will be
+#       written.
+#     agent: an instance of `TFAgent`.
+#     environment: an instance of `TFEnvironment`.
+#     training_loops: an integer indicating how many training loops should be run.
+#     steps_per_loop: an integer indicating how many driver steps should be
+#       executed in a single driver run.
+#     async_steps_per_loop: an optional integer for simulating offline or
+#       asynchronous training: In each training loop iteration, the driver runs
+#       this many times, each executing `steps_per_loop` driver steps, and then
+#       the agent gets asynchronously trained over this many batches sampled from
+#       the replay buffer. When unset or set to 1, the function performs
+#       synchronous training, where the agent gets trained on a single batch
+#       immediately after the driver runs.
+#     additional_metrics: Tuple of metric objects to log, in addition to default
+#       metrics `NumberOfEpisodes`, `AverageReturnMetric`, and
+#       `AverageEpisodeLengthMetric`.
+#     get_replay_buffer_fn: An optional function that creates a replay buffer by
+#       taking a data_spec, batch size, the number of driver steps per loop, and
+#       the number of asynchronous training steps per loop. Note that the returned
+#       replay buffer will be passed to `get_training_loop_fn` below to generate a
+#       traininig loop function. If `None`, the `get_replay_buffer` function
+#       defined in this module will be used.
+#     get_training_loop_fn: An optional function that constructs the traininig
+#       loop function executing a single train step. This function takes a driver,
+#       a replay buffer, an agent, the number of driver steps per loop, and the
+#       number of asynchronous training steps per loop. If `None`, the
+#       `get_training_loop` function defined in this module will be used.
+#     training_data_spec_transformation_fn: Optional function that transforms the
+#       data items before they get to the replay buffer.
+#     save_policy: (bool) whether to save the policy or not.
+#     resume_training_loops: A boolean flag indicating whether `training_loops`
+#       should be enforced relatively to the initial (True) or the last (False)
+#       checkpoint.
+#     """
+
+#     # TODO(b/127641485): create evaluation loop with configurable metrics.
+#     if training_data_spec_transformation_fn is None:
+#         data_spec = agent.policy.trajectory_spec
+#     else:
+#         data_spec = training_data_spec_transformation_fn(
+#             agent.policy.trajectory_spec
+#         )
+#     if async_steps_per_loop is None:
+#         async_steps_per_loop = 1
+#     if get_replay_buffer_fn is None:
+#         get_replay_buffer_fn = _get_replay_buffer
+#     replay_buffer = get_replay_buffer_fn(
+#         data_spec, environment.batch_size, steps_per_loop, async_steps_per_loop
+#     )
+
+#     # `step_metric` records the number of individual rounds of bandit interaction;
+#     # that is, (number of trajectories) * batch_size.
+#     step_metric = tf_metrics.EnvironmentSteps()
+    
+#     optimal_reward_fn = functools.partial(
+#         environment_utilities.compute_optimal_reward_with_movielens_environment
+#         , environment=environment
+#     )
+
+#     regret_metric = tf_bandit_metrics.RegretMetric(optimal_reward_fn)
+    
+#     metrics = [
+#         regret_metric,
+#         tf_metrics.NumberOfEpisodes(),
+#         tf_metrics.AverageEpisodeLengthMetric(batch_size=environment.batch_size),
+#     ] + list(additional_metrics)
+
+#     # If the reward anything else than a single scalar, we're adding multimetric
+#     # average reward.
+#     if isinstance(
+#         environment.reward_spec(), dict
+#     ) or environment.reward_spec().shape != tf.TensorShape(()):
+#         metrics += [
+#             tf_metrics.AverageReturnMultiMetric(
+#                 reward_spec=environment.reward_spec(),
+#                 batch_size=environment.batch_size,
+#             )
+#         ]
+#     if not isinstance(environment.reward_spec(), dict):
+#         metrics += [
+#             tf_metrics.AverageReturnMetric(batch_size=environment.batch_size)
+#         ]
+        
+#     metric_results = defaultdict(list)
+#     # print(f"metric_results: {metric_results}")
+
+#     if training_data_spec_transformation_fn is not None:
+#         add_batch_fn = lambda data: replay_buffer.add_batch(  # pylint: disable=g-long-lambda
+#         training_data_spec_transformation_fn(data)
+#     )
+#     else:
+#         add_batch_fn = replay_buffer.add_batch
+
+#     observers = [add_batch_fn, step_metric] + metrics
+
+#     driver = dynamic_step_driver.DynamicStepDriver(
+#         env=environment,
+#         policy=agent.collect_policy,
+#         num_steps=steps_per_loop * environment.batch_size,
+#         observers=observers,
+#     )
+
+#     if get_training_loop_fn is None:
+#         get_training_loop_fn = _get_training_loop
+#     training_loop = get_training_loop_fn(
+#         driver, replay_buffer, agent, steps_per_loop, async_steps_per_loop
+#     )
+#     checkpoint_manager = restore_and_get_checkpoint_manager(
+#         root_dir, agent, metrics, step_metric
+#     )
+#     train_step_counter = tf.compat.v1.train.get_or_create_global_step()
+#     if save_policy:
+#         saver = policy_saver.PolicySaver(
+#             agent.policy, train_step=train_step_counter
+#         )
+
+#     summary_writer = tf.summary.create_file_writer(root_dir)
+#     summary_writer.set_as_default()
+
+#     if resume_training_loops:
+#         train_step_count_per_loop = (
+#             steps_per_loop * environment.batch_size * async_steps_per_loop
+#         )
+#         last_checkpointed_step = step_metric.result().numpy()
+#         if last_checkpointed_step % train_step_count_per_loop != 0:
+#             raise ValueError(
+#                 'Last checkpointed step is expected to be a multiple of '
+#                 'steps_per_loop * batch_size * async_steps_per_loop, but found '
+#                 f'otherwise: last checkpointed step: {last_checkpointed_step}, '
+#                 f'steps_per_loop: {steps_per_loop}, batch_size: '
+#                 f'{environment.batch_size}, async_steps_per_loop: '
+#                 f'{async_steps_per_loop}'
+#             )
+#         starting_loop = last_checkpointed_step // train_step_count_per_loop
+#     else:
+#         starting_loop = 0
+
+#     for i in range(starting_loop, training_loops):
+#         training_loop(train_step=i, metrics=metrics)
+#         checkpoint_manager.save()
+#         if save_policy & (i % 100 == 0):
+#             saver.save(os.path.join(root_dir, 'policy_%d' % step_metric.result()))

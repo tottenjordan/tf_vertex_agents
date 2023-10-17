@@ -6,8 +6,7 @@
 * train algorithms that consider long-term (cumulative value) of decisions
 * explore & exploit tradeoffs between short and long term value (e.g., the difference between the short term value of "click-bait" vs the long-term value of overall user satisafaction, as highlighted in  [DNN for YouTube Recommendations](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf))
 * make a sequence of decisions, where each decision, or action, possibly impacts future decisions
-
-*--> return a **distribution** over predictions rather than a single prediction*
+* return a **distribution** over predictions rather than a single prediction*
 
 ### Using RL for recommendations
 * User vectors are the environment observations
