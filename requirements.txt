@@ -3,6 +3,7 @@ google-cloud-storage
 numpy
 tensorflow==2.13.0
 tf-agents==0.17.0
+tensorflow-datasets==4.9.0
 tensorboard
 tensorboard-plugin-profile
 tensorboard-plugin-wit
@@ -10,3 +11,4 @@ tensorboard-data-server
 tensorflow-io
 urllib3
 pillow
+
