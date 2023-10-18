@@ -13,41 +13,29 @@ project_number='hybrid-vertex'
 storage_client = storage.Client(project=project_number)
 
 # ====================================================
+# environemnt utils
+# ====================================================
+def compute_optimal_reward_with_my_environment(observation, environment):
+    """Helper function for gin configurable Regret metric."""
+    del observation
+    return tf.py_function(environment.compute_optimal_reward, [], tf.float32)
+
+def compute_optimal_action_with_my_environment(
+    observation, 
+    environment, 
+    action_dtype=tf.int32
+):
+    """Helper function for gin configurable SuboptimalArms metric."""
+    del observation
+    return tf.py_function(environment.compute_optimal_action, [], action_dtype)
+
+# ====================================================
 # get train & val datasets
 # ====================================================
 options = tf.data.Options()
 options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
 options.threading.max_intra_op_parallelism = 1 # TODO
 
-# def _get_train_dataset(
-#     project_id,
-#     bucket_name, 
-#     data_dir_prefix_path, 
-#     split, 
-#     total_take, 
-#     batch_size,
-#     cache: bool = True,
-# ):
-    
-#     storage_client = storage.Client(project=project_id)
-
-#     train_files = []
-#     for blob in storage_client.list_blobs(f"{bucket_name}", prefix=f'{data_dir_prefix_path}/{split}'):
-#         if '.tfrecord' in blob.name:
-#             train_files.append(blob.public_url.replace("https://storage.googleapis.com/", "gs://"))
-            
-#     print(f"train_files: {train_files}")
-
-#     if cache:
-#         train_dataset = tf.data.TFRecordDataset(train_files).cache() #.take(total_take)
-#     else:
-#         train_dataset = tf.data.TFRecordDataset(train_files)
-#     train_dataset = train_dataset.take(total_take)
-#     train_dataset = train_dataset.map(data_utils.parse_tfrecord) #, num_parallel_calls=tf.data.AUTOTUNE)
-#     train_dataset = train_dataset.batch(batch_size)
-#     # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
-#     # train_dataset = train_dataset.cache()
-#     return train_dataset
 
 def _get_train_dataset(
     bucket_name, 

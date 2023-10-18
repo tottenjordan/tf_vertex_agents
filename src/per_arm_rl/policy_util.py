@@ -15,9 +15,19 @@
 """The utility module for reinforcement learning policy."""
 import collections
 from typing import Callable, Dict, List, Optional, TypeVar
+import argparse
+import functools
+import json
+import logging
+import os
+import sys
+from typing import List, Union
+import time
+import random
+import string
 
 import logging
-# logging.disable(logging.WARNING)
+logging.disable(logging.WARNING)
 
 import tensorflow as tf
 
@@ -29,6 +39,15 @@ from tf_agents.eval import metric_utils
 from tf_agents.metrics import tf_metrics
 from tf_agents.metrics.tf_metric import TFStepMetric
 from tf_agents.policies import policy_saver
+
+from google.cloud.aiplatform.training_utils import cloud_profiler
+
+import time
+
+from . import data_utils
+from . import train_utils
+from . import data_config
+from . import my_per_arm_py_env
 
 # import traceback
 # from google.cloud.aiplatform.training_utils import cloud_profiler
@@ -43,12 +62,14 @@ def train(
     , steps_per_loop: int
     , log_dir: str
     , profiler: bool
+    , chkpt_interval: int = 25
     , additional_metrics: Optional[List[TFStepMetric]] = None
     , training_data_spec_transformation_fn: Optional[Callable[[T],T]] = None
     , run_hyperparameter_tuning: bool = False
     , root_dir: Optional[str] = None
     , artifacts_dir: Optional[str] = None
     , model_dir: Optional[str] = None
+    , train_summary_writer: Optional[tf.summary.SummaryWriter] = None,
 ) -> Dict[str, List[float]]:
     """
     Performs `training_loops` iterations of training on the agent's policy.
@@ -94,29 +115,14 @@ def train(
     # ====================================================
     # TB summary writer
     # ====================================================
+    if train_summary_writer:
+        train_summary_writer.set_as_default()
+        
     logging.info(f" log_dir: {log_dir}")
-    train_summary_writer = tf.compat.v2.summary.create_file_writer(
-        log_dir, flush_millis=10 * 1000
-    )
-    train_summary_writer.set_as_default()
-    
-    logging.info(f" profiler: {profiler}")
-    # if profiler:
-    #     profiler_options = tf.profiler.experimental.ProfilerOptions(
-    #         host_tracer_level = 3
-    #         , python_tracer_level = 1
-    #         , device_tracer_level = 1
-    #     )
-    
-    # if profiler:
-    #     tensorboard_callback = tf.keras.callbacks.TensorBoard(
-    #         log_dir=log_dir,
-    #         histogram_freq=args.hist_frequency, 
-    #         write_graph=True,
-    #         profile_batch=(25, 30),
-    #         update_freq='epoch', 
-    #     )
-    #     logging.info(f'Tensorboard callback should profile batches...')
+    # train_summary_writer = tf.compat.v2.summary.create_file_writer(
+    #     log_dir, flush_millis=10 * 1000
+    # )
+    # train_summary_writer.set_as_default()
     
     # ====================================================
     # get data spec
@@ -174,6 +180,20 @@ def train(
 
     # Store intermediate metric results, indexed by metric names.
     metric_results = collections.defaultdict(list)
+    
+    # ====================================================
+    # Policy checkpoints
+    # ====================================================
+    CHKPOINT_DIR = f"{root_dir}/chkpoint"
+    logging.info(f"setting checkpoint_manager: {CHKPOINT_DIR}")
+    
+    checkpoint_manager = train_utils.restore_and_get_checkpoint_manager(
+        root_dir=CHKPOINT_DIR, 
+        agent=agent, 
+        metrics=metrics, 
+        step_metric=step_metric
+    )
+    
 
     # ====================================================
     # Driver
@@ -198,22 +218,17 @@ def train(
     # ====================================================
     # training_loop
     # ====================================================
-#     if profiler:
-#         logging.info('Initializing profiler ...')
-        
-#         try:
-#             cloud_profiler.init()
-#         except:
-#             ex_type, ex_value, ex_traceback = sys.exc_info()
-#             print("*** Unexpected:", ex_type.__name__, ex_value)
-#             traceback.print_tb(ex_traceback, limit=10, file=sys.stdout)
-        
-#         logging.info('The profiler initiated...')
-        
-#         start_profiling_step = 10
-#         stop_profiling_step = 20
-#         logging.info(f'start_profiling_step: {start_profiling_step}')
-#         logging.info(f'start_profiling_step: {stop_profiling_step}')
+    if profiler:
+        # start_profiling_step = 10
+        # stop_profiling_step = 50
+        profiler_options = tf.profiler.experimental.ProfilerOptions(
+            host_tracer_level = 3
+            , python_tracer_level = 1
+            , device_tracer_level = 1
+        )
+        # logging.info(f'start_profiling_step : {start_profiling_step}')
+        # logging.info(f'stop_profiling_step  : {stop_profiling_step}')
+        logging.info(f'profiler_options     : {profiler_options}')
     
     training_loop = trainer._get_training_loop(
         driver = driver
@@ -224,39 +239,93 @@ def train(
     )
     if not run_hyperparameter_tuning:
         saver = policy_saver.PolicySaver(agent.policy)
-
-    for train_step in range(training_loops):
-        # # start profiler
-        # if profiler:
-        #     if train_step == start_profiling_step:
-        #         tf.profiler.experimental.start(logdir=log_dir, options = profiler_options)
         
-        # training loop
-        training_loop(
-            train_step = train_step
-            , metrics = metrics
-        )
+    # ====================================================
+    # profiler - train loop
+    # ====================================================   
+    if profiler:
+        start_time = time.time()
+        tf.profiler.experimental.start(log_dir)
         
-        # # end profiler
-        # if profiler:
-        #     if train_step == stop_profiling_step:
-        #         tf.profiler.experimental.stop(save=True)
+        for train_step in range(training_loops):
+                
+            with tf.profiler.experimental.Trace(
+                "tr_step", step_num=train_step, _r=1
+            ):
+                # training loop
+                training_loop(
+                    train_step = train_step
+                    , metrics = metrics
+                )
 
-        # log tensorboard
-        for metric in metrics:
-            metric.tf_summaries(
-                train_step=train_step
-                , step_metrics=metrics[:2]
+                # log tensorboard
+                for metric in metrics:
+                    metric.tf_summaries(
+                        train_step=train_step
+                        , step_metrics=metrics[:2]
+                    )
+
+                metric_utils.log_metrics(metrics)
+
+                for metric in metrics:
+                    metric.tf_summaries(train_step = step_metric.result())
+                    metric_results[type(metric).__name__].append(metric.result().numpy())
+                    
+                if train_step > 0 and train_step % chkpt_interval == 0:
+                    saver.save(
+                        os.path.join(
+                            CHKPOINT_DIR, 
+                            'policy_%d' % step_metric.result()
+                        )
+                    )
+                    logging.info(f"saved policy to: {CHKPOINT_DIR}")
+                    
+        tf.profiler.experimental.stop()
+        runtime_mins = int((time.time() - start_time) / 60)
+        logging.info(f"runtime_mins: {runtime_mins}")
+        
+    # ====================================================
+    # non-profiler - train loop
+    # ====================================================
+    if not profiler:
+        start_time = time.time()
+        
+        for train_step in range(training_loops):
+            
+            # training loop
+            training_loop(
+                train_step = train_step
+                , metrics = metrics
             )
-        
-        metric_utils.log_metrics(metrics)
-    
-        for metric in metrics:
-            metric.tf_summaries(train_step = step_metric.result())
-            metric_results[type(metric).__name__].append(metric.result().numpy())
+
+            # log tensorboard
+            for metric in metrics:
+                metric.tf_summaries(
+                    train_step=train_step
+                    , step_metrics=metrics[:2]
+                )
+
+            metric_utils.log_metrics(metrics)
+
+            for metric in metrics:
+                metric.tf_summaries(train_step = step_metric.result())
+                metric_results[type(metric).__name__].append(metric.result().numpy())
+                
+            if train_step > 0 and train_step % chkpt_interval == 0:
+                saver.save(
+                    os.path.join(
+                        CHKPOINT_DIR, 
+                        'policy_%d' % step_metric.result()
+                    )
+                )
+                logging.info(f"saved policy to: {CHKPOINT_DIR}")
+                
+        runtime_mins = int((time.time() - start_time) / 60)
+        logging.info(f"runtime_mins: {runtime_mins}")
     
     if not run_hyperparameter_tuning:
-        saver.save(model_dir)
+        # saver.save(model_dir)
         saver.save(artifacts_dir)
+        logging.info(f"saved trained policy to: {artifacts_dir}")
     
     return metric_results
