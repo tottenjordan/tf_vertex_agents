@@ -106,26 +106,6 @@ class MyMovieLensPerArmPyEnvironment(bandit_py_environment.BanditPyEnvironment):
         )
         
         # =============================================
-        # GPUs
-        # =============================================
-        
-        # limiting GPU growth
-        gpus = tf.config.list_physical_devices('GPU')
-        if gpus:
-            try:
-                for gpu in gpus:
-                    tf.config.experimental.set_memory_growth(gpu, True)
-                logging.info(f'detected: {len(gpus)} GPUs')
-            except RuntimeError as e:
-                # Memory growth must be set before GPUs have been initialized
-                logging.info(e)
-
-        # tf.debugging.set_log_device_placement(True)        # logs all tf ops and their device placement;
-        os.environ['TF_GPU_THREAD_MODE']='gpu_private'
-        os.environ['TF_GPU_THREAD_COUNT']=f'8'               # TODO - parametrize | 1
-        os.environ['TF_GPU_ALLOCATOR']='cuda_malloc_async'
-        
-        # =============================================
         # get TF dataset
         # =============================================
         logging.info("Creating TRAIN dataset...")
@@ -135,7 +115,7 @@ class MyMovieLensPerArmPyEnvironment(bandit_py_environment.BanditPyEnvironment):
         options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
         
         train_files = []
-        for blob in storage_client.list_blobs(f"{self.bucket_name}", prefix=f'{self.data_gcs_prefix}', delimiter='/'):
+        for blob in storage_client.list_blobs(f"{self.bucket_name}", prefix=f'{self.data_gcs_prefix}/', delimiter="/"):
             if '.tfrecord' in blob.name:
                 train_files.append(blob.public_url.replace("https://storage.googleapis.com/", "gs://"))
                 
@@ -149,7 +129,7 @@ class MyMovieLensPerArmPyEnvironment(bandit_py_environment.BanditPyEnvironment):
         # load data & compute ratings matrix
         # =============================================
         self._data_matrix, self._user_age_int, self._user_occ_int, self._mov_gen_int = data_utils.load_movielens_ratings(
-            ratings_dataset = self.dataset
+            ratings_dataset = train_dataset
             , num_users = self.num_users
             , num_movies = self.num_movies
             , user_age_lookup_dict = self.user_age_lookup_dict
