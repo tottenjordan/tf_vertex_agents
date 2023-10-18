@@ -2,6 +2,12 @@
 
 > **TODO**
 
+## Objectives
+  * `baseline-ranking-agents.ipynb` - build baseline ranking bandits: score vector and cascading feedback
+  * `TODO` - build ranking image
+  * `TODO` - submit ranking train job to Vertex AI
+  * `TODO` - serving ranking bandit with Vertex AI
+
 ## Overview
 
 * The contextual bandits approach is classified as an extension of multi-armed bandits

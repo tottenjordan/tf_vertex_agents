@@ -5,24 +5,32 @@
 ## How to use this repo
 
 This repo is organized across various notebooks:
-* `00-env-setup.ipynb` - create variables names, storage buckets, and env config to run across notebook. (this makes it easier to keep track of variables across notebooks)
-* `01-movielens-data-prep.ipynb` - prepare standard movielens dataset, and a listwise version for ranking
-* 01-baseline-perarm-bandit/ - `simulation environment for multi-armed bandit with arm features`
-> * `01a-build_perarm_tf_agents_model.ipynb`
-> * `01b-train_perarm_tf_agents_vertex.ipynb`
-* 02-perarm-features-bandit/ - `training contextual bandits with per-arm features`
-> * `02a-build-perarm-bandit-locally.ipynb` - build bandit model manually, train locally, understand components
-> * `02b-build-training-image.ipynb` - build docker image for scaling training with Vertex AI
-> * `02c-accelerated-bandits.ipynb` - (Optional) profile train job on local notebook GPU
-> * `02d-scale-bandit-training-vertex.ipynb` - submit train job to Vertex AI
-* 03-ranking/ - `training contextual bandits for ranking problems`
-> * `baseline-ranking-agents.ipynb` - build baseline ranking bandits: score vector and cascading feedback
-> * `TODO` - build ranking image
-> * `TODO` - submit ranking train job to Vertex AI
-> * `TODO` - serving ranking bandit with Vertex AI
-* 04-pipelines/ - `mlops pipeline for multi-armed bandit`
-> * `step_by_step_sdk_tf_agents_bandits_movie_recommendation`
-> * `mlops_pipeline_tf_agents_bandits_movie_recommendation`
+* [00-env-setup.ipynb](00-env-setup.ipynb)
+* [01-movielens-data-prep.ipynb](01-movielens-data-prep.ipynb)
+* [01-baseline-perarm-bandit/](01-baseline-perarm-bandit/)
+  * [01a-build_perarm_tf_agents_model.ipynb](01-baseline-perarm-bandit/01a-build_perarm_tf_agents_model.ipynb)
+  * [01b-train_perarm_tf_agents_vertex.ipynb](01-baseline-perarm-bandit/01b-train_perarm_tf_agents_vertex.ipynb)
+* [02-perarm-features-bandit/](02-perarm-features-bandit/)
+  * [02a-build-perarm-bandit-locally.ipynb](02-perarm-features-bandit/02a-build-perarm-bandit-locally.ipynb)
+  * [02b-build-training-image.ipynb](02-perarm-features-bandit/02b-build-training-image.ipynb)
+  * [02c-accelerated-bandits.ipynb](02-perarm-features-bandit/02c-accelerated-bandits.ipynb)
+  * [02d-scale-bandit-training-vertex.ipynb](02-perarm-features-bandit/02d-scale-bandit-training-vertex.ipynb)
+* [03-ranking/](03-ranking/)
+  * [baseline-ranking-agents.ipynb](03-ranking/baseline-ranking-agents.ipynb)
+  * `TODO`
+  * `TODO`
+  * `TODO`
+* [04-pipelines/](04-pipelines/)
+  * [step_by_step_sdk_tf_agents_bandits_movie_recommendation](04-pipelines/step_by_step_sdk_tf_agents_bandits_movie_recommendation)
+  * [mlops_pipeline_tf_agents_bandits_movie_recommendation](04-pipelines/mlops_pipeline_tf_agents_bandits_movie_recommendation)
+  
+### Objectives
+* [00-env-setup.ipynb](00-env-setup.ipynb) - create variables names and env config to run across notebooks. (easier tracking across notebooks)
+* [01-movielens-data-prep.ipynb](01-movielens-data-prep.ipynb) - prepare standard movielens dataset, and a listwise version for ranking
+* [01-baseline-perarm-bandit/](01-baseline-perarm-bandit/) - simulation environment for multi-armed bandit with arm features
+* [02-perarm-features-bandit/](02-perarm-features-bandit/) - train contextual bandits with per-arm features
+* [03-ranking/](03-ranking/) - training contextual bandits for ranking problems
+* [04-pipelines/](04-pipelines/) - mlops pipeline for multi-armed bandit
 
 ## What are per-arm features?
 * Many agents implemented in `tf-agents` can run on environments that have features for its actions 

@@ -2,6 +2,15 @@
 
 > TODO
 
+## Objectives
+
+  * `02a-build-perarm-bandit-locally.ipynb` - build bandit model manually, train locally, understand components
+  * `02b-build-training-image.ipynb` - build docker image for scaling training with Vertex AI
+  * `02c-accelerated-bandits.ipynb` - (Optional) profile train job on local notebook GPU
+  * `02d-scale-bandit-training-vertex.ipynb` - submit train job to Vertex AI
+  
+## Notes on implementation
+
 We **don’t actually have to implement the Environment** in TF-Agents because during training the data is read offline from logs, and during inference, the policy is served in the actual production environment as a SavedModel through Servo (it may be useful to have an environment for running simulation experiments though)
 
 We have to implement specs to create the agent, policies, network etc. 
