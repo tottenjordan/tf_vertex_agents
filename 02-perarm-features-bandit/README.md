@@ -4,8 +4,6 @@ In some Bandits use cases, each arm has its own features. For movie recommendati
 
 These problems are often referred to as `per-arm features problems`
 
-![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/deep_rl_mab_example.png)
-
 > TODO: include visual illustrating difference between (1) multi-armed bandita and (2) contextual bandit with per-arm features
 
 A **naive implementation** could formulate the problem by having user information as the `global context` and each arm as `movie_1`, `movie_2`, ..., `movie_K`, but this approach has multiple shortcomings:
@@ -22,7 +20,7 @@ Instead of numbering the movies, we can do something more intuitive: we can repr
 
 In this new setting, the number of actions does not even have to be the same in every time step.
 
-## Objectives
+# Objectives
 
   * `02a-build-perarm-bandit-locally.ipynb` - build bandit model manually, train locally, understand components
   * `02b-build-training-image.ipynb` - build docker image for scaling training with Vertex AI

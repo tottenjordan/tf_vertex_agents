@@ -41,6 +41,8 @@ As in other RL domains, the goal of a MAB agent is to find a *policy* that colle
 
 Bandit environments, policies, and agents for MAB can be found in subdirectories of [tf_agents/bandits](https://github.com/tensorflow/agents/blob/master/tf_agents/bandits).
 
+![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/deep_rl_mab_example_v2.png)
+
 ### Environments
 In TF-Agents, the environment class serves the role of giving information on the current state (this is called **observation** or **context**), receiving an action as input, performing a state transition, and outputting a reward. This class also takes care of resetting when an episode ends, so that a new episode can start. This is realized by calling a `reset` function when a state is labelled as "last" of the episode. For more details, see the [TF-Agents environments tutorial](https://github.com/tensorflow/agents/blob/master/docs/tutorials/2_environments_tutorial.ipynb).
 
