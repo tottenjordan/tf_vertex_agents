@@ -24,13 +24,14 @@ from tf_agents.bandits.environments import movielens_py_environment
 from tf_agents.bandits.metrics import tf_metrics as tf_bandit_metrics
 from tf_agents.environments import tf_py_environment
 
-VERSION='v1'
-BUCKET_NAME = f"gs://tf-agents-bandits-{VERSION}"
+# this subdir
+from src.utils import data_config
 
 # Paths and configurations
-DATA_PATH = f"{BUCKET_NAME}/artifacts/u.data"  # Location of the MovieLens 100K dataset's
-ROOT_DIR = f"{BUCKET_NAME}/artifacts"  # FILL IN
-ARTIFACTS_DIR = f"{BUCKET_NAME}/artifacts"  # FILL IN
+VERSION = f"{data_config.PREFIX}"
+DATA_PATH = f"{data_config.DATA_PATH_KFP_DEMO}"
+ROOT_DIR = f"{data_config.ROOT_DIR}"
+ARTIFACTS_DIR = f"{data_config.ARTIFACTS_DIR}"
 
 # Hyperparameters
 BATCH_SIZE = 8
@@ -45,8 +46,11 @@ TIKHONOV_WEIGHT = 0.001
 AGENT_ALPHA = 10.0
 
 # Metric names
-DEFAULT_METRIC_NAMES = frozenset({
-    "NumberOfEpisodes", "AverageReturnMetric", "AverageEpisodeLengthMetric"})
+DEFAULT_METRIC_NAMES = frozenset(
+    {
+        "NumberOfEpisodes", "AverageReturnMetric", "AverageEpisodeLengthMetric"
+    }
+)
 
 
 class TestPolicyUtil(unittest.TestCase):

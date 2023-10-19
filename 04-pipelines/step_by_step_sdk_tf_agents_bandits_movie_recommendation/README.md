@@ -8,7 +8,9 @@ logic using the [TF-Agents](https://www.tensorflow.org/agents) library. We also
 illustrate how to use TensorBoard Profiler to track the training process and
 resources, allowing speed and scalability analysis.
 
-<img src="rl-training.png" alt="RL Training Illustration" width="600"/>
+### RL Training Illustration
+
+![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/rl_training.png)
 
 We use the
 [MovieLens 100K dataset](https://www.kaggle.com/prajitdatta/movielens-100k-dataset)

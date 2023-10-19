@@ -53,7 +53,9 @@ After pipeline construction, we also create:
 
 Here is an illustration of the design:
 
-<img src="mlops-pipeline-design.png" alt="RL MLOps Pipeline Design" width="800"/>
+### RL MLOps Pipeline Design
+
+![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/mlops_pipeline_design.png)
 
 The demo contains a notebook that carries out the full workflow and user
 instructions, and a `src/` directory for Python modules and unit tests.

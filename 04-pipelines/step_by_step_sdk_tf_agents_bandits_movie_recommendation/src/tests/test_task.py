@@ -18,18 +18,32 @@ import os
 import unittest
 from unittest import mock
 
-from src.training import task
+import warnings
+warnings.filterwarnings("ignore")
 
+# this subdir
+from src.training import task
+from src.utils import data_config
 
 # Paths and configurations
-DATA_PATH = "gs://[your-bucket-name]/artifacts/u.data"  # FILL IN
-ROOT_DIR = "gs://[your-bucket-name]/artifacts"  # FILL IN
-ARTIFACTS_DIR = "gs://[your-bucket-name]/artifacts"  # FILL IN
-PROFILER_DIR = "gs://[your-bucket-name]/profiler"  # FILL IN
-HPTUNING_RESULT_DIR = "[your-hptuning-result-dir]/"  # FILL IN
-HPTUNING_RESULT_PATH = os.path.join(HPTUNING_RESULT_DIR,
-                                    "result.json")  # FILL IN
-RAW_BUCKET_NAME = "[your-hptuning-result-bucket-name]"  # FILL IN
+VERSION              = f"{data_config.PREFIX}"
+DATA_PATH            = f"{data_config.DATA_PATH_KFP_DEMO}"
+ROOT_DIR             = f"{data_config.ROOT_DIR}"
+ARTIFACTS_DIR        = f"{data_config.ARTIFACTS_DIR}"
+RAW_BUCKET_NAME      = f"{data_config.BUCKET_NAME}"
+HPTUNING_RESULT_DIR  = f"{data_config.BASE_OUTPUT_DIR}/hptuning"
+HPTUNING_RESULT_PATH = f"{HPTUNING_RESULT_DIR}/result.json"
+LOG_DIR              = f"{data_config.LOG_DIR}"
+
+# TODO - delete
+# DATA_PATH = "gs://[your-bucket-name]/artifacts/u.data"                # FILL IN
+# ROOT_DIR = "gs://[your-bucket-name]/artifacts"                        # FILL IN
+# ARTIFACTS_DIR = "gs://[your-bucket-name]/artifacts"                   # FILL IN
+# PROFILER_DIR = "gs://[your-bucket-name]/profiler"                     # FILL IN
+# HPTUNING_RESULT_DIR = "[your-hptuning-result-dir]/"                     # FILL IN
+# HPTUNING_RESULT_PATH = os.path.join(HPTUNING_RESULT_DIR,"result.json")  # FILL IN
+# RAW_BUCKET_NAME = "[your-hptuning-result-bucket-name]"                  # FILL IN
+
 
 # Hyperparameters
 BATCH_SIZE = 8
@@ -91,7 +105,7 @@ class TestTask(unittest.TestCase):
     raw_args = [
         "--train-with-best-hyperparameters",
         f"--artifacts-dir={ARTIFACTS_DIR}",
-        f"--profiler-dir={PROFILER_DIR}",
+        f"--profiler-dir={LOG_DIR}",
         f"--data-path={DATA_PATH}",
         f"--best-hyperparameters-bucket={RAW_BUCKET_NAME}",
         f"--best-hyperparameters-path={HPTUNING_RESULT_PATH}",
@@ -107,7 +121,7 @@ class TestTask(unittest.TestCase):
         "run_hyperparameter_tuning": False,
         "train_with_best_hyperparameters": True,
         "artifacts_dir": ARTIFACTS_DIR,
-        "profiler_dir": PROFILER_DIR,
+        "profiler_dir": LOG_DIR,
         "data_path": DATA_PATH,
         "best_hyperparameters_bucket": RAW_BUCKET_NAME,
         "best_hyperparameters_path": HPTUNING_RESULT_PATH,
@@ -128,7 +142,7 @@ class TestTask(unittest.TestCase):
     """Complete set of arguments for training without best hyperparameters."""
     raw_args = [
         f"--artifacts-dir={ARTIFACTS_DIR}",
-        f"--profiler-dir={PROFILER_DIR}",
+        f"--profiler-dir={LOG_DIR}",
         f"--data-path={DATA_PATH}",
         f"--batch-size={BATCH_SIZE}",
         f"--training-loops={TRAINING_LOOPS}",
@@ -142,7 +156,7 @@ class TestTask(unittest.TestCase):
         "run_hyperparameter_tuning": False,
         "train_with_best_hyperparameters": False,
         "artifacts_dir": ARTIFACTS_DIR,
-        "profiler_dir": PROFILER_DIR,
+        "profiler_dir": LOG_DIR,
         "data_path": DATA_PATH,
         "best_hyperparameters_bucket": None,
         "best_hyperparameters_path": None,
@@ -195,7 +209,7 @@ class TestTask(unittest.TestCase):
         "run_hyperparameter_tuning": False,
         "train_with_best_hyperparameters": True,
         "artifacts_dir": ARTIFACTS_DIR,
-        "profiler_dir": PROFILER_DIR,
+        "profiler_dir": LOG_DIR,
         "data_path": DATA_PATH,
         "best_hyperparameters_bucket": RAW_BUCKET_NAME,
         "best_hyperparameters_path": HPTUNING_RESULT_PATH,
@@ -228,7 +242,7 @@ class TestTask(unittest.TestCase):
         "run_hyperparameter_tuning": False,
         "train_with_best_hyperparameters": False,
         "artifacts_dir": ARTIFACTS_DIR,
-        "profiler_dir": PROFILER_DIR,
+        "profiler_dir": LOG_DIR,
         "data_path": DATA_PATH,
         "best_hyperparameters_bucket": None,
         "best_hyperparameters_path": None,
@@ -288,7 +302,7 @@ class TestTask(unittest.TestCase):
         "run_hyperparameter_tuning": False,
         "train_with_best_hyperparameters": True,
         "artifacts_dir": ARTIFACTS_DIR,
-        "profiler_dir": PROFILER_DIR,
+        "profiler_dir": LOG_DIR,
         "data_path": DATA_PATH,
         "best_hyperparameters_bucket": RAW_BUCKET_NAME,
         "best_hyperparameters_path": HPTUNING_RESULT_PATH,
@@ -318,7 +332,7 @@ class TestTask(unittest.TestCase):
         "run_hyperparameter_tuning": False,
         "train_with_best_hyperparameters": False,
         "artifacts_dir": ARTIFACTS_DIR,
-        "profiler_dir": PROFILER_DIR,
+        "profiler_dir": LOG_DIR,
         "data_path": DATA_PATH,
         "best_hyperparameters_bucket": None,
         "best_hyperparameters_path": None,

@@ -1,7 +1,6 @@
-
 numpy
 six
-typing-extensions~=4.6.3
+typing-extensions
 pillow
-tf-agents==0.16.0
-tensorflow==2.12.0
+tf-agents==0.17.0
+tensorflow==2.13.0
