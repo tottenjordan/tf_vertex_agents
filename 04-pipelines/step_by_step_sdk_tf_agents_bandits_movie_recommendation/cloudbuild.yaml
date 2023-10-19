@@ -1,8 +1,7 @@
+
 steps:
-- name: 'gcr.io/kaniko-project/executor:latest'
-  args: ['--destination=gcr.io/hybrid-vertex/prediction-custom-container:latest',
-         '--cache=false',
-         '--cache-ttl=99h']
-  env: ['AIP_STORAGE_URI=gs://tf-agents-bandits-v1/artifacts']
-options:
-  machineType: 'E2_HIGHCPU_8'
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', '$_IMAGE_URI', '$_FILE_LOCATION', '-f', '$_FILE_LOCATION/$_DOCKERNAME']
+  env: ['AIP_STORAGE_URI=gs://rec-bandits-v2-hybrid-vertex-bucket/sxs-rl-rec-bandits-v2/run-20231019-041358/artifacts']
+images:
+- '$_IMAGE_URI'

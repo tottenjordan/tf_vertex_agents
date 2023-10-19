@@ -1,0 +1,10 @@
+
+PREFIX             = "rec-bandits-v2"
+BUCKET_NAME        = "rec-bandits-v2-hybrid-vertex-bucket"
+EXPERIMENT_NAME    = "sxs-rl-rec-bandits-v2"
+RUN_NAME           = "run-20231019-041358"
+BASE_OUTPUT_DIR    = "gs://rec-bandits-v2-hybrid-vertex-bucket/sxs-rl-rec-bandits-v2/run-20231019-041358"
+LOG_DIR            = "gs://rec-bandits-v2-hybrid-vertex-bucket/sxs-rl-rec-bandits-v2/run-20231019-041358/logs"
+ROOT_DIR           = "gs://rec-bandits-v2-hybrid-vertex-bucket/sxs-rl-rec-bandits-v2/run-20231019-041358/root"
+ARTIFACTS_DIR      = "gs://rec-bandits-v2-hybrid-vertex-bucket/sxs-rl-rec-bandits-v2/run-20231019-041358/artifacts"
+DATA_PATH_KFP_DEMO = "gs://rec-bandits-v2-hybrid-vertex-bucket/data/kfp_demo_data/u.data"

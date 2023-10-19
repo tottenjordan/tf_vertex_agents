@@ -1,0 +1,27 @@
+
+# Specifies base image and tag.
+# FROM gcr.io/google-appengine/python
+FROM gcr.io/deeplearning-platform-release/tf2-gpu.2-13.py310
+
+ENV PYTHONUNBUFFERED True
+WORKDIR /root
+
+RUN pip install --upgrade pip
+
+RUN pip install cloudml-hypertune==0.1.0.dev6
+RUN pip install google-cloud-storage==1.39.0
+RUN pip install tensorflow==2.13.0
+RUN pip install tensorboard-plugin-profile==2.13.1
+RUN pip install tf-agents==0.17.0
+RUN pip install matplotlib==3.8.0
+RUN pip install urllib3==1.26.6
+
+RUN apt update && apt -y install nvtop
+
+# Copies training code to the Docker image.
+COPY src/training /root/src/training
+
+RUN export PYTHONPATH=${PYTHONPATH}:${APP_HOME}/
+
+# Sets up the entry point to invoke the task.
+ENTRYPOINT ["python3", "-m", "src.training.task"]
