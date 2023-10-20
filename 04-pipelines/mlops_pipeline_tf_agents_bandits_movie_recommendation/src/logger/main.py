@@ -40,10 +40,10 @@ class EnvVars:
     num_actions: A integer of the number of actions (movie items) to choose
       from.
     bigquery_tmp_file: Path to a JSON file containing the training dataset.
-    bigquery_dataset_id: A string of the BigQuery dataset ID as
+    bigquery_dataset_name: A string of the BigQuery dataset ID as
       `project_id.dataset_id`.
     bigquery_location: A string of the BigQuery dataset region.
-    bigquery_table_id: A string of the BigQuery table ID as
+    bigquery_table_name: A string of the BigQuery table ID as
       `project_id.dataset_id.table_id`.
   """
   project_id: str
@@ -52,9 +52,9 @@ class EnvVars:
   rank_k: int
   num_actions: int
   bigquery_tmp_file: str
-  bigquery_dataset_id: str
+  bigquery_dataset_name: str
   bigquery_location: str
-  bigquery_table_id: str
+  bigquery_table_name: str
 
 
 def get_env_vars() -> EnvVars:
@@ -70,9 +70,9 @@ def get_env_vars() -> EnvVars:
       rank_k=int(os.getenv("RANK_K")),
       num_actions=int(os.getenv("NUM_ACTIONS")),
       bigquery_tmp_file=os.getenv("BIGQUERY_TMP_FILE"),
-      bigquery_dataset_id=os.getenv("BIGQUERY_DATASET_ID"),
+      bigquery_dataset_name=os.getenv("BIGQUERY_DATASET_NAME"),
       bigquery_location=os.getenv("BIGQUERY_LOCATION"),
-      bigquery_table_id=os.getenv("BIGQUERY_TABLE_ID"))
+      bigquery_table_name=os.getenv("BIGQUERY_TABLE_NAME"))
 
 
 def replace_observation_in_time_step(
@@ -199,9 +199,10 @@ def write_trajectories_to_file(
 def append_dataset_to_bigquery(
     project_id: str,
     dataset_file: str,
-    bigquery_dataset_id: str,
+    bigquery_dataset_name: str,
     bigquery_location: str,
-    bigquery_table_id: str) -> None:
+    bigquery_table_name: str
+) -> None:
   """Appends training dataset to BigQuery table.
 
   Appends training dataset of `trajectories.Trajectory` in newline delimited
@@ -212,17 +213,21 @@ def append_dataset_to_bigquery(
       BigQuery client will use the ID of the tenant GCP project created as a
       result of KFP, which doesn't have proper access to BigQuery.
     dataset_file: Path to a JSON file containing the training dataset.
-    bigquery_dataset_id: A string of the BigQuery dataset ID in the format of
-      "project.dataset".
+    bigquery_dataset_name: A string of the BigQuery dataset ID in the format of
+      "dataset".
     bigquery_location: A string of the BigQuery dataset location.
-    bigquery_table_id: A string of the BigQuery table ID in the format of
-      "project.dataset.table".
+    bigquery_table_name: A string of the BigQuery table ID in the format of
+      "table".
   """
+  
+  # _bq_dataset_ref = f"{project_id}.{bigquery_dataset_name}"
+  _bq_dataset_ref = f"{bigquery_dataset_name}"
+
   # Construct a BigQuery client object.
   client = bigquery.Client(project=project_id)
 
   # Construct a full Dataset object to send to the API.
-  dataset = bigquery.Dataset(bigquery_dataset_id)
+  dataset = bigquery.Dataset(_bq_dataset_ref)
 
   # Specify the geographic location where the dataset should reside.
   dataset.location = bigquery_location
@@ -253,7 +258,7 @@ def append_dataset_to_bigquery(
 
   with open(dataset_file, "rb") as source_file:
     load_job = client.load_table_from_file(
-        source_file, bigquery_table_id, job_config=job_config)
+        source_file, bigquery_table_name, job_config=job_config)
 
   load_job.result()  # Wait for the job to complete.
 
@@ -295,7 +300,8 @@ def log_prediction_to_bigquery(event: Dict[str, Any], context) -> None:  # pylin
       env_vars.rank_k,
       env_vars.batch_size,
       num_movies=env_vars.num_actions,
-      csv_delimiter="\t")
+      csv_delimiter="\t"
+  )
   environment = tf_py_environment.TFPyEnvironment(env)
 
   # Get environment feedback and write trajectory data.
@@ -303,12 +309,14 @@ def log_prediction_to_bigquery(event: Dict[str, Any], context) -> None:  # pylin
       dataset_file=dataset_file,
       environment=environment,
       observations=observations,
-      predicted_actions=predicted_actions)
+      predicted_actions=predicted_actions
+  )
 
   # Add trajectory data as new training data to BigQuery.
   append_dataset_to_bigquery(
       project_id=env_vars.project_id,
       dataset_file=dataset_file,
-      bigquery_dataset_id=env_vars.bigquery_dataset_id,
+      bigquery_dataset_name=env_vars.bigquery_dataset_name,
       bigquery_location=env_vars.bigquery_location,
-      bigquery_table_id=env_vars.bigquery_table_id)
+      bigquery_table_name=env_vars.bigquery_table_name
+  )

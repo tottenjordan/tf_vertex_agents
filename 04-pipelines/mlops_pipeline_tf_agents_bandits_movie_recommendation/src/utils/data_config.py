@@ -1,5 +1,6 @@
 
 PROJECT_ID          = "hybrid-vertex"
+REGION              = "us-central1"
 PREFIX              = "rec-bandits-v2"
 BUCKET_NAME         = "rec-bandits-v2-hybrid-vertex-bucket"
 EXPERIMENT_NAME     = "mab-pipe-rec-bandits-v2"

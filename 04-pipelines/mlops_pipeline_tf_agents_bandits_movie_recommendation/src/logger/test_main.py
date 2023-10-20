@@ -25,12 +25,14 @@ from google.cloud import bigquery
 import numpy as np
 from src.logger import main
 
+# this subdir
+from src.utils import data_config
+
 
 # Paths and configurations
-PROJECT_ID = "project-id"
-REGION = "region"
-ENDPOINT_ID = "endpoint-id"
-RAW_DATA_PATH = "gs://bucket-name/dataset-dir/u.data"
+PROJECT_ID = f"{data_config.PROJECT_ID}"
+REGION = f"{data_config.REGION}"
+RAW_DATA_PATH = f"{data_config.DATA_PATH_KFP_DEMO}"
 
 # Hyperparameters
 BATCH_SIZE = "8"
@@ -41,9 +43,9 @@ NUM_ACTIONS = "20"
 
 # BigQuery parameters
 BIGQUERY_TMP_FILE = "tmp.json"
-BIGQUERY_DATASET_ID = f"{PROJECT_ID}.movielens_dataset"
-BIGQUERY_LOCATION = "us"
-BIGQUERY_TABLE_ID = f"{BIGQUERY_DATASET_ID}.training_dataset"
+BIGQUERY_DATASET_NAME = f"{data_config.BIGQUERY_DATASET_NAME}"
+BIGQUERY_LOCATION = f"{data_config.BQ_LOCATION}"
+BIGQUERY_TABLE_NAME = f"{data_config.BIGQUERY_TABLE_NAME}"
 DATASET_FILE = os.path.join(tempfile.gettempdir(), BIGQUERY_TMP_FILE)
 
 # Logger environment variables
@@ -54,9 +56,9 @@ ENV_VARS = {
     "RANK_K": RANK_K,
     "NUM_ACTIONS": NUM_ACTIONS,
     "BIGQUERY_TMP_FILE": BIGQUERY_TMP_FILE,
-    "BIGQUERY_DATASET_ID": BIGQUERY_DATASET_ID,
+    "BIGQUERY_DATASET_NAME": BIGQUERY_DATASET_NAME,
     "BIGQUERY_LOCATION": BIGQUERY_LOCATION,
-    "BIGQUERY_TABLE_ID": BIGQUERY_TABLE_ID,
+    "BIGQUERY_TABLE_NAME": BIGQUERY_TABLE_NAME,
 }
 
 OBSERVATION = np.zeros((int(BATCH_SIZE), int(RANK_K))).tolist()
@@ -142,7 +144,8 @@ class TestLogger(unittest.TestCase):
         "src.logger.main.write_trajectories_to_file")
     mock_write_trajectories = patcher_write_trajectories.start()
     patcher_append_dataset = mock.patch(
-        "src.logger.main.append_dataset_to_bigquery")
+        "src.logger.main.append_dataset_to_bigquery"
+    )
     mock_append_dataset = patcher_append_dataset.start()
 
     main.log_prediction_to_bigquery(EVENT, None)
@@ -162,9 +165,10 @@ class TestLogger(unittest.TestCase):
     mock_append_dataset.assert_called_once_with(
         project_id=PROJECT_ID,
         dataset_file=DATASET_FILE,
-        bigquery_dataset_id=BIGQUERY_DATASET_ID,
+        bigquery_dataset_name=BIGQUERY_DATASET_NAME,
         bigquery_location=BIGQUERY_LOCATION,
-        bigquery_table_id=BIGQUERY_TABLE_ID)
+        bigquery_table_name=BIGQUERY_TABLE_NAME
+    )
 
     patcher_write_trajectories.stop()
     patcher_append_dataset.stop()
@@ -295,23 +299,24 @@ class TestLogger(unittest.TestCase):
     main.append_dataset_to_bigquery(
         project_id=PROJECT_ID,
         dataset_file=self.bigquery_tmp_file,
-        bigquery_dataset_id=BIGQUERY_DATASET_ID,
+        bigquery_dataset_name=BIGQUERY_DATASET_NAME,
         bigquery_location=BIGQUERY_LOCATION,
-        bigquery_table_id=BIGQUERY_TABLE_ID)
+        bigquery_table_name=BIGQUERY_TABLE_NAME
+    )
 
     self.mock_client.assert_called_once_with(project=PROJECT_ID)
-    self.mock_dataset.assert_called_once_with(BIGQUERY_DATASET_ID)
+    self.mock_dataset.assert_called_once_with(BIGQUERY_DATASET_NAME)
     args, _ = self.mock_client.return_value.load_table_from_file.call_args
-    self.assertEqual(args[1], BIGQUERY_TABLE_ID)
+    self.assertEqual(args[1], BIGQUERY_TABLE_NAME)
 
   def test_append_to_dataset_to_bigquery_do_not_overwrite(self):
     """Tests `append_dataset_to_bigquery` indeed appends to the dataset."""
     main.append_dataset_to_bigquery(
         project_id=PROJECT_ID,
         dataset_file=self.bigquery_tmp_file,
-        bigquery_dataset_id=BIGQUERY_DATASET_ID,
+        bigquery_dataset_name=BIGQUERY_DATASET_NAME,
         bigquery_location=BIGQUERY_LOCATION,
-        bigquery_table_id=BIGQUERY_TABLE_ID)
+        bigquery_table_name=BIGQUERY_TABLE_NAME)
 
     _, kwargs = self.mock_load_job_config.call_args
     self.assertEqual(kwargs["write_disposition"],
@@ -322,9 +327,9 @@ class TestLogger(unittest.TestCase):
     main.append_dataset_to_bigquery(
         project_id=PROJECT_ID,
         dataset_file=self.bigquery_tmp_file,
-        bigquery_dataset_id=BIGQUERY_DATASET_ID,
+        bigquery_dataset_name=BIGQUERY_DATASET_NAME,
         bigquery_location=BIGQUERY_LOCATION,
-        bigquery_table_id=BIGQUERY_TABLE_ID)
+        bigquery_table_name=BIGQUERY_TABLE_NAME)
 
     _, kwargs = self.mock_load_job_config.call_args
     self.assertEqual(len(kwargs["schema"]), NUM_TRAJECTORY_ELEMENTS)

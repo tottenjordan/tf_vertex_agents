@@ -135,7 +135,8 @@ def _predict(
       project_id=os.environ["PROJECT_ID"],
       logger_pubsub_topic=os.environ["LOGGER_PUBSUB_TOPIC"],
       observations=instances,
-      predicted_actions=predicted_actions)
+      predicted_actions=predicted_actions
+  )
   return {"predictions": predictions}
 
 
