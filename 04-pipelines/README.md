@@ -11,10 +11,6 @@
 
 *Both workstreams contains a notebook that carries out the full workflow and user instructions, and a `src/` directory for Python modules and unit tests*
 
-## End-to-end MLOps pipeline for RL-specific implementations
-
-> **TODO**
-
 ## [1] Step-by-Step RL for RecSys
 
 > **TODO**
