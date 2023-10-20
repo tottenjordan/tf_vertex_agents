@@ -8,12 +8,12 @@ This repo is organized across several notebooks. Complete the first two notebook
 
 Below are the high-level objectives of each notebook or set of examples. *See READMEs in each subdirectory for more details*
 
-* [00-env-setup.ipynb](00-env-setup.ipynb) - create variables names and env config to run across notebooks. (easier tracking across notebooks, especially if multiple users run these in the same GCP project)
-* [01-movielens-data-prep.ipynb](01-movielens-data-prep.ipynb) - prepare standard movielens dataset, and a listwise version for ranking
-* [01-baseline-perarm-bandit/](01-baseline-perarm-bandit/) - implement a custom (but simple) `environment` for training a multi-armed bandit policy
-* [02-perarm-features-bandit/](02-perarm-features-bandit/) - train contextual bandits with per-arm features
-* [03-ranking/](03-ranking/) - training contextual bandits for ranking problems
-* [04-pipelines/](04-pipelines/) - mlops pipeline for multi-armed bandit
+* [00-env-setup.ipynb](00-env-setup.ipynb) - establish naming conventions and env config for repo
+* [01-movielens-data-prep.ipynb](01-movielens-data-prep.ipynb) - prepare movielens datasets to model retreival and ranking use cases
+* [01-baseline-perarm-bandit/](01-baseline-perarm-bandit/) - implement custom `environment` for training multi-armed bandits
+* [02-perarm-features-bandit/](02-perarm-features-bandit/) - train contextual bandits with *per-arm* features
+* [03-ranking/](03-ranking/) - train contextual bandits for ranking problems
+* [04-pipelines/](04-pipelines/) - implement e2e mlops pipelines for multi-armed bandits
 
 
 ## TF-Agents concepts to understand
