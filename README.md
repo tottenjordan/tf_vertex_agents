@@ -29,6 +29,19 @@ As in other RL domains, the goal of a MAB agent is to find a *policy* that colle
 
 See the [tf_agents/bandits](https://github.com/tensorflow/agents/blob/master/tf_agents/bandits) repository for ready-to-use bandit environments, policies, and agents 
 
+### Training data
+
+> **TODO**
+
+We use the
+[MovieLens 100K dataset](https://www.kaggle.com/prajitdatta/movielens-100k-dataset)
+to build a simulation environment that frames the recommendation problem:
+
+1.  User vectors are the environment observations;
+2.  Movie items to recommend are the agent actions applied on the environment;
+3.  Approximate user ratings are the environment rewards generated as feedback
+    to the observations and actions.
+
 
 ### Environments
 In TF-Agents, the environment class serves the role of giving information on the current state (this is called **observation** or **context**), receiving an action as input, performing a state transition, and outputting a reward. This class also takes care of resetting when an episode ends, so that a new episode can start. This is realized by calling a `reset` function when a state is labelled as "last" of the episode. For more details, see the [TF-Agents environments tutorial](https://github.com/tensorflow/agents/blob/master/docs/tutorials/2_environments_tutorial.ipynb).

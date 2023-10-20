@@ -13,13 +13,28 @@ library.
 
 This notebook illustrates how to orchestrate all the steps covered in the step-by-step demo, and
 
-#### (1) Creating and testing RL-specific pipeline components
-* Create the `Generator` to generate MovieLens simulation data
-* Create the `Ingester` to ingest data
-* Create the `Trainer` to train the RL policy
-* Create the `Deployer` to deploy the trained policy to a Vertex AI endpoint
+## (1) Creating and testing RL-specific pipeline components
 
-#### (2) Compiling a train-deploy pipeline that allows for continuous training
+* Create the `Generator` component 
+  * Generates initial set of training data using a [MovieLens](https://www.kaggle.com/prajitdatta/movielens-100k-dataset) simulation [environment](https://github.com/tensorflow/agents/blob/master/tf_agents/bandits/environments/movielens_py_environment.py) and a random data-collecting policy
+  * Store generated training *trajectories* in BigQuery
+  * **steps:** raw dataset → environment → random policy generating (random) sets of training data samples 
+
+* Create the `Ingester` component
+  * Ingests data from BigQuery, packages them as `tf.train.Example` objects, and writes them to TFRecords
+  * **steps:** BigQuery → `tf.train.example` → TFRecord
+
+* Create the `Trainer` component
+  * Trains RL policy with sumlated training data
+  * Off-policy training, where policy is trained on static set of pre-collected data; includes observation, action, and reward
+  * Implements the [LinUCB agent](https://www.tensorflow.org/agents/api_docs/python/tf_agents/bandits/agents/lin_ucb_agent/LinearUCBAgent) and saves the trained policy as a `SavedModel`
+
+* Create the `Deployer` component
+  * Deploys trained policy to a Vertex AI endpoint
+  * Uses Custom Prediction container for Vertex Ai Prediciton
+  * **steps:** upload trained policy → create Vertex AI endpoint → deploy trained policy to Verted AI Endpoint
+
+## (2) Compiling a train-deploy pipeline that allows for continuous training
 
 In practice, there are times we don't have sufficient training data that represents our real-world problem (e.g., initial Agent deployments, new use cases, changing label definitions, new training data filters, etc.). A common way to address this is to begin training an agent with data sampled from a simulation `environment`. Then, over time, as we log interactions and their rewards, we may choose to generate training data from these without implementing an `environmnet`.
 
@@ -27,25 +42,9 @@ The pipeline runs produced in this example demonstrate how we may account for bo
 
 > *Note: this is just one set of possibilities for the sake of demonstrating MLOps concepts. Look for further discussion and details re: *environments* in `learning/`*
 
-Here is an example run for the initial pipeline:
+### Example run for the initial training pipeline with environment simulation
 
 ![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/mab_mlops_pipe.png)
-
-### Highlights of this end-to-end pipeline:
-
--   RL-specific implementation for training and prediction
--   Simulation for initial training data, prediction requests and re-training
--   Closing of the feedback loop from prediction results back to training
--   Customizable, reusable and shareable KFP components
-
-We use the
-[MovieLens 100K dataset](https://www.kaggle.com/prajitdatta/movielens-100k-dataset)
-to build a simulation environment that frames the recommendation problem:
-
-1.  User vectors are the environment observations;
-2.  Movie items to recommend are the agent actions applied on the environment;
-3.  Approximate user ratings are the environment rewards generated as feedback
-    to the observations and actions.
 
 For custom training, we implement off-policy training, using a static set of
 pre-collected data records. "Off-policy" refers to the situation where for a
@@ -60,20 +59,23 @@ once):
 -   Trainer to train the RL policy
 -   Deployer to deploy the trained policy to a Vertex AI endpoint
 
-The re-training pipeline (executed recurrently) includes the Ingester, Trainer
+### Example run for the continuous training pipeline:
+
+![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/retraining_pipeline_overview.png)
+
+The continuous / re-training pipeline (executed recurrently) includes the Ingester, Trainer
 and Deployer, as it does not need initial training data from the Generator.
 
 After pipeline construction, we also create:
 
--   Simulator (which utilizes Cloud Functions, Cloud Scheduler and Pub/Sub) to
+-   `Simulator` (which utilizes Cloud Functions, Cloud Scheduler and Pub/Sub) to
     send simulated MovieLens prediction requests
--   Logger to asynchronously log prediction inputs and results (which utilizes
+-   `Logger` to asynchronously log prediction inputs and results (which utilizes
     Cloud Functions, Pub/Sub and a hook in the prediction code)
--   Trigger to trigger recurrent re-training.
+-   `Trigger` to trigger recurrent re-training.
 
-Here is an illustration of the design:
 
-### RL MLOps Pipeline Design
+## Conceptual: RL MLOps Pipeline Design
 
 ![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/mlops_pipeline_design.png)
 
