@@ -1,0 +1,894 @@
+{
+  "components": {
+    "comp-endpoint-create": {
+      "executorLabel": "exec-endpoint-create",
+      "inputDefinitions": {
+        "parameters": {
+          "description": {
+            "defaultValue": "",
+            "description": "The description of the Endpoint.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "display_name": {
+            "description": "The user-defined name of the Endpoint. The name can be up to 128 characters long and can be consist of any UTF-8 characters.",
+            "parameterType": "STRING"
+          },
+          "encryption_spec_key_name": {
+            "defaultValue": "",
+            "description": "Customer-managed encryption key spec for an Endpoint. If set, this Endpoint and all of this Endoint's sub-resources will be secured by this key. Has the form: `projects/my-project/locations/my-location/keyRings/my-kr/cryptoKeys/my-key`. The key needs to be in the same region as where the compute resource is created.  If set, this Endpoint and all sub-resources of this Endpoint will be secured by this key.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "labels": {
+            "defaultValue": {},
+            "description": "The labels with user-defined metadata to organize your Endpoints.  Label keys and values can be no longer than 64 characters (Unicode codepoints), can only contain lowercase letters, numeric characters, underscores and dashes. International characters are allowed.  See https://goo.gl/xmQnxf for more information and examples of labels.",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          },
+          "location": {
+            "defaultValue": "us-central1",
+            "description": "Location to create the Endpoint. If not set, default to us-central1.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "network": {
+            "defaultValue": "",
+            "description": "The full name of the Google Compute Engine network to which the Endpoint should be peered. Private services access must already be configured for the network. If left unspecified, the Endpoint is not peered with any network. [Format](https://cloud.google.com/compute/docs/reference/rest/v1/networks/insert): `projects/{project}/global/networks/{network}`. Where `{project}` is a project number, as in `'12345'`, and `{network}` is network name.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "project": {
+            "defaultValue": "{{$.pipeline_google_cloud_project_id}}",
+            "description": "Project to create the Endpoint. Defaults to the project in which the PipelineJob is run.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "endpoint": {
+            "artifactType": {
+              "schemaTitle": "google.VertexEndpoint",
+              "schemaVersion": "0.0.1"
+            },
+            "description": "Artifact tracking the created Endpoint."
+          }
+        },
+        "parameters": {
+          "gcp_resources": {
+            "description": "Serialized JSON of `gcp_resources` [proto](https://github.com/kubeflow/pipelines/tree/master/components/google-cloud/google_cloud_pipeline_components/proto) which tracks the create Endpoint's long-running operation.",
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-importer": {
+      "executorLabel": "exec-importer",
+      "inputDefinitions": {
+        "parameters": {
+          "uri": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "artifact": {
+            "artifactType": {
+              "schemaTitle": "google.UnmanagedContainerModel",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    },
+    "comp-ingest-bigquery-dataset-into-tfrecord": {
+      "executorLabel": "exec-ingest-bigquery-dataset-into-tfrecord",
+      "inputDefinitions": {
+        "parameters": {
+          "bigquery_dataset_name": {
+            "parameterType": "STRING"
+          },
+          "bigquery_max_rows": {
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "bigquery_table_name": {
+            "parameterType": "STRING"
+          },
+          "project_id": {
+            "parameterType": "STRING"
+          },
+          "tfrecord_file": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "tfrecord_file": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-model-deploy": {
+      "executorLabel": "exec-model-deploy",
+      "inputDefinitions": {
+        "artifacts": {
+          "endpoint": {
+            "artifactType": {
+              "schemaTitle": "google.VertexEndpoint",
+              "schemaVersion": "0.0.1"
+            },
+            "description": "The Endpoint to be deployed to.",
+            "isOptional": true
+          },
+          "model": {
+            "artifactType": {
+              "schemaTitle": "google.VertexModel",
+              "schemaVersion": "0.0.1"
+            },
+            "description": "The model to be deployed."
+          }
+        },
+        "parameters": {
+          "automatic_resources_max_replica_count": {
+            "defaultValue": 0.0,
+            "description": "The maximum number of replicas this DeployedModel may be deployed on when the traffic against it increases. If the requested value is too large, the deployment will error, but if deployment succeeds then the ability to scale the model to that many replicas is guaranteed (barring service outages). If traffic against the DeployedModel increases beyond what its replicas at maximum may handle, a portion of the traffic will be dropped. If this value is not provided, a no upper bound for scaling under heavy traffic will be assume, though Vertex AI may be unable to scale beyond certain replica number.",
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "automatic_resources_min_replica_count": {
+            "defaultValue": 0.0,
+            "description": "The minimum number of replicas this DeployedModel will be always deployed on. If traffic against it increases, it may dynamically be deployed onto more replicas up to `automatic_resources_max_replica_count`, and as traffic decreases, some of these extra replicas may be freed. If the requested value is too large, the deployment will error.  This field is required if `dedicated_resources_machine_type` is not specified.",
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "dedicated_resources_accelerator_count": {
+            "defaultValue": 0.0,
+            "description": "The number of accelerators to attach to a worker replica.",
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "dedicated_resources_accelerator_type": {
+            "defaultValue": "",
+            "description": "Hardware accelerator type. Must also set accelerator_count if used. See [available options](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/MachineSpec#AcceleratorType).  This field is required if `dedicated_resources_machine_type` is specified.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "dedicated_resources_machine_type": {
+            "defaultValue": "",
+            "description": "The specification of a single machine used by the prediction.  This field is required if `automatic_resources_min_replica_count` is not specified.  See [more information](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.endpoints#dedicatedresources).",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "dedicated_resources_max_replica_count": {
+            "defaultValue": 0.0,
+            "description": "The maximum number of replicas this deployed model may the larger value of min_replica_count or 1 will be used. If value provided is smaller than min_replica_count, it will automatically be increased to be min_replica_count. The maximum number of replicas this deployed model may be deployed on when the traffic against it increases. If requested value is too large, the deployment will error, but if deployment succeeds then the ability to scale the model to that many replicas is guaranteed (barring service outages). If traffic against the deployed model increases beyond what its replicas at maximum may handle, a portion of the traffic will be dropped. If this value is not provided, will use `dedicated_resources_min_replica_count` as the default value.",
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "dedicated_resources_min_replica_count": {
+            "defaultValue": 0.0,
+            "description": "The minimum number of machine replicas this DeployedModel will be always deployed on. This value must be greater than or equal to 1. If traffic against the DeployedModel increases, it may dynamically be deployed onto more replicas, and as traffic decreases, some of these extra replicas may be freed.",
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "deployed_model_display_name": {
+            "defaultValue": "",
+            "description": "The display name of the DeployedModel. If not provided upon creation, the Model's display_name is used.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "disable_container_logging": {
+            "defaultValue": false,
+            "description": "For custom-trained Models and AutoML Tabular Models, the container of the DeployedModel instances will send stderr and stdout streams to Stackdriver Logging by default. Please note that the logs incur cost, which are subject to Cloud Logging pricing.  User can disable container logging by setting this flag to true.",
+            "isOptional": true,
+            "parameterType": "BOOLEAN"
+          },
+          "enable_access_logging": {
+            "defaultValue": false,
+            "description": "These logs are like standard server access logs, containing information like timestamp and latency for each prediction request.  Note that Stackdriver logs may incur a cost, especially if your project receives prediction requests at a high queries per second rate (QPS). Estimate your costs before enabling this option.",
+            "isOptional": true,
+            "parameterType": "BOOLEAN"
+          },
+          "explanation_metadata": {
+            "defaultValue": {},
+            "description": "Metadata describing the Model's input and output for explanation. See [more information](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/ExplanationSpec#explanationmetadata).",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          },
+          "explanation_parameters": {
+            "defaultValue": {},
+            "description": "Parameters that configure explaining information of the Model's predictions. See [more information](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/ExplanationSpec#explanationmetadata).",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          },
+          "service_account": {
+            "defaultValue": "",
+            "description": "The service account that the DeployedModel's container runs as. Specify the email address of the service account. If this service account is not specified, the container runs as a service account that doesn't have access to the resource project.  Users deploying the Model must have the `iam.serviceAccounts.actAs` permission on this service account.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "traffic_split": {
+            "defaultValue": {},
+            "description": "A map from a DeployedModel's ID to the percentage of this Endpoint's traffic that should be forwarded to that DeployedModel.  If this field is non-empty, then the Endpoint's trafficSplit will be overwritten with it. To refer to the ID of the just being deployed Model, a \"0\" should be used, and the actual ID of the new DeployedModel will be filled in its place by this method. The traffic percentage values must add up to 100.  If this field is empty, then the Endpoint's trafficSplit is not updated.",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "gcp_resources": {
+            "description": "Serialized JSON of `gcp_resources` [proto](https://github.com/kubeflow/pipelines/tree/master/components/google-cloud/google_cloud_pipeline_components/proto) which tracks the deploy Model's long-running operation.",
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-model-upload": {
+      "executorLabel": "exec-model-upload",
+      "inputDefinitions": {
+        "artifacts": {
+          "parent_model": {
+            "artifactType": {
+              "schemaTitle": "google.VertexModel",
+              "schemaVersion": "0.0.1"
+            },
+            "description": "An artifact of a model which to upload a new version to. Only specify this field when uploading a new version. [More information.](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.models/upload#request-body)",
+            "isOptional": true
+          },
+          "unmanaged_container_model": {
+            "artifactType": {
+              "schemaTitle": "google.UnmanagedContainerModel",
+              "schemaVersion": "0.0.1"
+            },
+            "description": "The unmanaged container model to be uploaded.  The Model can be passed from an upstream step or imported via a KFP `dsl.importer`. Example:\nfrom kfp import dsl\nfrom google_cloud_pipeline_components.types import artifact_types\n\nimporter_spec = dsl.importer( artifact_uri='gs://managed-pipeline-gcpc-e2e-test/automl-tabular/model', artifact_class=artifact_types.UnmanagedContainerModel, metadata={ 'containerSpec': { 'imageUri': 'us-docker.pkg.dev/vertex-ai/automl-tabular/prediction-server:prod' } })",
+            "isOptional": true
+          }
+        },
+        "parameters": {
+          "description": {
+            "defaultValue": "",
+            "description": "The description of the Model. [More information.](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.models#Model)",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "display_name": {
+            "description": "The display name of the Model. The name can be up to 128 characters long and can be consist of any UTF-8 characters. [More information.](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.models#Model)",
+            "parameterType": "STRING"
+          },
+          "encryption_spec_key_name": {
+            "defaultValue": "",
+            "description": "Customer-managed encryption key spec for a Model. If set, this Model and all sub-resources of this Model will be secured by this key.  Has the form: `projects/my-project/locations/my-location/keyRings/my-kr/cryptoKeys/my-key`. The key needs to be in the same region as where the compute resource is created.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "explanation_metadata": {
+            "defaultValue": {},
+            "description": "Metadata describing the Model's input and output for explanation. Both `explanation_metadata` and `explanation_parameters` must be passed together when used. [More information.](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/ExplanationSpec#explanationmetadata)",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          },
+          "explanation_parameters": {
+            "defaultValue": {},
+            "description": "Parameters to configure explaining for Model's predictions.  [More information.](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/ExplanationSpec#ExplanationParameters)",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          },
+          "labels": {
+            "defaultValue": {},
+            "description": "The labels with user-defined metadata to organize your model.  Label keys and values can be no longer than 64 characters (Unicode codepoints), can only contain lowercase letters, numeric characters, underscores and dashes. International characters are allowed.  See https://goo.gl/xmQnxf for more information and examples of labels.",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          },
+          "location": {
+            "defaultValue": "us-central1",
+            "description": "Optional location to upload this Model to. If not set, defaults to `us-central1`.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "project": {
+            "defaultValue": "{{$.pipeline_google_cloud_project_id}}",
+            "description": "Project to upload this Model to. Defaults to the project in which the PipelineJob is run.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "model": {
+            "artifactType": {
+              "schemaTitle": "google.VertexModel",
+              "schemaVersion": "0.0.1"
+            },
+            "description": "Artifact tracking the created Model version."
+          }
+        },
+        "parameters": {
+          "gcp_resources": {
+            "description": "Serialized JSON of `gcp_resources` [proto](https://github.com/kubeflow/pipelines/tree/master/components/google-cloud/google_cloud_pipeline_components/proto) which tracks the upload Model's long-running operation.",
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-train-reinforcement-learning-policy": {
+      "executorLabel": "exec-train-reinforcement-learning-policy",
+      "inputDefinitions": {
+        "parameters": {
+          "agent_alpha": {
+            "parameterType": "NUMBER_DOUBLE"
+          },
+          "base_output_directory": {
+            "defaultValue": "gs://rec-bandits-v2-hybrid-vertex-bucket/mab-pipe-rec-bandits-v2/run-20231019-184119",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "display_name": {
+            "defaultValue": "mab-training-job",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "enable_web_access": {
+            "defaultValue": true,
+            "isOptional": true,
+            "parameterType": "BOOLEAN"
+          },
+          "encryption_spec_key_name": {
+            "defaultValue": "",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "labels": {
+            "defaultValue": {},
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          },
+          "location": {
+            "defaultValue": "us-central1",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "network": {
+            "defaultValue": "",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "num_actions": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "num_epochs": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "project": {
+            "defaultValue": "{{$.pipeline_google_cloud_project_id}}",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "rank_k": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "reserved_ip_ranges": {
+            "defaultValue": [],
+            "isOptional": true,
+            "parameterType": "LIST"
+          },
+          "restart_job_on_worker_restart": {
+            "defaultValue": false,
+            "isOptional": true,
+            "parameterType": "BOOLEAN"
+          },
+          "service_account": {
+            "defaultValue": "934903580331-compute@developer.gserviceaccount.com",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "tensorboard": {
+            "defaultValue": "projects/934903580331/locations/us-central1/tensorboards/3188552934224822272",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "tfrecord_file": {
+            "parameterType": "STRING"
+          },
+          "tikhonov_weight": {
+            "parameterType": "NUMBER_DOUBLE"
+          },
+          "timeout": {
+            "defaultValue": "604800s",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "training_artifacts_dir": {
+            "parameterType": "STRING"
+          },
+          "worker_pool_specs": {
+            "defaultValue": [
+              {
+                "container_spec": {
+                  "args": [
+                    "--executor_input",
+                    "{{$.json_escape[1]}}",
+                    "--function_to_execute",
+                    "train_reinforcement_learning_policy"
+                  ],
+                  "command": [
+                    "sh",
+                    "-c",
+                    "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.3.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'tensorflow==2.13.0' 'tf-agents==0.17.0' && \"$0\" \"$@\"\n",
+                    "sh",
+                    "-ec",
+                    "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+                    "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef train_reinforcement_learning_policy(\n    training_artifacts_dir: str,\n    tfrecord_file: str,\n    num_epochs: int,\n    rank_k: int,\n    num_actions: int,\n    tikhonov_weight: float,\n    agent_alpha: float\n) -> NamedTuple(\"Outputs\", [\n    (\"training_artifacts_dir\", str),\n]):\n  \"\"\"Implements off-policy training for a policy on dataset of TFRecord files.\n\n  The Trainer's task is to submit a remote training job to Vertex AI, with the\n  training logic of a specified custom training container. The task will be\n  handled by: `kfp.v2.google.experimental.run_as_aiplatform_custom_job` (which\n  takes in the component made from this placeholder function)\n\n  This function is to be built into a Kubeflow Pipelines (KFP) component. As a\n  result, this function must be entirely self-contained. This means that the\n  import statements and helper functions must reside within itself.\n\n  Args:\n    training_artifacts_dir: Path to store the Trainer artifacts (trained\n      policy).\n    tfrecord_file: Path to file to write the ingestion result TFRecords.\n    num_epochs: Number of training epochs.\n    rank_k: Rank for matrix factorization in the MovieLens environment; also\n      the observation dimension.\n    num_actions: Number of actions (movie items) to choose from.\n    tikhonov_weight: LinUCB Tikhonov regularization weight of the Trainer.\n    agent_alpha: LinUCB exploration parameter that multiplies the confidence\n      intervals of the Trainer.\n\n  Returns:\n    A NamedTuple of (`training_artifacts_dir`).\n  \"\"\"\n  # pylint: disable=g-import-not-at-top\n  import collections\n  from typing import Dict, List, NamedTuple  # pylint: disable=redefined-outer-name,reimported\n\n  import tensorflow as tf\n\n  from tf_agents import agents\n  from tf_agents import policies\n  from tf_agents import trajectories\n  from tf_agents.bandits.agents import lin_ucb_agent\n  from tf_agents.policies import policy_saver\n  from tf_agents.specs import tensor_spec\n\n  import logging\n\n  per_arm = False  # Using the non-per-arm version of the MovieLens environment.\n\n  # Mapping from feature name to serialized value\n  feature_description = {\n      \"step_type\": tf.io.FixedLenFeature((), tf.string),\n      \"observation\": tf.io.FixedLenFeature((), tf.string),\n      \"action\": tf.io.FixedLenFeature((), tf.string),\n      \"policy_info\": tf.io.FixedLenFeature((), tf.string),\n      \"next_step_type\": tf.io.FixedLenFeature((), tf.string),\n      \"reward\": tf.io.FixedLenFeature((), tf.string),\n      \"discount\": tf.io.FixedLenFeature((), tf.string),\n  }\n\n  def _parse_record(raw_record: tf.Tensor) -> Dict[str, tf.Tensor]:\n    \"\"\"Parses a serialized `tf.train.Example` proto.\n\n    Args:\n      raw_record: A serialized data record of a `tf.train.Example` proto.\n\n    Returns:\n      A dict mapping feature names to values as `tf.Tensor` objects of type\n      string containing serialized protos, following `feature_description`.\n    \"\"\"\n    return tf.io.parse_single_example(raw_record, feature_description)\n\n  def build_trajectory(\n      parsed_record: Dict[str, tf.Tensor],\n      policy_info: policies.utils.PolicyInfo) -> trajectories.Trajectory:\n    \"\"\"Builds a `trajectories.Trajectory` object from `parsed_record`.\n\n    Args:\n      parsed_record: A dict mapping feature names to values as `tf.Tensor`\n        objects of type string containing serialized protos.\n      policy_info: Policy information specification.\n\n    Returns:\n      A `trajectories.Trajectory` object that contains values as de-serialized\n      `tf.Tensor` objects from `parsed_record`.\n    \"\"\"\n    return trajectories.Trajectory(\n        step_type=tf.expand_dims(\n            tf.io.parse_tensor(parsed_record[\"step_type\"], out_type=tf.int32),\n            axis=1),\n        observation=tf.expand_dims(\n            tf.io.parse_tensor(\n                parsed_record[\"observation\"], out_type=tf.float32),\n            axis=1),\n        action=tf.expand_dims(\n            tf.io.parse_tensor(parsed_record[\"action\"], out_type=tf.int32),\n            axis=1),\n        policy_info=policy_info,\n        next_step_type=tf.expand_dims(\n            tf.io.parse_tensor(\n                parsed_record[\"next_step_type\"], out_type=tf.int32),\n            axis=1),\n        reward=tf.expand_dims(\n            tf.io.parse_tensor(parsed_record[\"reward\"], out_type=tf.float32),\n            axis=1),\n        discount=tf.expand_dims(\n            tf.io.parse_tensor(parsed_record[\"discount\"], out_type=tf.float32),\n            axis=1))\n\n  def train_policy_on_trajectory(\n      agent: agents.TFAgent,\n      tfrecord_file: str,\n      num_epochs: int\n  ) -> NamedTuple(\"TrainOutputs\", [\n      (\"policy\", policies.TFPolicy),\n      (\"train_loss\", Dict[str, List[float]]),\n  ]):\n    \"\"\"Trains the policy in `agent` on the dataset of `tfrecord_file`.\n\n    Parses `tfrecord_file` as `tf.train.Example` objects, packages them into\n    `trajectories.Trajectory` objects, and trains the agent's policy on these\n    trajectory objects.\n\n    Args:\n      agent: A TF-Agents agent that carries the policy to train.\n      tfrecord_file: Path to the TFRecord file containing the training dataset.\n      num_epochs: Number of epochs to train the policy.\n\n    Returns:\n      A NamedTuple of (a trained TF-Agents policy, a dict mapping from\n      \"epoch<i>\" to lists of loss values produced at each training step).\n    \"\"\"\n    raw_dataset = tf.data.TFRecordDataset([tfrecord_file])\n    parsed_dataset = raw_dataset.map(_parse_record)\n\n    train_loss = collections.defaultdict(list)\n    for epoch in range(num_epochs):\n      for parsed_record in parsed_dataset:\n        trajectory = build_trajectory(parsed_record, agent.policy.info_spec)\n        loss, _ = agent.train(trajectory)\n        train_loss[f\"epoch{epoch + 1}\"].append(loss.numpy())\n\n    train_outputs = collections.namedtuple(\n        \"TrainOutputs\",\n        [\"policy\", \"train_loss\"])\n    return train_outputs(agent.policy, train_loss)\n\n  def execute_training_and_save_policy(\n      training_artifacts_dir: str,\n      tfrecord_file: str,\n      num_epochs: int,\n      rank_k: int,\n      num_actions: int,\n      tikhonov_weight: float,\n      agent_alpha: float) -> None:\n    \"\"\"Executes training for the policy and saves the policy.\n\n    Args:\n      training_artifacts_dir: Path to store the Trainer artifacts (trained\n        policy).\n      tfrecord_file: Path to file to write the ingestion result TFRecords.\n      num_epochs: Number of training epochs.\n      rank_k: Rank for matrix factorization in the MovieLens environment; also\n        the observation dimension.\n      num_actions: Number of actions (movie items) to choose from.\n      tikhonov_weight: LinUCB Tikhonov regularization weight of the Trainer.\n      agent_alpha: LinUCB exploration parameter that multiplies the confidence\n        intervals of the Trainer.\n    \"\"\"\n    # Define time step and action specs for one batch.\n    time_step_spec = trajectories.TimeStep(\n        step_type=tensor_spec.TensorSpec(\n            shape=(), dtype=tf.int32, name=\"step_type\"),\n        reward=tensor_spec.TensorSpec(\n            shape=(), dtype=tf.float32, name=\"reward\"),\n        discount=tensor_spec.BoundedTensorSpec(\n            shape=(), dtype=tf.float32, name=\"discount\", minimum=0.,\n            maximum=1.),\n        observation=tensor_spec.TensorSpec(\n            shape=(rank_k,), dtype=tf.float32,\n            name=\"observation\"))\n\n    action_spec = tensor_spec.BoundedTensorSpec(\n        shape=(),\n        dtype=tf.int32,\n        name=\"action\",\n        minimum=0,\n        maximum=num_actions - 1)\n\n    # Define RL agent/algorithm.\n    agent = lin_ucb_agent.LinearUCBAgent(\n        time_step_spec=time_step_spec,\n        action_spec=action_spec,\n        tikhonov_weight=tikhonov_weight,\n        alpha=agent_alpha,\n        dtype=tf.float32,\n        accepts_per_arm_features=per_arm)\n    agent.initialize()\n    logging.info(\"TimeStep Spec (for each batch):\\n%s\\n\", agent.time_step_spec)\n    logging.info(\"Action Spec (for each batch):\\n%s\\n\", agent.action_spec)\n\n    # Perform off-policy training.\n    policy, _ = train_policy_on_trajectory(\n        agent=agent,\n        tfrecord_file=tfrecord_file,\n        num_epochs=num_epochs)\n\n    # Save trained policy.\n    saver = policy_saver.PolicySaver(policy)\n    saver.save(training_artifacts_dir)\n\n  execute_training_and_save_policy(\n      training_artifacts_dir=training_artifacts_dir,\n      tfrecord_file=tfrecord_file,\n      num_epochs=num_epochs,\n      rank_k=rank_k,\n      num_actions=num_actions,\n      tikhonov_weight=tikhonov_weight,\n      agent_alpha=agent_alpha)\n\n  outputs = collections.namedtuple(\n      \"Outputs\",\n      [\"training_artifacts_dir\"])\n\n  return outputs(training_artifacts_dir)\n\n"
+                  ],
+                  "image_uri": "tensorflow/tensorflow:2.13.0"
+                },
+                "disk_spec": {
+                  "boot_disk_size_gb": 100.0,
+                  "boot_disk_type": "pd-ssd"
+                },
+                "machine_spec": {
+                  "accelerator_count": 0.0,
+                  "accelerator_type": "ACCELERATOR_TYPE_UNSPECIFIED",
+                  "machine_type": "n1-highcpu-16"
+                },
+                "replica_count": 1.0
+              }
+            ],
+            "isOptional": true,
+            "parameterType": "LIST"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "gcp_resources": {
+            "parameterType": "STRING"
+          },
+          "training_artifacts_dir": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    }
+  },
+  "deploymentSpec": {
+    "executors": {
+      "exec-endpoint-create": {
+        "container": {
+          "args": [
+            "--type",
+            "CreateEndpoint",
+            "--payload",
+            "{\"Concat\": [\"{\", \"\\\"display_name\\\": \\\"\", \"{{$.inputs.parameters['display_name']}}\", \"\\\"\", \", \\\"description\\\": \\\"\", \"{{$.inputs.parameters['description']}}\", \"\\\"\", \", \\\"labels\\\": \", \"{{$.inputs.parameters['labels']}}\", \", \\\"encryption_spec\\\": {\\\"kms_key_name\\\":\\\"\", \"{{$.inputs.parameters['encryption_spec_key_name']}}\", \"\\\"}\", \", \\\"network\\\": \\\"\", \"{{$.inputs.parameters['network']}}\", \"\\\"\", \"}\"]}",
+            "--project",
+            "{{$.inputs.parameters['project']}}",
+            "--location",
+            "{{$.inputs.parameters['location']}}",
+            "--gcp_resources",
+            "{{$.outputs.parameters['gcp_resources'].output_file}}",
+            "--executor_input",
+            "{{$}}"
+          ],
+          "command": [
+            "python3",
+            "-u",
+            "-m",
+            "google_cloud_pipeline_components.container.v1.endpoint.create_endpoint.launcher"
+          ],
+          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:2.4.1"
+        }
+      },
+      "exec-importer": {
+        "importer": {
+          "artifactUri": {
+            "runtimeParameter": "uri"
+          },
+          "metadata": {
+            "containerSpec": {
+              "imageUri": "gcr.io/hybrid-vertex/pred-mab-e2e-v2:latest"
+            }
+          },
+          "typeSchema": {
+            "schemaTitle": "google.UnmanagedContainerModel",
+            "schemaVersion": "0.0.1"
+          }
+        }
+      },
+      "exec-ingest-bigquery-dataset-into-tfrecord": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "ingest_bigquery_dataset_into_tfrecord"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.3.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'google-cloud-bigquery' 'tensorflow==2.13.0' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef ingest_bigquery_dataset_into_tfrecord(\n    project_id: str,\n    bigquery_table_name: str,\n    bigquery_dataset_name: str,\n    tfrecord_file: str,\n    bigquery_max_rows: int = None\n) -> NamedTuple(\"Outputs\", [\n    (\"tfrecord_file\", str),\n]):\n  \"\"\"Ingests data from BigQuery, formats them and outputs TFRecord files.\n\n  Serves as the Ingester pipeline component:\n  1. Reads data in BigQuery that contains 7 pieces of data: `step_type`,\n    `observation`, `action`, `policy_info`, `next_step_type`, `reward`,\n    `discount`.\n  2. Packages the data as `tf.train.Example` objects and outputs them as\n    TFRecord files.\n\n  This function is to be built into a Kubeflow Pipelines (KFP) component. As a\n  result, this function must be entirely self-contained. This means that the\n  import statements and helper functions must reside within itself.\n\n  Args:\n    project_id: GCP project ID. This is required because otherwise the BigQuery\n      client will use the ID of the tenant GCP project created as a result of\n      KFP, which doesn't have proper access to BigQuery.\n    bigquery_table_name: A string of the BigQuery table ID in the format of\n      \"bigquery_table_name\".\n    tfrecord_file: Path to file to write the ingestion result TFRecords.\n    bigquery_max_rows: Optional; maximum number of rows to ingest.\n\n  Returns:\n    A NamedTuple of the path to the output TFRecord file.\n  \"\"\"\n  # pylint: disable=g-import-not-at-top\n  import collections\n  from typing import Optional\n\n  from google.cloud import bigquery\n\n  import tensorflow as tf\n\n  def read_data_from_bigquery(\n      project_id: str,\n      bigquery_table_name: str,\n      bigquery_dataset_name: str,\n      bigquery_max_rows: Optional[int]) -> bigquery.table.RowIterator:\n    \"\"\"Reads data from BigQuery at `bigquery_table_name` and creates an iterator.\n\n    The table contains 7 columns that form `trajectories.Trajectory` objects:\n    `step_type`, `observation`, `action`, `policy_info`, `next_step_type`,\n    `reward`, `discount`.\n\n    Args:\n      project_id: GCP project ID. This is required because otherwise the\n        BigQuery client will use the ID of the tenant GCP project created as a\n        result of KFP, which doesn't have proper access to BigQuery.\n      bigquery_table_name: A string of the BigQuery table ID in the format of\n        \"project.dataset.table\".\n      bigquery_max_rows: Optional; maximum number of rows to fetch.\n\n    Returns:\n      A row iterator over all data at `bigquery_table_name`.\n    \"\"\"\n    # Construct a BigQuery client object.\n    client = bigquery.Client(project=project_id)\n\n    _bq_table_id = f\"{project_id}.{bigquery_dataset_name}.{bigquery_table_name}\"\n\n    # Get dataset.\n    query_job = client.query(\n        f\"\"\"\n        SELECT * FROM `{_bq_table_id}`\n        \"\"\"\n    )\n    table = query_job.result(max_results=bigquery_max_rows)\n\n    return table\n\n  def _bytes_feature(tensor: tf.Tensor) -> tf.train.Feature:\n    \"\"\"Returns a `tf.train.Feature` with bytes from `tensor`.\n\n    Args:\n      tensor: A `tf.Tensor` object.\n\n    Returns:\n      A `tf.train.Feature` object containing bytes that represent the content of\n      `tensor`.\n    \"\"\"\n    value = tf.io.serialize_tensor(tensor)\n    if isinstance(value, type(tf.constant(0))):\n      value = value.numpy()\n    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))\n\n  def build_example(data_row: bigquery.table.Row) -> tf.train.Example:\n    \"\"\"Builds a `tf.train.Example` from `data_row` content.\n\n    Args:\n      data_row: A `bigquery.table.Row` object that contains 7 pieces of data:\n        `step_type`, `observation`, `action`, `policy_info`, `next_step_type`,\n        `reward`, `discount`. Each piece of data except `observation` is a 1D\n        array; `observation` is a 1D array of `{\"observation_batch\": 1D array}.`\n\n    Returns:\n      A `tf.train.Example` object holding the same data as `data_row`.\n    \"\"\"\n    feature = {\n        \"step_type\":\n            _bytes_feature(data_row.get(\"step_type\")),\n        \"observation\":\n            _bytes_feature([\n                observation[\"observation_batch\"]\n                for observation in data_row.get(\"observation\")\n            ]),\n        \"action\":\n            _bytes_feature(data_row.get(\"action\")),\n        \"policy_info\":\n            _bytes_feature(data_row.get(\"policy_info\")),\n        \"next_step_type\":\n            _bytes_feature(data_row.get(\"next_step_type\")),\n        \"reward\":\n            _bytes_feature(data_row.get(\"reward\")),\n        \"discount\":\n            _bytes_feature(data_row.get(\"discount\")),\n    }\n    example_proto = tf.train.Example(\n        features=tf.train.Features(feature=feature))\n    return example_proto\n\n  def write_tfrecords(\n      tfrecord_file: str,\n      table: bigquery.table.RowIterator) -> None:\n    \"\"\"Writes the row data in `table` into TFRecords in `tfrecord_file`.\n\n    Args:\n      tfrecord_file: Path to file to write the TFRecords.\n      table: A row iterator over all data to be written.\n    \"\"\"\n    with tf.io.TFRecordWriter(tfrecord_file) as writer:\n      for data_row in table:\n        example = build_example(data_row)\n        writer.write(example.SerializeToString())\n\n  table = read_data_from_bigquery(\n      project_id=project_id,\n      bigquery_dataset_name=bigquery_dataset_name,\n      bigquery_table_name=bigquery_table_name,\n      bigquery_max_rows=bigquery_max_rows\n  )\n\n  write_tfrecords(tfrecord_file, table)\n\n  outputs = collections.namedtuple(\n      \"Outputs\",\n      [\"tfrecord_file\"])\n\n  return outputs(tfrecord_file)\n\n"
+          ],
+          "image": "tensorflow/tensorflow:2.13.0"
+        }
+      },
+      "exec-model-deploy": {
+        "container": {
+          "args": [
+            "--type",
+            "DeployModel",
+            "--payload",
+            "{\"Concat\": [\"{\", \"\\\"endpoint\\\": \\\"\", \"{{$.inputs.artifacts['endpoint'].metadata['resourceName']}}\", \"\\\"\", \", \\\"traffic_split\\\": \", \"{{$.inputs.parameters['traffic_split']}}\", \", \\\"deployed_model\\\": {\", \"\\\"model\\\": \\\"\", \"{{$.inputs.artifacts['model'].metadata['resourceName']}}\", \"\\\"\", \", \\\"dedicated_resources\\\": {\", \"\\\"machine_spec\\\": {\", \"\\\"machine_type\\\": \\\"\", \"{{$.inputs.parameters['dedicated_resources_machine_type']}}\", \"\\\"\", \", \\\"accelerator_type\\\": \\\"\", \"{{$.inputs.parameters['dedicated_resources_accelerator_type']}}\", \"\\\"\", \", \\\"accelerator_count\\\": \", \"{{$.inputs.parameters['dedicated_resources_accelerator_count']}}\", \"}\", \", \\\"min_replica_count\\\": \", \"{{$.inputs.parameters['dedicated_resources_min_replica_count']}}\", \", \\\"max_replica_count\\\": \", \"{{$.inputs.parameters['dedicated_resources_max_replica_count']}}\", \"}\", \", \\\"automatic_resources\\\": {\", \"\\\"min_replica_count\\\": \", \"{{$.inputs.parameters['automatic_resources_min_replica_count']}}\", \", \\\"max_replica_count\\\": \", \"{{$.inputs.parameters['automatic_resources_max_replica_count']}}\", \"}\", \", \\\"service_account\\\": \\\"\", \"{{$.inputs.parameters['service_account']}}\", \"\\\"\", \", \\\"disable_container_logging\\\": \", \"{{$.inputs.parameters['disable_container_logging']}}\", \", \\\"enable_access_logging\\\": \", \"{{$.inputs.parameters['enable_access_logging']}}\", \", \\\"explanation_spec\\\": {\", \"\\\"parameters\\\": \", \"{{$.inputs.parameters['explanation_parameters']}}\", \", \\\"metadata\\\": \", \"{{$.inputs.parameters['explanation_metadata']}}\", \"}\", \"}\", \"}\"]}",
+            "--project",
+            "",
+            "--location",
+            "",
+            "--gcp_resources",
+            "{{$.outputs.parameters['gcp_resources'].output_file}}"
+          ],
+          "command": [
+            "python3",
+            "-u",
+            "-m",
+            "google_cloud_pipeline_components.container.v1.endpoint.deploy_model.launcher"
+          ],
+          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:2.4.1"
+        }
+      },
+      "exec-model-upload": {
+        "container": {
+          "args": [
+            "--type",
+            "UploadModel",
+            "--payload",
+            "{\"Concat\": [\"{\", \"\\\"display_name\\\": \\\"\", \"{{$.inputs.parameters['display_name']}}\", \"\\\"\", \", \\\"description\\\": \\\"\", \"{{$.inputs.parameters['description']}}\", \"\\\"\", \", \\\"explanation_spec\\\": {\", \"\\\"parameters\\\": \", \"{{$.inputs.parameters['explanation_parameters']}}\", \", \\\"metadata\\\": \", \"{{$.inputs.parameters['explanation_metadata']}}\", \"}\", \", \\\"encryption_spec\\\": {\\\"kms_key_name\\\":\\\"\", \"{{$.inputs.parameters['encryption_spec_key_name']}}\", \"\\\"}\", \", \\\"labels\\\": \", \"{{$.inputs.parameters['labels']}}\", \", \\\"pipeline_job\\\": \\\"\", \"projects/{{$.inputs.parameters['project']}}/locations/{{$.inputs.parameters['location']}}/pipelineJobs/{{$.pipeline_job_uuid}}\", \"\\\"\", \"}\"]}",
+            "--project",
+            "{{$.inputs.parameters['project']}}",
+            "--location",
+            "{{$.inputs.parameters['location']}}",
+            "--gcp_resources",
+            "{{$.outputs.parameters['gcp_resources'].output_file}}",
+            "--executor_input",
+            "{{$}}",
+            "{\"IfPresent\": {\"InputName\": \"parent_model\", \"Then\": [\"--parent_model_name\", \"{{$.inputs.artifacts['parent_model'].metadata['resourceName']}}\"]}}"
+          ],
+          "command": [
+            "python3",
+            "-u",
+            "-m",
+            "google_cloud_pipeline_components.container.v1.model.upload_model.launcher"
+          ],
+          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:2.4.1"
+        }
+      },
+      "exec-train-reinforcement-learning-policy": {
+        "container": {
+          "args": [
+            "--type",
+            "CustomJob",
+            "--payload",
+            "{\"display_name\": \"{{$.inputs.parameters['display_name']}}\", \"job_spec\": {\"worker_pool_specs\": {{$.inputs.parameters['worker_pool_specs']}}, \"scheduling\": {\"timeout\": \"{{$.inputs.parameters['timeout']}}\", \"restart_job_on_worker_restart\": {{$.inputs.parameters['restart_job_on_worker_restart']}}}, \"service_account\": \"{{$.inputs.parameters['service_account']}}\", \"tensorboard\": \"{{$.inputs.parameters['tensorboard']}}\", \"enable_web_access\": {{$.inputs.parameters['enable_web_access']}}, \"network\": \"{{$.inputs.parameters['network']}}\", \"reserved_ip_ranges\": {{$.inputs.parameters['reserved_ip_ranges']}}, \"base_output_directory\": {\"output_uri_prefix\": \"{{$.inputs.parameters['base_output_directory']}}\"}}, \"labels\": {{$.inputs.parameters['labels']}}, \"encryption_spec\": {\"kms_key_name\": \"{{$.inputs.parameters['encryption_spec_key_name']}}\"}}",
+            "--project",
+            "{{$.inputs.parameters['project']}}",
+            "--location",
+            "{{$.inputs.parameters['location']}}",
+            "--gcp_resources",
+            "{{$.outputs.parameters['gcp_resources'].output_file}}"
+          ],
+          "command": [
+            "python3",
+            "-u",
+            "-m",
+            "google_cloud_pipeline_components.container.v1.custom_job.launcher"
+          ],
+          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:2.4.1"
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "description": "Authors a re-training pipeline for MovieLens movie recommendation system.\nIntegrates the Ingester, Trainer and Deployer components.",
+    "name": "mab-agent-mlops-pipe-v8-retraining"
+  },
+  "root": {
+    "dag": {
+      "tasks": {
+        "endpoint-create": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-endpoint-create"
+          },
+          "inputs": {
+            "parameters": {
+              "display_name": {
+                "runtimeValue": {
+                  "constant": "mab-linucb-endpoint-v8"
+                }
+              },
+              "project": {
+                "componentInputParameter": "project_id"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "Create Online Endpoint"
+          }
+        },
+        "importer": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-importer"
+          },
+          "dependentTasks": [
+            "train-reinforcement-learning-policy"
+          ],
+          "inputs": {
+            "parameters": {
+              "uri": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "training_artifacts_dir",
+                  "producerTask": "train-reinforcement-learning-policy"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "importer"
+          }
+        },
+        "ingest-bigquery-dataset-into-tfrecord": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-ingest-bigquery-dataset-into-tfrecord"
+          },
+          "inputs": {
+            "parameters": {
+              "bigquery_dataset_name": {
+                "componentInputParameter": "bigquery_dataset_name"
+              },
+              "bigquery_max_rows": {
+                "componentInputParameter": "bigquery_max_rows"
+              },
+              "bigquery_table_name": {
+                "componentInputParameter": "bigquery_table_name"
+              },
+              "project_id": {
+                "componentInputParameter": "project_id"
+              },
+              "tfrecord_file": {
+                "runtimeValue": {
+                  "constant": "gs://rec-bandits-v2-hybrid-vertex-bucket/mab-pipe-rec-bandits-v2/run-20231019-184119/pipeline_v8_root/trainer_input_path/*"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "Ingestor"
+          }
+        },
+        "model-deploy": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-model-deploy"
+          },
+          "dependentTasks": [
+            "endpoint-create",
+            "model-upload"
+          ],
+          "inputs": {
+            "artifacts": {
+              "endpoint": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "endpoint",
+                  "producerTask": "endpoint-create"
+                }
+              },
+              "model": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "model",
+                  "producerTask": "model-upload"
+                }
+              }
+            },
+            "parameters": {
+              "dedicated_resources_accelerator_count": {
+                "runtimeValue": {
+                  "constant": 0.0
+                }
+              },
+              "dedicated_resources_accelerator_type": {
+                "runtimeValue": {
+                  "constant": "ACCELERATOR_TYPE_UNSPECIFIED"
+                }
+              },
+              "dedicated_resources_machine_type": {
+                "runtimeValue": {
+                  "constant": "n1-standard-4"
+                }
+              },
+              "dedicated_resources_min_replica_count": {
+                "runtimeValue": {
+                  "constant": 1.0
+                }
+              },
+              "deployed_model_display_name": {
+                "runtimeValue": {
+                  "constant": "trained-linucb-policy-v8"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "Deploy Policy"
+          }
+        },
+        "model-upload": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-model-upload"
+          },
+          "dependentTasks": [
+            "importer"
+          ],
+          "inputs": {
+            "artifacts": {
+              "unmanaged_container_model": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "artifact",
+                  "producerTask": "importer"
+                }
+              }
+            },
+            "parameters": {
+              "display_name": {
+                "runtimeValue": {
+                  "constant": "trained-linucb-policy-v8"
+                }
+              },
+              "project": {
+                "componentInputParameter": "project_id"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "Register Trained Policy"
+          }
+        },
+        "train-reinforcement-learning-policy": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-train-reinforcement-learning-policy"
+          },
+          "dependentTasks": [
+            "ingest-bigquery-dataset-into-tfrecord"
+          ],
+          "inputs": {
+            "parameters": {
+              "agent_alpha": {
+                "componentInputParameter": "agent_alpha"
+              },
+              "location": {
+                "runtimeValue": {
+                  "constant": "us-central1"
+                }
+              },
+              "num_actions": {
+                "componentInputParameter": "num_actions"
+              },
+              "num_epochs": {
+                "componentInputParameter": "num_epochs"
+              },
+              "project": {
+                "runtimeValue": {
+                  "constant": "hybrid-vertex"
+                }
+              },
+              "rank_k": {
+                "componentInputParameter": "rank_k"
+              },
+              "tfrecord_file": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "tfrecord_file",
+                  "producerTask": "ingest-bigquery-dataset-into-tfrecord"
+                }
+              },
+              "tikhonov_weight": {
+                "componentInputParameter": "tikhonov_weight"
+              },
+              "training_artifacts_dir": {
+                "componentInputParameter": "training_artifacts_dir"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "TrainerTask"
+          }
+        }
+      }
+    },
+    "inputDefinitions": {
+      "parameters": {
+        "agent_alpha": {
+          "defaultValue": 10.0,
+          "description": "Optional; LinUCB exploration parameter that multiplies the\nconfidence intervals of the Trainer.",
+          "isOptional": true,
+          "parameterType": "NUMBER_DOUBLE"
+        },
+        "base_train_output_uri": {
+          "parameterType": "STRING"
+        },
+        "bigquery_dataset_name": {
+          "parameterType": "STRING"
+        },
+        "bigquery_location": {
+          "parameterType": "STRING"
+        },
+        "bigquery_max_rows": {
+          "defaultValue": 10000.0,
+          "description": "Optional; maximum number of rows to ingest.",
+          "isOptional": true,
+          "parameterType": "NUMBER_INTEGER"
+        },
+        "bigquery_table_name": {
+          "description": "A string of the BigQuery table ID in the format of\n\"table_name\".",
+          "parameterType": "STRING"
+        },
+        "num_actions": {
+          "defaultValue": 20.0,
+          "description": "Optional; number of actions (movie items) to choose from.",
+          "isOptional": true,
+          "parameterType": "NUMBER_INTEGER"
+        },
+        "num_epochs": {
+          "defaultValue": 5.0,
+          "description": "Optional; number of training epochs.",
+          "isOptional": true,
+          "parameterType": "NUMBER_INTEGER"
+        },
+        "project_id": {
+          "description": "GCP project ID. This is required because otherwise the BigQuery\nclient will use the ID of the tenant GCP project created as a result of\nKFP, which doesn't have proper access to BigQuery.",
+          "parameterType": "STRING"
+        },
+        "rank_k": {
+          "defaultValue": 20.0,
+          "description": "Optional; rank for matrix factorization in the MovieLens environment;\nalso the observation dimension.",
+          "isOptional": true,
+          "parameterType": "NUMBER_INTEGER"
+        },
+        "tikhonov_weight": {
+          "defaultValue": 0.01,
+          "description": "Optional; LinUCB Tikhonov regularization weight of the\nTrainer.",
+          "isOptional": true,
+          "parameterType": "NUMBER_DOUBLE"
+        },
+        "training_artifacts_dir": {
+          "description": "Path to store the Trainer artifacts (trained policy).",
+          "parameterType": "STRING"
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.3.0"
+}
