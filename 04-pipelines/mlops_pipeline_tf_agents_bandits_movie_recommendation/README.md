@@ -11,7 +11,27 @@ services such as [BigQuery](https://cloud.google.com/bigquery),
 prediction logic using the [TF-Agents](https://www.tensorflow.org/agents)
 library.
 
-Highlights of this end-to-end pipeline are:
+This notebook illustrates how to orchestrate all the steps covered in the step-by-step demo, and
+
+#### (1) Creating and testing RL-specific pipeline components
+* Create the `Generator` to generate MovieLens simulation data
+* Create the `Ingester` to ingest data
+* Create the `Trainer` to train the RL policy
+* Create the `Deployer` to deploy the trained policy to a Vertex AI endpoint
+
+#### (2) Compiling a train-deploy pipeline that allows for continuous training
+
+In practice, there are times we don't have sufficient training data that represents our real-world problem (e.g., initial Agent deployments, new use cases, changing label definitions, new training data filters, etc.). A common way to address this is to begin training an agent with data sampled from a simulation `environment`. Then, over time, as we log interactions and their rewards, we may choose to generate training data from these without implementing an `environmnet`.
+
+The pipeline runs produced in this example demonstrate how we may account for both of these scenarios. (1) We initially implement a train-deploy pipeline that begins with a `generator` component responsible for creating training data. (2) We then show how to deploy the same pipeline without the `generator` component, where its assumed sufficient training data is already available. 
+
+> *Note: this is just one set of possibilities for the sake of demonstrating MLOps concepts. Look for further discussion and details re: *environments* in `learning/`*
+
+Here is an example run for the initial pipeline:
+
+![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/mab_mlops_pipe.png)
+
+### Highlights of this end-to-end pipeline:
 
 -   RL-specific implementation for training and prediction
 -   Simulation for initial training data, prediction requests and re-training

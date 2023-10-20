@@ -22,11 +22,10 @@ For custom training, we implement **off-policy training**, using a static set of
 
 ## RL flavors - TODO
 
-**Model-based RL:** build model while learning/acting
+### Model-based vs Model-free
 
-**Model-free RL:** learn value function or policy directly from data
+#### Model-based RL - build model while learning/acting
 
-## Model-based RL
 > Goal: learn a stochastic policy to maximize expected return
 
 * Policies accept some number of tensors as an observation and usually pass it through one or more neural networks
@@ -35,9 +34,31 @@ For custom training, we implement **off-policy training**, using a static set of
 * Policy accepts the Network(s) and provides at least the `_distribution` method.
 * Side info becomes part of the Trajectory.  It can be used by metrics and is stored in replay buffers to be used by the training algorithm.
 
-## Model-free RL
+### Model-free RL - learn value function or policy directly from data
 
-> TODO
+> **TODO**
+
+
+### Target Policy vs Behavior Policy
+
+* Behavior: the policy the agent uses to determine its action (behavior) in a given state (e.g., for a given set of user-item features)
+* Target: the policy the agent uses to learn from the rewards recieved for its actions (i.e., to detemine optimal Q-values)
+
+### On-Policy Agent (learner)
+
+> if Target policy and Behavior policy are the same, Agent is said to be `on-policy`
+
+* This method requires the training trajectory to be generated from the current policy.
+* Typically runs the model / policy in a simulator during training
+* Note: distributed training is difficult for this case, due to the need to synchronize model update and data generation in simulation.
+
+### Off-Policy Agent (learner)
+
+> if Target policy != Behavior policy, Agent is said to be `off-policy`
+
+* This method can learn from training trajectory generated from any policy
+* During training, policy is typically trained on static set of pre-collected data; includes observation, action, and reward
+
 
 ## The online learning paradigm
 * RL deployments that run batch training and push models at a specific cadence are commonly categorized into `off-policy learning`. And, they are prone to `system bias` because of the long delay from user feedback to model updates
