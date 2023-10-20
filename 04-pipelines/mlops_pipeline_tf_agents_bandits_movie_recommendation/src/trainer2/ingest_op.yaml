@@ -1,0 +1,204 @@
+# PIPELINE DEFINITION
+# Name: ingest-bigquery-dataset-into-tfrecord
+# Inputs:
+#    bigquery_dataset_name: str
+#    bigquery_max_rows: int
+#    bigquery_table_name: str
+#    project_id: str
+#    tfrecord_file: str
+# Outputs:
+#    tfrecord_file: str
+components:
+  comp-ingest-bigquery-dataset-into-tfrecord:
+    executorLabel: exec-ingest-bigquery-dataset-into-tfrecord
+    inputDefinitions:
+      parameters:
+        bigquery_dataset_name:
+          parameterType: STRING
+        bigquery_max_rows:
+          description: Optional; maximum number of rows to ingest.
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        bigquery_table_name:
+          description: 'A string of the BigQuery table ID in the format of
+
+            "bigquery_table_name".'
+          parameterType: STRING
+        project_id:
+          description: 'GCP project ID. This is required because otherwise the BigQuery
+
+            client will use the ID of the tenant GCP project created as a result of
+
+            KFP, which doesn''t have proper access to BigQuery.'
+          parameterType: STRING
+        tfrecord_file:
+          description: Path to file to write the ingestion result TFRecords.
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        tfrecord_file:
+          parameterType: STRING
+deploymentSpec:
+  executors:
+    exec-ingest-bigquery-dataset-into-tfrecord:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - ingest_bigquery_dataset_into_tfrecord
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.3.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'google-cloud-bigquery'\
+          \ 'tensorflow==2.13.0' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef ingest_bigquery_dataset_into_tfrecord(\n    project_id: str,\n\
+          \    bigquery_table_name: str,\n    bigquery_dataset_name: str,\n    tfrecord_file:\
+          \ str,\n    bigquery_max_rows: int = None\n) -> NamedTuple(\"Outputs\",\
+          \ [\n    (\"tfrecord_file\", str),\n]):\n  \"\"\"Ingests data from BigQuery,\
+          \ formats them and outputs TFRecord files.\n\n  Serves as the Ingester pipeline\
+          \ component:\n  1. Reads data in BigQuery that contains 7 pieces of data:\
+          \ `step_type`,\n    `observation`, `action`, `policy_info`, `next_step_type`,\
+          \ `reward`,\n    `discount`.\n  2. Packages the data as `tf.train.Example`\
+          \ objects and outputs them as\n    TFRecord files.\n\n  This function is\
+          \ to be built into a Kubeflow Pipelines (KFP) component. As a\n  result,\
+          \ this function must be entirely self-contained. This means that the\n \
+          \ import statements and helper functions must reside within itself.\n\n\
+          \  Args:\n    project_id: GCP project ID. This is required because otherwise\
+          \ the BigQuery\n      client will use the ID of the tenant GCP project created\
+          \ as a result of\n      KFP, which doesn't have proper access to BigQuery.\n\
+          \    bigquery_table_name: A string of the BigQuery table ID in the format\
+          \ of\n      \"bigquery_table_name\".\n    tfrecord_file: Path to file to\
+          \ write the ingestion result TFRecords.\n    bigquery_max_rows: Optional;\
+          \ maximum number of rows to ingest.\n\n  Returns:\n    A NamedTuple of the\
+          \ path to the output TFRecord file.\n  \"\"\"\n  # pylint: disable=g-import-not-at-top\n\
+          \  import collections\n  from typing import Optional\n\n  from google.cloud\
+          \ import bigquery\n\n  import tensorflow as tf\n\n  def read_data_from_bigquery(\n\
+          \      project_id: str,\n      bigquery_table_name: str,\n      bigquery_dataset_name:\
+          \ str,\n      bigquery_max_rows: Optional[int]) -> bigquery.table.RowIterator:\n\
+          \    \"\"\"Reads data from BigQuery at `bigquery_table_name` and creates\
+          \ an iterator.\n\n    The table contains 7 columns that form `trajectories.Trajectory`\
+          \ objects:\n    `step_type`, `observation`, `action`, `policy_info`, `next_step_type`,\n\
+          \    `reward`, `discount`.\n\n    Args:\n      project_id: GCP project ID.\
+          \ This is required because otherwise the\n        BigQuery client will use\
+          \ the ID of the tenant GCP project created as a\n        result of KFP,\
+          \ which doesn't have proper access to BigQuery.\n      bigquery_table_name:\
+          \ A string of the BigQuery table ID in the format of\n        \"project.dataset.table\"\
+          .\n      bigquery_max_rows: Optional; maximum number of rows to fetch.\n\
+          \n    Returns:\n      A row iterator over all data at `bigquery_table_name`.\n\
+          \    \"\"\"\n    # Construct a BigQuery client object.\n    client = bigquery.Client(project=project_id)\n\
+          \n    _bq_table_id = f\"{project_id}.{bigquery_dataset_name}.{bigquery_table_name}\"\
+          \n\n    # Get dataset.\n    query_job = client.query(\n        f\"\"\"\n\
+          \        SELECT * FROM `{_bq_table_id}`\n        \"\"\"\n    )\n    table\
+          \ = query_job.result(max_results=bigquery_max_rows)\n\n    return table\n\
+          \n  def _bytes_feature(tensor: tf.Tensor) -> tf.train.Feature:\n    \"\"\
+          \"Returns a `tf.train.Feature` with bytes from `tensor`.\n\n    Args:\n\
+          \      tensor: A `tf.Tensor` object.\n\n    Returns:\n      A `tf.train.Feature`\
+          \ object containing bytes that represent the content of\n      `tensor`.\n\
+          \    \"\"\"\n    value = tf.io.serialize_tensor(tensor)\n    if isinstance(value,\
+          \ type(tf.constant(0))):\n      value = value.numpy()\n    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))\n\
+          \n  def build_example(data_row: bigquery.table.Row) -> tf.train.Example:\n\
+          \    \"\"\"Builds a `tf.train.Example` from `data_row` content.\n\n    Args:\n\
+          \      data_row: A `bigquery.table.Row` object that contains 7 pieces of\
+          \ data:\n        `step_type`, `observation`, `action`, `policy_info`, `next_step_type`,\n\
+          \        `reward`, `discount`. Each piece of data except `observation` is\
+          \ a 1D\n        array; `observation` is a 1D array of `{\"observation_batch\"\
+          : 1D array}.`\n\n    Returns:\n      A `tf.train.Example` object holding\
+          \ the same data as `data_row`.\n    \"\"\"\n    feature = {\n        \"\
+          step_type\":\n            _bytes_feature(data_row.get(\"step_type\")),\n\
+          \        \"observation\":\n            _bytes_feature([\n              \
+          \  observation[\"observation_batch\"]\n                for observation in\
+          \ data_row.get(\"observation\")\n            ]),\n        \"action\":\n\
+          \            _bytes_feature(data_row.get(\"action\")),\n        \"policy_info\"\
+          :\n            _bytes_feature(data_row.get(\"policy_info\")),\n        \"\
+          next_step_type\":\n            _bytes_feature(data_row.get(\"next_step_type\"\
+          )),\n        \"reward\":\n            _bytes_feature(data_row.get(\"reward\"\
+          )),\n        \"discount\":\n            _bytes_feature(data_row.get(\"discount\"\
+          )),\n    }\n    example_proto = tf.train.Example(\n        features=tf.train.Features(feature=feature))\n\
+          \    return example_proto\n\n  def write_tfrecords(\n      tfrecord_file:\
+          \ str,\n      table: bigquery.table.RowIterator) -> None:\n    \"\"\"Writes\
+          \ the row data in `table` into TFRecords in `tfrecord_file`.\n\n    Args:\n\
+          \      tfrecord_file: Path to file to write the TFRecords.\n      table:\
+          \ A row iterator over all data to be written.\n    \"\"\"\n    with tf.io.TFRecordWriter(tfrecord_file)\
+          \ as writer:\n      for data_row in table:\n        example = build_example(data_row)\n\
+          \        writer.write(example.SerializeToString())\n\n  table = read_data_from_bigquery(\n\
+          \      project_id=project_id,\n      bigquery_dataset_name=bigquery_dataset_name,\n\
+          \      bigquery_table_name=bigquery_table_name,\n      bigquery_max_rows=bigquery_max_rows\n\
+          \  )\n\n  write_tfrecords(tfrecord_file, table)\n\n  outputs = collections.namedtuple(\n\
+          \      \"Outputs\",\n      [\"tfrecord_file\"])\n\n  return outputs(tfrecord_file)\n\
+          \n"
+        image: tensorflow/tensorflow:2.13.0
+pipelineInfo:
+  name: ingest-bigquery-dataset-into-tfrecord
+root:
+  dag:
+    outputs:
+      parameters:
+        tfrecord_file:
+          valueFromParameter:
+            outputParameterKey: tfrecord_file
+            producerSubtask: ingest-bigquery-dataset-into-tfrecord
+    tasks:
+      ingest-bigquery-dataset-into-tfrecord:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-ingest-bigquery-dataset-into-tfrecord
+        inputs:
+          parameters:
+            bigquery_dataset_name:
+              componentInputParameter: bigquery_dataset_name
+            bigquery_max_rows:
+              componentInputParameter: bigquery_max_rows
+            bigquery_table_name:
+              componentInputParameter: bigquery_table_name
+            project_id:
+              componentInputParameter: project_id
+            tfrecord_file:
+              componentInputParameter: tfrecord_file
+        taskInfo:
+          name: ingest-bigquery-dataset-into-tfrecord
+  inputDefinitions:
+    parameters:
+      bigquery_dataset_name:
+        parameterType: STRING
+      bigquery_max_rows:
+        description: Optional; maximum number of rows to ingest.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      bigquery_table_name:
+        description: 'A string of the BigQuery table ID in the format of
+
+          "bigquery_table_name".'
+        parameterType: STRING
+      project_id:
+        description: 'GCP project ID. This is required because otherwise the BigQuery
+
+          client will use the ID of the tenant GCP project created as a result of
+
+          KFP, which doesn''t have proper access to BigQuery.'
+        parameterType: STRING
+      tfrecord_file:
+        description: Path to file to write the ingestion result TFRecords.
+        parameterType: STRING
+  outputDefinitions:
+    parameters:
+      tfrecord_file:
+        parameterType: STRING
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.3.0

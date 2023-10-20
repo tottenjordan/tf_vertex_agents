@@ -32,9 +32,9 @@ implementation:
     - sh
     - -c
     - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
-      'tensorflow==2.12.0' 'tf-agents==0.16.0' 'Pillow' || PIP_DISABLE_PIP_VERSION_CHECK=1
-      python3 -m pip install --quiet --no-warn-script-location 'tensorflow==2.12.0'
-      'tf-agents==0.16.0' 'Pillow' --user) && "$0" "$@"
+      'tensorflow==2.13.0' 'tf-agents==0.17.0' 'Pillow' || PIP_DISABLE_PIP_VERSION_CHECK=1
+      python3 -m pip install --quiet --no-warn-script-location 'tensorflow==2.13.0'
+      'tf-agents==0.17.0' 'Pillow' --user) && "$0" "$@"
     - sh
     - -ec
     - |

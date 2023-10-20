@@ -18,7 +18,8 @@ from typing import NamedTuple
 
 def ingest_bigquery_dataset_into_tfrecord(
     project_id: str,
-    bigquery_table_id: str,
+    bigquery_table_name: str,
+    bigquery_dataset_name: str,
     tfrecord_file: str,
     bigquery_max_rows: int = None
 ) -> NamedTuple("Outputs", [
@@ -41,8 +42,8 @@ def ingest_bigquery_dataset_into_tfrecord(
     project_id: GCP project ID. This is required because otherwise the BigQuery
       client will use the ID of the tenant GCP project created as a result of
       KFP, which doesn't have proper access to BigQuery.
-    bigquery_table_id: A string of the BigQuery table ID in the format of
-      "project.dataset.table".
+    bigquery_table_name: A string of the BigQuery table ID in the format of
+      "bigquery_table_name".
     tfrecord_file: Path to file to write the ingestion result TFRecords.
     bigquery_max_rows: Optional; maximum number of rows to ingest.
 
@@ -59,9 +60,10 @@ def ingest_bigquery_dataset_into_tfrecord(
 
   def read_data_from_bigquery(
       project_id: str,
-      bigquery_table_id: str,
+      bigquery_table_name: str,
+      bigquery_dataset_name: str,
       bigquery_max_rows: Optional[int]) -> bigquery.table.RowIterator:
-    """Reads data from BigQuery at `bigquery_table_id` and creates an iterator.
+    """Reads data from BigQuery at `bigquery_table_name` and creates an iterator.
 
     The table contains 7 columns that form `trajectories.Trajectory` objects:
     `step_type`, `observation`, `action`, `policy_info`, `next_step_type`,
@@ -71,20 +73,22 @@ def ingest_bigquery_dataset_into_tfrecord(
       project_id: GCP project ID. This is required because otherwise the
         BigQuery client will use the ID of the tenant GCP project created as a
         result of KFP, which doesn't have proper access to BigQuery.
-      bigquery_table_id: A string of the BigQuery table ID in the format of
+      bigquery_table_name: A string of the BigQuery table ID in the format of
         "project.dataset.table".
       bigquery_max_rows: Optional; maximum number of rows to fetch.
 
     Returns:
-      A row iterator over all data at `bigquery_table_id`.
+      A row iterator over all data at `bigquery_table_name`.
     """
     # Construct a BigQuery client object.
     client = bigquery.Client(project=project_id)
+    
+    _bq_table_id = f"{project_id}.{bigquery_dataset_name}.{bigquery_table_name}"
 
     # Get dataset.
     query_job = client.query(
         f"""
-        SELECT * FROM {bigquery_table_id}
+        SELECT * FROM `{_bq_table_id}`
         """
     )
     table = query_job.result(max_results=bigquery_max_rows)
@@ -157,8 +161,10 @@ def ingest_bigquery_dataset_into_tfrecord(
 
   table = read_data_from_bigquery(
       project_id=project_id,
-      bigquery_table_id=bigquery_table_id,
-      bigquery_max_rows=bigquery_max_rows)
+      bigquery_dataset_name=bigquery_dataset_name,
+      bigquery_table_name=bigquery_table_name,
+      bigquery_max_rows=bigquery_max_rows
+  )
 
   write_tfrecords(tfrecord_file, table)
 
@@ -174,10 +180,10 @@ if __name__ == "__main__":
 
   ingest_bigquery_dataset_into_tfrecord_op = create_component_from_func(
     func=ingest_bigquery_dataset_into_tfrecord,
-    base_image="tensorflow/tensorflow:2.12.0",
+    base_image="tensorflow/tensorflow:2.13.0",
     output_component_file="component.yaml",
     packages_to_install=[
       "google-cloud-bigquery",
-      "tensorflow==2.12.0",
+      "tensorflow==2.13.0",
     ],
   )

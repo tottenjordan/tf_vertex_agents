@@ -19,10 +19,14 @@ from unittest import mock
 from src.trainer import trainer_component
 import tensorflow as tf
 
+# this subdir
+from src.utils import data_config
 
 # Paths and configurations
-TRAINING_ARTIFACTS_DIR = "gs://bucket-name/artifacts"
-TFRECORD_FILE = "gs://bucket-name/dataset.tfrecord"
+# TRAINING_ARTIFACTS_DIR = "gs://bucket-name/artifacts"
+# TFRECORD_FILE = "gs://bucket-name/dataset.tfrecord"
+TRAINING_ARTIFACTS_DIR = f"{data_config.ARTIFACTS_DIR}"
+TFRECORD_FILE = f"{data_config.DATA_PATH}/kfp_demo_tfrecords/dataset.tfrecord"
 
 # Hyperparameters
 BATCH_SIZE = 8

@@ -18,9 +18,11 @@ import os
 from typing import Any, Dict
 
 import dataclasses
-from google import cloud  # For patch of google.cloud.aiplatform to work.
-from google.cloud import aiplatform  # For using the module.  # pylint: disable=unused-import
-import tensorflow as tf  # For tf_agents to work.  # pylint: disable=unused-import
+from google import cloud                   # TODO: jt check this
+from google.cloud import aiplatform        # For using the module.
+import tensorflow as tf                    # For tf_agents to work.
+
+
 from tf_agents.bandits.environments import movielens_py_environment
 
 
@@ -88,11 +90,16 @@ def simulate(event: Dict[str, Any], context) -> None:  # pylint: disable=unused-
 
   # Create MovieLens simulation environment.
   env = movielens_py_environment.MovieLensPyEnvironment(
-      env_vars.raw_data_path, env_vars.rank_k, env_vars.batch_size,
-      num_movies=env_vars.num_actions, csv_delimiter="\t")
+      env_vars.raw_data_path, 
+      env_vars.rank_k, 
+      env_vars.batch_size,
+      num_movies=env_vars.num_actions, 
+      csv_delimiter="\t"
+  )
 
   # Get environment observation.
-  observation_array = env._observe()  # pylint: disable=protected-access
+  observation_array = env._observe()
+    
   # Convert to nested list to be sent to the endpoint for prediction.
   observation = [
       list(observation_batch) for observation_batch in observation_array

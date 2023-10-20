@@ -62,3 +62,20 @@ instructions, and a `src/` directory for Python modules and unit tests.
 
 Read more about problem framing, simulations, and adopting this demo in
 production and to other use cases in the notebook.
+
+# Misc. topics
+
+## Pipeline Caching?
+
+When Vertex AI Pipelines runs a pipeline, it checks to see whether or not an execution exists in Vertex ML Metadata with the interface (cache key) of each pipeline step.
+
+The step's interface is defined as the combination of the following:
+* The pipeline step's inputs. These inputs include the input parameters' value (if any) and the input artifact id (if any).
+* The pipeline step's output definition. This output definition includes output parameter definition (name, if any) and output artifact definition (name, if any).
+* The component's specification. This specification includes the image, commands, arguments and environment variables being used, as well as the order of the commands and arguments.
+
+**Only pipelines with the same `pipeline-name` will share the cache** 
+* This means we can easily manipulate the caching by including a prefix or tag in the pipeline name
+* This repo uses the string identifiers `PREFIX` and `PIPE_VERSION` to organize a set of runs / experiments. These are used to name most of the produced artifacts. this helps with tracking over many pipeline runs and experiments
+
+If there is a matching execution in Vertex ML Metadata, the outputs of that execution are used and the step is skipped. This helps to reduce costs by skipping computations that were completed in a previous pipeline run.

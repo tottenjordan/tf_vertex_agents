@@ -166,7 +166,9 @@ def train_reinforcement_learning_policy(
 
     train_outputs = collections.namedtuple(
         "TrainOutputs",
-        ["policy", "train_loss"])
+        ["policy", "train_loss"]
+    )
+    
     return train_outputs(agent.policy, train_loss)
 
   def execute_training_and_save_policy(
@@ -202,14 +204,16 @@ def train_reinforcement_learning_policy(
             maximum=1.),
         observation=tensor_spec.TensorSpec(
             shape=(rank_k,), dtype=tf.float32,
-            name="observation"))
+            name="observation")
+    )
 
     action_spec = tensor_spec.BoundedTensorSpec(
         shape=(),
         dtype=tf.int32,
         name="action",
         minimum=0,
-        maximum=num_actions - 1)
+        maximum=num_actions - 1
+    )
 
     # Define RL agent/algorithm.
     agent = lin_ucb_agent.LinearUCBAgent(
@@ -218,8 +222,12 @@ def train_reinforcement_learning_policy(
         tikhonov_weight=tikhonov_weight,
         alpha=agent_alpha,
         dtype=tf.float32,
-        accepts_per_arm_features=per_arm)
+        accepts_per_arm_features=per_arm
+        enable_summaries=True,                # TODO
+        summarize_grads_and_vars=True,
+    )
     agent.initialize()
+    
     logging.info("TimeStep Spec (for each batch):\n%s\n", agent.time_step_spec)
     logging.info("Action Spec (for each batch):\n%s\n", agent.action_spec)
 
@@ -227,7 +235,8 @@ def train_reinforcement_learning_policy(
     policy, _ = train_policy_on_trajectory(
         agent=agent,
         tfrecord_file=tfrecord_file,
-        num_epochs=num_epochs)
+        num_epochs=num_epochs
+    )
 
     # Save trained policy.
     saver = policy_saver.PolicySaver(policy)
@@ -240,7 +249,8 @@ def train_reinforcement_learning_policy(
       rank_k=rank_k,
       num_actions=num_actions,
       tikhonov_weight=tikhonov_weight,
-      agent_alpha=agent_alpha)
+      agent_alpha=agent_alpha
+  )
 
   outputs = collections.namedtuple(
       "Outputs",
@@ -254,10 +264,10 @@ if __name__ == "__main__":
 
   train_reinforcement_learning_policy_op = create_component_from_func(
     func=train_reinforcement_learning_policy,
-    base_image="tensorflow/tensorflow:2.12.0",
+    base_image="tensorflow/tensorflow:2.13.0",
     output_component_file="component.yaml",
     packages_to_install=[
-      "tensorflow==2.12.0",
-      "tf-agents==0.16.0",
+      "tensorflow==2.13.0",
+      "tf-agents==0.17.0",
     ],
   )

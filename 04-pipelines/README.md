@@ -22,7 +22,8 @@ Each demo contains a notebook that carries out the full workflow and user instru
 
 
 ## End-to-end MLOps pipeline for RL-specific implementations
-![](img/e2e_rl_pipeline.png)
+
+![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/mab_mlops_pipe.png)
 
 ### pipeline highlights
 * `Generator`: generates [MovieLens](https://www.kaggle.com/prajitdatta/movielens-100k-dataset) simulation data

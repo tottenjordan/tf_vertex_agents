@@ -22,14 +22,18 @@ import numpy as np
 from src.ingester import ingester_component
 import tensorflow as tf
 
+# this subdir
+from src.utils import data_config
 
-# Paths and configurations
-PROJECT_ID = "hybrid-vertex"
-VERSION="v2"
-BIGQUERY_DATASET_ID = f"{PROJECT_ID}.movielens_dataset"
-BIGQUERY_TABLE_ID = f"{BIGQUERY_DATASET_ID}.training_dataset"
+PREFIX = f"{data_config.PREFIX}"
+RAW_DATA_PATH = f"{data_config.DATA_PATH_KFP_DEMO}"
+PROJECT_ID = f"{data_config.PROJECT_ID}"
+BIGQUERY_LOCATION = f"{data_config.BQ_LOCATION}"
+BIGQUERY_DATASET_NAME = f"{data_config.BIGQUERY_DATASET_NAME}"
+BIGQUERY_TABLE_NAME = f"{data_config.BIGQUERY_TABLE_NAME}"
+
 BIGQUERY_MAX_ROWS = 10
-TFRECORD_FILE = f"gs://tf-agents-bandits-{VERSION}/dataset.tfrecord"
+TFRECORD_FILE = f"{data_config.DATA_PATH}/kfp_demo_tfrecords/dataset.tfrecord"
 
 # (Hyper)Parameters.
 BATCH_SIZE = 8
@@ -85,9 +89,11 @@ class TestIngesterComponent(unittest.TestCase):
     """Tests given valid arguments the component works."""
     tfrecord_file, = ingester_component.ingest_bigquery_dataset_into_tfrecord(
         project_id=PROJECT_ID,
-        bigquery_table_id=BIGQUERY_TABLE_ID,
+        bigquery_dataset_name=BIGQUERY_DATASET_NAME,
+        bigquery_table_name=BIGQUERY_TABLE_NAME,
         bigquery_max_rows=BIGQUERY_MAX_ROWS,
-        tfrecord_file=TFRECORD_FILE)
+        tfrecord_file=TFRECORD_FILE
+    )
 
     # Assert read_data_from_bigquery is called.
     self.mock_bigquery.Client.assert_called_once_with(project=PROJECT_ID)
@@ -103,7 +109,8 @@ class TestIngesterComponent(unittest.TestCase):
     """Tests the component queries for a specified num_results."""
     ingester_component.ingest_bigquery_dataset_into_tfrecord(
         project_id=PROJECT_ID,
-        bigquery_table_id=BIGQUERY_TABLE_ID,
+        bigquery_dataset_name=BIGQUERY_DATASET_NAME,
+        bigquery_table_name=BIGQUERY_TABLE_NAME,
         bigquery_max_rows=BIGQUERY_MAX_ROWS,
         tfrecord_file=TFRECORD_FILE)
 
@@ -114,9 +121,11 @@ class TestIngesterComponent(unittest.TestCase):
     """Tests the component writes once in TFRecord file per data row."""
     ingester_component.ingest_bigquery_dataset_into_tfrecord(
         project_id=PROJECT_ID,
-        bigquery_table_id=BIGQUERY_TABLE_ID,
+        bigquery_dataset_name=BIGQUERY_DATASET_NAME,
+        bigquery_table_name=BIGQUERY_TABLE_NAME,
         bigquery_max_rows=BIGQUERY_MAX_ROWS,
-        tfrecord_file=TFRECORD_FILE)
+        tfrecord_file=TFRECORD_FILE
+    )
 
     self.mock_table.__iter__.assert_called_once()
     self.assertEqual(self.mock_writer.write.call_count, NUM_ROWS)
@@ -129,7 +138,8 @@ class TestIngesterComponent(unittest.TestCase):
     with self.assertRaises(tf.errors.FailedPreconditionError):
       ingester_component.ingest_bigquery_dataset_into_tfrecord(
           project_id=PROJECT_ID,
-          bigquery_table_id=BIGQUERY_TABLE_ID,
+          bigquery_dataset_name=BIGQUERY_DATASET_NAME,
+          bigquery_table_name=BIGQUERY_TABLE_NAME,
           bigquery_max_rows=BIGQUERY_MAX_ROWS,
           tfrecord_file="./")
 

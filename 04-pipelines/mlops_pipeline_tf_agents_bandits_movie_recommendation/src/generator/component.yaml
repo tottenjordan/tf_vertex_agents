@@ -21,22 +21,22 @@ inputs:
 - {name: driver_steps, type: Integer, description: Number of steps to run per batch.}
 - {name: bigquery_tmp_file, type: String, description: Path to a JSON file containing
     the training dataset.}
-- name: bigquery_dataset_id
+- name: bigquery_dataset_name
   type: String
   description: |-
     A string of the BigQuery dataset ID in the format of
     "project.dataset".
 - {name: bigquery_location, type: String, description: A string of the BigQuery dataset
     location.}
-- name: bigquery_table_id
+- name: bigquery_table_name
   type: String
   description: |-
     A string of the BigQuery table ID in the format of
     "project.dataset.table".
 outputs:
-- {name: bigquery_dataset_id, type: String}
+- {name: bigquery_dataset_name, type: String}
 - {name: bigquery_location, type: String}
-- {name: bigquery_table_id, type: String}
+- {name: bigquery_table_name, type: String}
 implementation:
   container:
     image: python:3.10
@@ -44,9 +44,9 @@ implementation:
     - sh
     - -c
     - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
-      'google-cloud-bigquery' 'pillow' 'tensorflow==2.12.0' 'tf-agents==0.16.0'
+      'google-cloud-bigquery' 'pillow' 'tensorflow==2.13.0' 'tf-agents==0.17.0'
       || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
-      'google-cloud-bigquery' 'pillow' 'tensorflow==2.12.0' 'tf-agents==0.16.0'
+      'google-cloud-bigquery' 'pillow' 'tensorflow==2.13.0' 'tf-agents==0.17.0'
       --user) && "$0" "$@"
     - sh
     - -ec
@@ -63,9 +63,9 @@ implementation:
           num_actions,
           driver_steps,
           bigquery_tmp_file,
-          bigquery_dataset_id,
+          bigquery_dataset_name,
           bigquery_location,
-          bigquery_table_id
+          bigquery_table_name
       ):
         """Generates BigQuery training data using a MovieLens simulation environment.
 
@@ -90,15 +90,15 @@ implementation:
           num_actions: Number of actions (movie items) to choose from.
           driver_steps: Number of steps to run per batch.
           bigquery_tmp_file: Path to a JSON file containing the training dataset.
-          bigquery_dataset_id: A string of the BigQuery dataset ID in the format of
+          bigquery_dataset_name: A string of the BigQuery dataset ID in the format of
             "project.dataset".
           bigquery_location: A string of the BigQuery dataset location.
-          bigquery_table_id: A string of the BigQuery table ID in the format of
+          bigquery_table_name: A string of the BigQuery table ID in the format of
             "project.dataset.table".
 
         Returns:
-          A NamedTuple of (`bigquery_dataset_id`, `bigquery_location`,
-          `bigquery_table_id`).
+          A NamedTuple of (`bigquery_dataset_name`, `bigquery_location`,
+          `bigquery_table_name`).
         """
         # pylint: disable=g-import-not-at-top
         import collections
@@ -216,9 +216,9 @@ implementation:
         def load_dataset_into_bigquery(
             project_id,
             dataset_file,
-            bigquery_dataset_id,
+            bigquery_dataset_name,
             bigquery_location,
-            bigquery_table_id):
+            bigquery_table_name):
           """Loads training dataset into BigQuery table.
 
           Loads training dataset of `trajectories.Trajectory` in newline delimited
@@ -229,17 +229,20 @@ implementation:
               BigQuery client will use the ID of the tenant GCP project created as a
               result of KFP, which doesn't have proper access to BigQuery.
             dataset_file: Path to a JSON file containing the training dataset.
-            bigquery_dataset_id: A string of the BigQuery dataset ID in the format of
+            bigquery_dataset_name: A string of the BigQuery dataset ID in the format of
               "project.dataset".
             bigquery_location: A string of the BigQuery dataset location.
-            bigquery_table_id: A string of the BigQuery table ID in the format of
+            bigquery_table_name: A string of the BigQuery table ID in the format of
               "project.dataset.table".
           """
+          
+          _bq_dataset_ref = f'{project_id}.{bigquery_dataset_name}'
+          
           # Construct a BigQuery client object.
           client = bigquery.Client(project=project_id)
 
           # Construct a full Dataset object to send to the API.
-          dataset = bigquery.Dataset(bigquery_dataset_id)
+          dataset = bigquery.Dataset(bigquery_dataset_name)
 
           # Specify the geographic location where the dataset should reside.
           dataset.location = bigquery_location
@@ -269,7 +272,7 @@ implementation:
 
           with open(dataset_file, "rb") as source_file:
             load_job = client.load_table_from_file(
-                source_file, bigquery_table_id, job_config=job_config)
+                source_file, bigquery_table_name, job_config=job_config)
 
           load_job.result()  # Wait for the job to complete.
 
@@ -285,14 +288,14 @@ implementation:
             batch_size=batch_size,
             dataset_file=bigquery_tmp_file)
 
-        load_dataset_into_bigquery(project_id, bigquery_tmp_file, bigquery_dataset_id,
-                                   bigquery_location, bigquery_table_id)
+        load_dataset_into_bigquery(project_id, bigquery_tmp_file, bigquery_dataset_name,
+                                   bigquery_location, bigquery_table_name)
 
         outputs = collections.namedtuple(
             "Outputs",
-            ["bigquery_dataset_id", "bigquery_location", "bigquery_table_id"])
+            ["bigquery_dataset_name", "bigquery_location", "bigquery_table_name"])
 
-        return outputs(bigquery_dataset_id, bigquery_location, bigquery_table_id)
+        return outputs(bigquery_dataset_name, bigquery_location, bigquery_table_name)
 
       def _serialize_str(str_value: str) -> str:
           if not isinstance(str_value, str):
@@ -309,9 +312,9 @@ implementation:
       _parser.add_argument("--num-actions", dest="num_actions", type=int, required=True, default=argparse.SUPPRESS)
       _parser.add_argument("--driver-steps", dest="driver_steps", type=int, required=True, default=argparse.SUPPRESS)
       _parser.add_argument("--bigquery-tmp-file", dest="bigquery_tmp_file", type=str, required=True, default=argparse.SUPPRESS)
-      _parser.add_argument("--bigquery-dataset-id", dest="bigquery_dataset_id", type=str, required=True, default=argparse.SUPPRESS)
+      _parser.add_argument("--bigquery-dataset-id", dest="bigquery_dataset_name", type=str, required=True, default=argparse.SUPPRESS)
       _parser.add_argument("--bigquery-location", dest="bigquery_location", type=str, required=True, default=argparse.SUPPRESS)
-      _parser.add_argument("--bigquery-table-id", dest="bigquery_table_id", type=str, required=True, default=argparse.SUPPRESS)
+      _parser.add_argument("--bigquery-table-id", dest="bigquery_table_name", type=str, required=True, default=argparse.SUPPRESS)
       _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=3)
       _parsed_args = vars(_parser.parse_args())
       _output_files = _parsed_args.pop("_output_paths", [])
@@ -349,12 +352,12 @@ implementation:
     - --bigquery-tmp-file
     - {inputValue: bigquery_tmp_file}
     - --bigquery-dataset-id
-    - {inputValue: bigquery_dataset_id}
+    - {inputValue: bigquery_dataset_name}
     - --bigquery-location
     - {inputValue: bigquery_location}
     - --bigquery-table-id
-    - {inputValue: bigquery_table_id}
+    - {inputValue: bigquery_table_name}
     - '----output-paths'
-    - {outputPath: bigquery_dataset_id}
+    - {outputPath: bigquery_dataset_name}
     - {outputPath: bigquery_location}
-    - {outputPath: bigquery_table_id}
+    - {outputPath: bigquery_table_name}

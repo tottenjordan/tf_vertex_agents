@@ -14,8 +14,6 @@
 
 """The Generator component for generating MovieLens simulation data."""
 from typing import NamedTuple
-
-
 def generate_movielens_dataset_for_bigquery(
     project_id: str,
     raw_data_path: str,
@@ -24,13 +22,13 @@ def generate_movielens_dataset_for_bigquery(
     num_actions: int,
     driver_steps: int,
     bigquery_tmp_file: str,
-    bigquery_dataset_id: str,
+    bigquery_dataset_name: str,
     bigquery_location: str,
-    bigquery_table_id: str
+    bigquery_table_name: str
 ) -> NamedTuple("Outputs", [
-    ("bigquery_dataset_id", str),
+    ("bigquery_dataset_name", str),
     ("bigquery_location", str),
-    ("bigquery_table_id", str),
+    ("bigquery_table_name", str),
 ]):
   """Generates BigQuery training data using a MovieLens simulation environment.
 
@@ -55,15 +53,15 @@ def generate_movielens_dataset_for_bigquery(
     num_actions: Number of actions (movie items) to choose from.
     driver_steps: Number of steps to run per batch.
     bigquery_tmp_file: Path to a JSON file containing the training dataset.
-    bigquery_dataset_id: A string of the BigQuery dataset ID in the format of
+    bigquery_dataset_name: A string of the BigQuery dataset ID in the format of
       "project.dataset".
     bigquery_location: A string of the BigQuery dataset location.
-    bigquery_table_id: A string of the BigQuery table ID in the format of
-      "project.dataset.table".
+    bigquery_table_name: A string of the BigQuery table ID in the format of
+      "table_name".
 
   Returns:
-    A NamedTuple of (`bigquery_dataset_id`, `bigquery_location`,
-    `bigquery_table_id`).
+    A NamedTuple of (`bigquery_dataset_name`, `bigquery_location`,
+    `bigquery_table_name`).
   """
   # pylint: disable=g-import-not-at-top
   import collections
@@ -186,9 +184,9 @@ def generate_movielens_dataset_for_bigquery(
   def load_dataset_into_bigquery(
       project_id: str,
       dataset_file: str,
-      bigquery_dataset_id: str,
+      bigquery_dataset_name: str,
       bigquery_location: str,
-      bigquery_table_id: str) -> None:
+      bigquery_table_name: str) -> None:
     """Loads training dataset into BigQuery table.
 
     Loads training dataset of `trajectories.Trajectory` in newline delimited
@@ -199,23 +197,26 @@ def generate_movielens_dataset_for_bigquery(
         BigQuery client will use the ID of the tenant GCP project created as a
         result of KFP, which doesn't have proper access to BigQuery.
       dataset_file: Path to a JSON file containing the training dataset.
-      bigquery_dataset_id: A string of the BigQuery dataset ID in the format of
-        "project.dataset".
+      bigquery_dataset_name: A string of the BigQuery dataset ID in the format of
+        "dataset_name".
       bigquery_location: A string of the BigQuery dataset location.
-      bigquery_table_id: A string of the BigQuery table ID in the format of
+      bigquery_table_name: A string of the BigQuery table ID in the format of
         "project.dataset.table".
     """
+    
+    _bq_dataset_ref = f"{project_id}.{bigquery_dataset_name}"
+    
     # Construct a BigQuery client object.
     client = bigquery.Client(project=project_id)
 
     # Construct a full Dataset object to send to the API.
-    dataset = bigquery.Dataset(bigquery_dataset_id)
+    dataset = bigquery.Dataset(_bq_dataset_ref)
 
     # Specify the geographic location where the dataset should reside.
     dataset.location = bigquery_location
 
     # Create the dataset, or get the dataset if it exists.
-    dataset = client.create_dataset(dataset, exists_ok=True, timeout=30)
+    dataset = client.create_dataset(dataset = dataset, exists_ok=True, timeout=30)
 
     job_config = bigquery.LoadJobConfig(
         schema=[
@@ -236,10 +237,12 @@ def generate_movielens_dataset_for_bigquery(
         ],
         source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
     )
+    
+    _bq_table_ref = f"{project_id}.{bigquery_dataset_name}.{bigquery_table_name}"
 
     with open(dataset_file, "rb") as source_file:
       load_job = client.load_table_from_file(
-          source_file, bigquery_table_id, job_config=job_config)
+          source_file, _bq_table_ref, job_config=job_config)
 
     load_job.result()  # Wait for the job to complete.
 
@@ -248,21 +251,23 @@ def generate_movielens_dataset_for_bigquery(
       batch_size=batch_size,
       rank_k=rank_k,
       num_actions=num_actions,
-      driver_steps=driver_steps)
+      driver_steps=driver_steps
+  )
 
   write_replay_buffer_to_file(
       replay_buffer=replay_buffer,
       batch_size=batch_size,
-      dataset_file=bigquery_tmp_file)
+      dataset_file=bigquery_tmp_file
+  )
 
-  load_dataset_into_bigquery(project_id, bigquery_tmp_file, bigquery_dataset_id,
-                             bigquery_location, bigquery_table_id)
+  load_dataset_into_bigquery(project_id, bigquery_tmp_file, bigquery_dataset_name,
+                             bigquery_location, bigquery_table_name)
 
   outputs = collections.namedtuple(
       "Outputs",
-      ["bigquery_dataset_id", "bigquery_location", "bigquery_table_id"])
+      ["bigquery_dataset_name", "bigquery_location", "bigquery_table_name"])
 
-  return outputs(bigquery_dataset_id, bigquery_location, bigquery_table_id)
+  return outputs(bigquery_dataset_name, bigquery_location, bigquery_table_name)
 
 
 if __name__ == "__main__":
@@ -270,11 +275,11 @@ if __name__ == "__main__":
 
   generate_movielens_dataset_for_bigquery_op = create_component_from_func(
     func=generate_movielens_dataset_for_bigquery,
-    base_image="tensorflow/tensorflow:2.12.0",
+    base_image="tensorflow/tensorflow:2.13.0",
     output_component_file="component.yaml",
     packages_to_install=[
       "google-cloud-bigquery",
-      "tensorflow==2.12.0",
-      "tf-agents==0.16.0",
+      "tensorflow==2.13.0",
+      "tf-agents==0.17.0",
     ],
   )

@@ -7,7 +7,7 @@ inputs:
     GCP project ID. This is required because otherwise the BigQuery
     client will use the ID of the tenant GCP project created as a result of
     KFP, which doesn't have proper access to BigQuery.
-- name: bigquery_table_id
+- name: bigquery_table_name
   type: String
   description: |-
     A string of the BigQuery table ID in the format of
@@ -25,9 +25,9 @@ implementation:
     - sh
     - -c
     - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
-      'google-cloud-bigquery' 'tensorflow==2.12.0' || PIP_DISABLE_PIP_VERSION_CHECK=1
+      'google-cloud-bigquery' 'tensorflow==2.13.0' || PIP_DISABLE_PIP_VERSION_CHECK=1
       python3 -m pip install --quiet --no-warn-script-location 'google-cloud-bigquery'
-      'tensorflow==2.12.0' --user) && "$0" "$@"
+      'tensorflow==2.13.0' --user) && "$0" "$@"
     - sh
     - -ec
     - |
@@ -37,7 +37,7 @@ implementation:
     - |
       def ingest_bigquery_dataset_into_tfrecord(
           project_id,
-          bigquery_table_id,
+          bigquery_table_name,
           tfrecord_file,
           bigquery_max_rows = None
       ):
@@ -58,7 +58,7 @@ implementation:
           project_id: GCP project ID. This is required because otherwise the BigQuery
             client will use the ID of the tenant GCP project created as a result of
             KFP, which doesn't have proper access to BigQuery.
-          bigquery_table_id: A string of the BigQuery table ID in the format of
+          bigquery_table_name: A string of the BigQuery table ID in the format of
             "project.dataset.table".
           tfrecord_file: Path to file to write the ingestion result TFRecords.
           bigquery_max_rows: Optional; maximum number of rows to ingest.
@@ -76,9 +76,10 @@ implementation:
 
         def read_data_from_bigquery(
             project_id,
-            bigquery_table_id,
+            bigquery_dataset_name
+            bigquery_table_name,
             bigquery_max_rows):
-          """Reads data from BigQuery at `bigquery_table_id` and creates an iterator.
+          """Reads data from BigQuery at `bigquery_table_name` and creates an iterator.
 
           The table contains 7 columns that form `trajectories.Trajectory` objects:
           `step_type`, `observation`, `action`, `policy_info`, `next_step_type`,
@@ -88,20 +89,22 @@ implementation:
             project_id: GCP project ID. This is required because otherwise the
               BigQuery client will use the ID of the tenant GCP project created as a
               result of KFP, which doesn't have proper access to BigQuery.
-            bigquery_table_id: A string of the BigQuery table ID in the format of
+            bigquery_table_name: A string of the BigQuery table ID in the format of
               "project.dataset.table".
             bigquery_max_rows: Optional; maximum number of rows to fetch.
 
           Returns:
-            A row iterator over all data at `bigquery_table_id`.
+            A row iterator over all data at `bigquery_table_name`.
           """
           # Construct a BigQuery client object.
           client = bigquery.Client(project=project_id)
+          
+          _bq_table_ref = f'{project_id}.{bigquery_dataset_name}.{bigquery_table_name}'
 
           # Get dataset.
           query_job = client.query(
               f"""
-              SELECT * FROM {bigquery_table_id}
+              SELECT * FROM {_bq_table_ref}
               """
           )
           table = query_job.result(max_results=bigquery_max_rows)
@@ -174,8 +177,10 @@ implementation:
 
         table = read_data_from_bigquery(
             project_id=project_id,
-            bigquery_table_id=bigquery_table_id,
-            bigquery_max_rows=bigquery_max_rows)
+            bigquery_dataset_name=bigquery_dataset_name,
+            bigquery_table_name=bigquery_table_name,
+            bigquery_max_rows=bigquery_max_rows
+            )
 
         write_tfrecords(tfrecord_file, table)
 
@@ -194,7 +199,7 @@ implementation:
       import argparse
       _parser = argparse.ArgumentParser(prog='Ingest bigquery dataset into tfrecord', description='Ingests data from BigQuery, formats them and outputs TFRecord files.')
       _parser.add_argument("--project-id", dest="project_id", type=str, required=True, default=argparse.SUPPRESS)
-      _parser.add_argument("--bigquery-table-id", dest="bigquery_table_id", type=str, required=True, default=argparse.SUPPRESS)
+      _parser.add_argument("--bigquery-table-id", dest="bigquery_table_name", type=str, required=True, default=argparse.SUPPRESS)
       _parser.add_argument("--tfrecord-file", dest="tfrecord_file", type=str, required=True, default=argparse.SUPPRESS)
       _parser.add_argument("--bigquery-max-rows", dest="bigquery_max_rows", type=int, required=False, default=argparse.SUPPRESS)
       _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=1)
@@ -220,7 +225,7 @@ implementation:
     - --project-id
     - {inputValue: project_id}
     - --bigquery-table-id
-    - {inputValue: bigquery_table_id}
+    - {inputValue: bigquery_table_name}
     - --tfrecord-file
     - {inputValue: tfrecord_file}
     - if:
