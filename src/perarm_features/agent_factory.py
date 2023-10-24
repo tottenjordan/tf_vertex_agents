@@ -230,7 +230,7 @@ class PerArmAgentFactory:
                     global_layers = self.global_layers, 
                     arm_layers = self.arm_layers, 
                     common_layers = self.common_layers,
-                    output_dim = self.encoding_dim
+                    output_dim = self.output_dim
                 )
             )
             agent = neural_linucb_agent.NeuralLinUCBAgent(
@@ -238,7 +238,7 @@ class PerArmAgentFactory:
                 action_spec=self.action_spec,
                 encoding_network=network,
                 encoding_network_num_train_steps=self.eps_phase_steps,
-                encoding_dim=self.encoding_dim,
+                encoding_dim=self.output_dim,
                 optimizer=tf.compat.v1.train.AdamOptimizer(
                     learning_rate=self.learning_rate
                 ),
