@@ -1,10 +1,10 @@
-# Multi-Armed Bandits with per-arm features
+# Contextual Bandits with per-arm features
 
 In some Bandits use cases, each arm has its own features. For movie recommendations, the movies represent arms (aka `actions`) an agent can choose from. The features describing each movie (or `arm`) are referred to as `per-arm` features. The `per-arm` features for movies could be `title`, `text description`, `genre`, `starring actors`, etc. The ability to process these additional arm features has shown to be effective in learning complex relationships e.g., user preferences evolving over time
 
 These problems are often referred to as `per-arm features problems`
 
-> TODO: include visual illustrating difference between (1) multi-armed bandita and (2) contextual bandit with per-arm features
+> TODO: include visual illustrating difference between (1) multi-armed bandit and (2) contextual bandit with per-arm features
 
 A **naive implementation** could formulate the problem by having user information as the `global context` and each arm as `movie_1`, `movie_2`, ..., `movie_K`, but this approach has multiple shortcomings:
 

@@ -79,7 +79,7 @@ def set_expected_shape(experience, num_steps):
 
 
 def _get_training_loop(
-    driver, replay_buffer, agent, steps, async_steps_per_loop
+    driver, replay_buffer, agent, steps, async_steps_per_loop, log_interval=10
 ):
     """Returns a `tf.function` that runs the driver and training loops.
 
@@ -125,7 +125,7 @@ def _get_training_loop(
                 metrics=[],
                 loss_info=loss_info,
             )
-            if train_step % 25 == 0:
+            if train_step % log_interval == 0:
                 print(
                     f'step = {train_step}: train loss = {round(loss_info.loss.numpy(), 2)}'
                 )
@@ -155,7 +155,9 @@ def restore_and_get_checkpoint_manager(root_dir, agent, metrics, step_metric):
     return checkpoint_manager
 
 def train(
-    root_dir,
+    # root_dir,
+    artifact_dir,
+    log_dir,
     agent,
     environment,
     training_loops,
@@ -167,6 +169,7 @@ def train(
     training_data_spec_transformation_fn=None,
     save_policy=True,
     resume_training_loops=False,
+    log_interval=10,
 ):
     """Perform `training_loops` iterations of training.
 
@@ -274,11 +277,18 @@ def train(
 
     if get_training_loop_fn is None:
         get_training_loop_fn = _get_training_loop
+   
+
     training_loop = get_training_loop_fn(
-        driver, replay_buffer, agent, steps_per_loop, async_steps_per_loop
+        driver, 
+        replay_buffer, 
+        agent, 
+        steps_per_loop, 
+        async_steps_per_loop,
+        log_interval
     )
     checkpoint_manager = restore_and_get_checkpoint_manager(
-        root_dir, agent, metrics, step_metric
+        artifact_dir, agent, metrics, step_metric
     )
     train_step_counter = tf.compat.v1.train.get_or_create_global_step()
     if save_policy:
@@ -286,7 +296,7 @@ def train(
             agent.policy, train_step=train_step_counter
         )
 
-    summary_writer = tf.summary.create_file_writer(root_dir)
+    summary_writer = tf.summary.create_file_writer(log_dir)
     summary_writer.set_as_default()
 
     if resume_training_loops:
@@ -311,7 +321,7 @@ def train(
         training_loop(train_step=i, metrics=metrics)
         checkpoint_manager.save()
         if save_policy & (i % 100 == 0):
-            saver.save(os.path.join(root_dir, 'policy_%d' % step_metric.result()))
+            saver.save(os.path.join(artifact_dir, 'policy_%d' % step_metric.result()))
 
 # def train(
 #     root_dir,
