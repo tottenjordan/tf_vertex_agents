@@ -56,6 +56,7 @@ For custom training, we implement **off-policy training**, using a static set of
 
 > if Target policy != Behavior policy, Agent is said to be `off-policy`
 
+* "Off-policy" refers to the situation where for a data record, given its observation, the current policy in training might not choose the same action as the one in said data record
 * This method can learn from training trajectory generated from any policy
 * During training, policy is typically trained on static set of pre-collected data; includes observation, action, and reward
 
