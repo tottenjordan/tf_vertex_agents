@@ -29,6 +29,8 @@ from tf_agents.bandits.agents import neural_linucb_agent
 from tf_agents.bandits.agents import neural_epsilon_greedy_agent
 from tf_agents.bandits.networks import global_and_arm_feature_network
 from tf_agents.bandits.policies import policy_utilities
+from tf_agents.bandits.agents import lin_ucb_agent
+from tf_agents.bandits.agents import linear_thompson_sampling_agent as lin_ts_agent
 
 # ranking agent
 import gin
@@ -156,8 +158,11 @@ class PerArmAgentFactory:
                 alpha=self.agent_alpha,
                 accepts_per_arm_features=self.PER_ARM,
                 dtype=tf.float32,
+                summarize_grads_and_vars=self.summarize_grads_and_vars,
+                enable_summaries=self.debug_summaries,
             )
         elif agent_type == 'LinTS':
+            EMIT_POLICY_INFO = ('predicted_rewards_mean', 'bandit_policy_type')
             agent = lin_ts_agent.LinearThompsonSamplingAgent(
                 time_step_spec=self.time_step_spec,
                 action_spec=self.action_spec,
@@ -167,6 +172,9 @@ class PerArmAgentFactory:
                 ),
                 accepts_per_arm_features=self.PER_ARM,
                 dtype=tf.float32,
+                summarize_grads_and_vars=self.summarize_grads_and_vars,
+                enable_summaries=self.debug_summaries,
+                emit_policy_info=EMIT_POLICY_INFO,
             )
         elif agent_type == 'epsGreedy':
             # obs_spec = environment.observation_spec()
