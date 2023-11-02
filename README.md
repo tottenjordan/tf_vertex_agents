@@ -9,7 +9,7 @@ This repo is organized across several notebooks. Complete the first two notebook
 Below are the high-level objectives of each notebook or set of examples. *See READMEs in each subdirectory for more details*
 
 * [00-env-setup.ipynb](00-env-setup.ipynb) - establish naming conventions and env config for repo
-* [01-movielens-data-prep.ipynb](01-movielens-data-prep.ipynb) - prepare movielens datasets to model retreival and ranking use cases
+* [00-movielens-data-prep.ipynb](00-movielens-data-prep.ipynb) - prepare movielens datasets to model retreival and ranking use cases
 * [01-baseline-perarm-bandit/](01-baseline-perarm-bandit/) - implement custom `environment` for training multi-armed bandits
 * [02-perarm-features-bandit/](02-perarm-features-bandit/) - train contextual bandits with *per-arm* features
 * [03-ranking/](03-ranking/) - train contextual bandits for ranking problems
