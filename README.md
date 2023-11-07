@@ -19,6 +19,7 @@ Below are the high-level objectives of each notebook or set of examples. *See RE
 ## TF-Agents concepts to understand
 
 ### Intro: Multi-Armed Bandit problems in TF-Agents
+
 The Multi-Armed Bandit problem (MAB) is a special case of Reinforcement Learning: an agent collects rewards in an environment by taking some actions after observing some state of the environment. The main difference between general RL and MAB is that in MAB, we assume that **the action taken by the agent does not influence the next state of the environment**. Therefore, agents do not model state transitions, credit rewards to past actions, or "plan ahead" to get to reward-rich states.
 
 As in other RL domains, the goal of a MAB agent is to find a *policy* that collects as much reward as possible. It would be a mistake, however, to always try to exploit the action that promises the highest reward, because then there is a chance that we miss out on better actions if we do not explore enough. This is the main problem to be solved in MAB, often referred to as the *exploration-exploitation dilemma*.
@@ -30,8 +31,6 @@ As in other RL domains, the goal of a MAB agent is to find a *policy* that colle
 See the [tf_agents/bandits](https://github.com/tensorflow/agents/blob/master/tf_agents/bandits) repository for ready-to-use bandit environments, policies, and agents 
 
 ### Training data
-
-> **TODO**
 
 We use the
 [MovieLens 100K dataset](https://www.kaggle.com/prajitdatta/movielens-100k-dataset)
@@ -100,7 +99,7 @@ Bandits' most important metric is *regret*, calculated as the difference between
 > **TODO**
 
 * [00-env-setup.ipynb](00-env-setup.ipynb)
-* [01-movielens-data-prep.ipynb](01-movielens-data-prep.ipynb)
+* [00-movielens-data-prep.ipynb](00-movielens-data-prep.ipynb)
 * [01-baseline-perarm-bandit/](01-baseline-perarm-bandit/)
   * [01a-build_perarm_tf_agents_model.ipynb](01-baseline-perarm-bandit/01a-build_perarm_tf_agents_model.ipynb)
   * [01b-train_perarm_tf_agents_vertex.ipynb](01-baseline-perarm-bandit/01b-train_perarm_tf_agents_vertex.ipynb)
