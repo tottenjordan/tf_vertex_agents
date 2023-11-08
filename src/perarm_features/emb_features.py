@@ -15,10 +15,6 @@ from typing import List, Union
 # TF-Agent agents & networks
 from tf_agents.bandits.policies import policy_utilities
 
-from src.per_arm_rl import data_utils
-from src.per_arm_rl import train_utils
-from src.per_arm_rl import data_config
-
 # logging
 import logging
 logging.disable(logging.WARNING)
@@ -248,17 +244,3 @@ class EmbeddingModel:
         ]
 
         return concat, user_info
-        
-#     def _get_per_arm_features_v2(self, x) -> np.ndarray:
-#         """
-#         This function generates a single global observation vector.
-#         """
-
-#         _mid = np.array(self.mv_id_model(x['movie_id']).numpy())
-#         _mgen = np.array(self.mv_gen_model(x['movie_genres']).numpy())
-
-#         concat = np.concatenate(
-#             [_mid, _mgen], axis=-1
-#         ).astype(np.float32)
-
-#         return concat

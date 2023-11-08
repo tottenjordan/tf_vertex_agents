@@ -524,7 +524,7 @@ def main(args: argparse.Namespace):
         print(f" logging data to experiment run: {args.experiment_run}-{SESSION_id}")
         
         with vertex_ai.start_run(
-            f'{args.experiment_run}-{SESSION_id}', 
+            f'{args.experiment_run}', #-{SESSION_id}', 
             # tensorboard=args.tb_resource_name
         ) as my_run:
             

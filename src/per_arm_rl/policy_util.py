@@ -237,8 +237,9 @@ def train(
         , steps = steps_per_loop
         , async_steps_per_loop = 1
     )
-    if not run_hyperparameter_tuning:
-        saver = policy_saver.PolicySaver(agent.policy)
+    # if not run_hyperparameter_tuning:
+    #     saver = policy_saver.PolicySaver(agent.policy)
+    saver = policy_saver.PolicySaver(agent.policy)
         
     # ====================================================
     # profiler - train loop

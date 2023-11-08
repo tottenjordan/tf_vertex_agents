@@ -128,7 +128,6 @@ def main(args: argparse.Namespace) -> None:
                     tf.config.experimental.set_memory_growth(gpu, True)
                 logging.info(f'detected: {len(gpus)} GPUs')
             except RuntimeError as e:
-                # Memory growth must be set before GPUs have been initialized
                 logging.info(e)
 
         # tf.debugging.set_log_device_placement(True) # logs all tf ops and their device placement;
