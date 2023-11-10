@@ -1,6 +1,37 @@
-# Vertex Agents & Bandits
+# Contextual Bandits for RecSys with Tensorflow Agents and Vertex AI 
 
-> Contextual Bandits for RecSys with TF Agents and Vertex AI 
+> The goal of reinforcement learning (RL) is to build an autonomous agent that takes a sequence of actions to maximize a utility function by interacting with an external, unknown environment
+
+#### Introduction to RL for RecSys
+
+**RL use cases**
+* gaming
+* robotics
+* autonomous driving
+* personalization
+* healthcare
+
+**Simulated environments TL;DR**
+* In RL, the quality of a policy is often measured by the average reward received if the policy is followed by the agent to select actions. 
+* If the environment can be simulated (e.g., gaming), evaluation is as simple as running the policy. 
+* However, for some real-life problems (e.g., autonomous driving and healthcare), running a new policy in the actual environment can be expensive, risky and/or unethical
+* Training from a simulated environment for policy evaluation is common practice, but building a simulator that accurately reflects the real-world is challenging, e.g., how do you shape rewards for actions that haven't been observed? What biases could we introduce the our agent?
+
+**Off-policy TL;DR**
+* RL agents essentially do two things when training (learning):
+  * take actions --> aka `Behavior Policy`
+  * learn which actions are good vs bad (`experience`) --> aka `Target Policy` 
+* An agent uses a **Behavior Policy** to determine its action (behavior) in a given state
+* An agent uses a **Target Policy** to learn from the rewards recieved for its actions (i.e., to determine updated Q values)
+
+> `Off-policy` refers to training or evaluating a policy (the “target policy”) with historical data collected by a different policy (the “behavior policy”)
+
+Off-policy is challenging in some RL use cases, because training data is in the form of a "trajectory" (i.e., a sequence of state-action-reward tuples where states depend on actions chosen earlier in the sequence), meaning is a policy "deviates" from the trajectory (i.e., choosing different actions than those observed in historical interaction data), all future states and rewards will change, further deviating from the collected data
+
+**Contextual Bandits**
+* Contextual bandits are a subclass of RL algorithms where the agent's actions **do not affect future states**
+* Learns the optimal policy of a dynamic environment, where the objective of the agent then translates to maximizing the average future reward or in other words, picking the best arm (the one with the highest expected payoff)
+* Receives context (side information); specifically for RecSys, these are the features of the user and their past interactions (e.g., the items they interacted with)
 
 ## How to use this repo
 
@@ -24,7 +55,7 @@ The Multi-Armed Bandit problem (MAB) is a special case of Reinforcement Learning
 
 As in other RL domains, the goal of a MAB agent is to find a *policy* that collects as much reward as possible. It would be a mistake, however, to always try to exploit the action that promises the highest reward, because then there is a chance that we miss out on better actions if we do not explore enough. This is the main problem to be solved in MAB, often referred to as the *exploration-exploitation dilemma*.
 
-![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/deep_rl_mab_example_v2.png)
+![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/deep_rl_mab_example_v2.png = 250x250)
 
 See the [tf_agents/bandits](https://github.com/tensorflow/agents/blob/master/tf_agents/bandits) repository for ready-to-use bandit environments, policies, and agents 
 
