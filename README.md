@@ -18,32 +18,28 @@ Below are the high-level objectives of each notebook or set of examples. *See RE
 
 ## TF-Agents concepts to understand
 
-### Intro: Multi-Armed Bandit problems in TF-Agents
+### Intro: Contextual Bandit problems in TF-Agents
 
-The Multi-Armed Bandit problem (MAB) is a special case of Reinforcement Learning: an agent collects rewards in an environment by taking some actions after observing some state of the environment. The main difference between general RL and MAB is that in MAB, we assume that **the action taken by the agent does not influence the next state of the environment**. Therefore, agents do not model state transitions, credit rewards to past actions, or "plan ahead" to get to reward-rich states.
+The Contextual Bandit (CB) problem is a special case of Reinforcement Learning: an agent collects rewards in an environment by taking some actions after observing some state of the environment. The main difference between general RL and CB is that in CB, we assume that **the action taken by the agent does not influence the next state of the environment**. Therefore, agents do not model state transitions, credit rewards to past actions, or "plan ahead" to get to reward-rich states.
 
-As in other RL domains, the goal of a MAB agent is to find a *policy* that collects as much reward as possible. It would be a mistake, however, to always try to exploit the action that promises the highest reward, because then there is a chance that we miss out on better actions if we do not explore enough. This is the main problem to be solved in MAB, often referred to as the *exploration-exploitation dilemma*.
+As in other RL domains, the goal of a Contextual Bandit agent is to find a *policy* that collects as much reward as possible. It would be a mistake, however, to always try to exploit the action that promises the highest reward, because then there is a chance that we miss out on better actions if we do not explore enough. This is the main problem to be solved in CB, often referred to as the *exploration-exploitation dilemma*.
+
+#### Example: movie recommendations
 
 <img src='imgs/deep_rl_mab_example_v2.png' width='800' height='545'>
 
+Suppose we are looking to improve user engagement by recommending to a user the best movie from a set of movies. 
+* The movies are the *candidate arms*
+* *Context* could include user features (e.g., location, device, demographics), as well as additional features about each item (movie)
+* *Feedback* could be whether the user clicked or watched a movie
+
 See the [tf_agents/bandits](https://github.com/tensorflow/agents/blob/master/tf_agents/bandits) repository for ready-to-use bandit environments, policies, and agents 
-
-### Training data
-
-We use the
-[MovieLens 100K dataset](https://www.kaggle.com/prajitdatta/movielens-100k-dataset)
-to build a simulation environment that frames the recommendation problem:
-
-1.  User vectors are the environment observations;
-2.  Movie items to recommend are the agent actions applied on the environment;
-3.  Approximate user ratings are the environment rewards generated as feedback
-    to the observations and actions.
 
 
 ### Environments
 In TF-Agents, the environment class serves the role of giving information on the current state (this is called **observation** or **context**), receiving an action as input, performing a state transition, and outputting a reward. This class also takes care of resetting when an episode ends, so that a new episode can start. This is realized by calling a `reset` function when a state is labelled as "last" of the episode. For more details, see the [TF-Agents environments tutorial](https://github.com/tensorflow/agents/blob/master/docs/tutorials/2_environments_tutorial.ipynb).
 
-As mentioned above, MAB differs from general RL in that actions do not influence the next observation. Another difference is that in Bandits, there are no "episodes": every time step starts with a new observation, independently of previous time steps.
+As mentioned above, CB differs from general RL in that actions do not influence the next observation. Another difference is that in Bandits, there are no "episodes": every time step starts with a new observation, independently of previous time steps.
 
 
 ### Policies
@@ -71,6 +67,19 @@ In TF-Agents, `trajectories` are the training examples used to train an agent. M
 
 ### Regret
 Bandits' most important metric is *regret*, calculated as the difference between the reward collected by the agent and the expected reward of an oracle policy that has access to the reward functions of the environment. The [RegretMetric](https://github.com/tensorflow/agents/blob/master/tf_agents/bandits/metrics/tf_metrics.py) thus needs a `baseline_reward_fn` function that calculates the best achievable expected reward given an observation
+
+## In this repo
+
+### Training data
+
+We use the
+[MovieLens 100K dataset](https://www.kaggle.com/prajitdatta/movielens-100k-dataset)
+to build a simulation environment that frames the recommendation problem:
+
+1.  User vectors are the environment observations;
+2.  Movie items to recommend are the agent actions applied on the environment;
+3.  Approximate user ratings are the environment rewards generated as feedback
+    to the observations and actions.
 
 
 ### Training Agents
