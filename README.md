@@ -24,7 +24,7 @@ The Multi-Armed Bandit problem (MAB) is a special case of Reinforcement Learning
 
 As in other RL domains, the goal of a MAB agent is to find a *policy* that collects as much reward as possible. It would be a mistake, however, to always try to exploit the action that promises the highest reward, because then there is a chance that we miss out on better actions if we do not explore enough. This is the main problem to be solved in MAB, often referred to as the *exploration-exploitation dilemma*.
 
-<img src='imgs/deep_rl_mab_example_v2.png' width='250' height='250'>
+<img src='imgs/deep_rl_mab_example_v2.png' width='1000' height='745'>
 
 See the [tf_agents/bandits](https://github.com/tensorflow/agents/blob/master/tf_agents/bandits) repository for ready-to-use bandit environments, policies, and agents 
 
