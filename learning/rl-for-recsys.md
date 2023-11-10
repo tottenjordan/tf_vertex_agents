@@ -1,6 +1,31 @@
+## RL for RecSys TL;DR
+
+**Simulated environments**
+* In RL, the quality of a policy is often measured by the average reward received if the policy is followed by the agent to select actions. 
+* If the environment can be simulated (e.g., gaming), evaluation is as simple as running the policy. 
+* However, for some real-life problems (e.g., autonomous driving and healthcare), running a new policy in the actual environment can be expensive, risky and/or unethical
+* Training from a simulated environment for policy evaluation is common practice, but building a simulator that accurately reflects the real-world is challenging, e.g., how do you shape rewards for actions that haven't been observed? What biases could we introduce the our agent?
+
+**Off-policy**
+* RL agents essentially do two things when training (learning):
+  * take actions --> aka `Behavior Policy`
+  * learn which actions are good vs bad (`experience`) --> aka `Target Policy` 
+* An agent uses a **Behavior Policy** to determine its action (behavior) in a given state
+* An agent uses a **Target Policy** to learn from the rewards recieved for its actions (i.e., to determine updated Q values)
+
+> `Off-policy` refers to training or evaluating a policy (the “target policy”) with historical data collected by a different policy (the “behavior policy”)
+
+Off-policy is challenging in some RL use cases, because training data is in the form of a "trajectory" (i.e., a sequence of state-action-reward tuples where states depend on actions chosen earlier in the sequence)
+* This means if a policy "deviates" from the trajectory (i.e., if it chooses different actions than those observed in historical data), all future states and rewards will change, further deviating from the collected data
+
+**Contextual Bandits**
+* Contextual bandits are a subclass of RL algorithms where the agent's actions **do not affect future states**
+* Learns the optimal policy of a dynamic environment, where the objective of the agent then translates to maximizing the average future reward or in other words, picking the best arm (the one with the highest expected payoff)
+* Receives context (side information); specifically for RecSys, these are the features of the user and their past interactions (e.g., the items they interacted with)
+
 ## Why reinforcement learning?
 * train algorithms that consider long-term (cumulative value) of decisions
-* explore & exploit tradeoffs between short and long term value (e.g., the difference between the short term value of "click-bait" vs the long-term value of overall user satisafaction, as highlighted in  [DNN for YouTube Recommendations](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf))
+* **Explore & Exploit tradeoffs** between short and long term value (e.g., the difference between the short term value of "click-bait" vs the long-term value of overall user satisafaction, as highlighted in  [DNN for YouTube Recommendations](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf))
 * make a sequence of decisions, where each decision, or action, possibly impacts future decisions
 * return a **distribution** over predictions rather than a single prediction*
 
@@ -18,7 +43,8 @@
 |   Action   | possible steps that an agent can take | select from a lare corpus |
 |   Policy   | The approach the agent learns to use to determine the next best action based on state | equivalent to a "model" in supervised learning |
 
-For custom training, we implement **off-policy training**, using a static set of pre-collected data records. "Off-policy" refers to the situation where for a data record, given its observation, the current policy in training might not choose the same action as the one in said data record.
+For custom training, we implement **off-policy training**, using a static set of pre-collected data records.
+* Meaning, given a data record, and its observation, the current policy in training might not choose the same action as the one in said data record.
 
 ## RL flavors - TODO
 
