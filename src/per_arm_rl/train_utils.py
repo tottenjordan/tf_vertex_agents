@@ -443,3 +443,38 @@ def _get_eval_step(
     )
     
     return infer_step
+
+# ====================================================
+# converting tensor specs
+# ====================================================
+from tensorflow.python.framework import tensor_spec as tspecs
+from tf_agents.specs import array_spec
+
+TensorSpec = tspecs.TensorSpec
+BoundedTensorSpec = tspecs.BoundedTensorSpec
+
+def is_bounded(spec):
+    if isinstance(spec, (array_spec.BoundedArraySpec, BoundedTensorSpec)):
+        return True
+    elif hasattr(spec, "minimum") and hasattr(spec, "maximum"):
+        return hasattr(spec, "dtype") and hasattr(spec, "shape")
+
+def from_spec(spec):
+    """
+    Maps the given spec into corresponding TensorSpecs keeping bounds.
+    """
+
+    def _convert_to_tensor_spec(s):
+        # Need to check bounded first as non bounded specs are base class.
+        if isinstance(s, tf.TypeSpec):
+            return s
+        if is_bounded(s):
+            return BoundedTensorSpec.from_spec(s)
+        elif isinstance(s, array_spec.ArraySpec):
+            return TensorSpec.from_spec(s)
+        else:
+            raise ValueError(
+                "No known conversion from type `%s` to a TensorSpec.  Saw:\n  %s" % (type(s), s)
+            )
+
+    return tf.nest.map_structure(_convert_to_tensor_spec, spec)

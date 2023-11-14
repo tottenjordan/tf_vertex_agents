@@ -44,10 +44,10 @@ from google.cloud.aiplatform.training_utils import cloud_profiler
 
 import time
 
-from . import data_utils
+# from . import data_utils
 from . import train_utils
-from . import data_config
-from . import my_per_arm_py_env
+# from . import data_config
+from . import trainer_baseline
 
 # import traceback
 # from google.cloud.aiplatform.training_utils import cloud_profiler
@@ -61,6 +61,7 @@ def train(
     , training_loops: int
     , steps_per_loop: int
     , log_dir: str
+    , chkpt_dir: str
     , profiler: bool
     , chkpt_interval: int = 25
     , additional_metrics: Optional[List[TFStepMetric]] = None
@@ -184,7 +185,13 @@ def train(
     # ====================================================
     # Policy checkpoints
     # ====================================================
-    CHKPOINT_DIR = f"{root_dir}/chkpoint"
+    if 'AIP_CHECKPOINT_DIR' in os.environ:
+        CHKPOINT_DIR=os.environ['AIP_CHECKPOINT_DIR']
+        logging.info(f'AIP_CHECKPOINT_DIR: {CHKPOINT_DIR}')
+    else:
+        CHKPOINT_DIR=chkpt_dir
+
+    # CHKPOINT_DIR = f"{log_dir}/chkpoint"
     logging.info(f"setting checkpoint_manager: {CHKPOINT_DIR}")
     
     checkpoint_manager = train_utils.restore_and_get_checkpoint_manager(
@@ -194,7 +201,6 @@ def train(
         step_metric=step_metric
     )
     
-
     # ====================================================
     # Driver
     # ====================================================
@@ -230,16 +236,23 @@ def train(
         # logging.info(f'stop_profiling_step  : {stop_profiling_step}')
         logging.info(f'profiler_options     : {profiler_options}')
     
-    training_loop = trainer._get_training_loop(
+    training_loop = trainer_baseline._get_training_loop(
         driver = driver
         , replay_buffer = replay_buffer
         , agent = agent
         , steps = steps_per_loop
         , async_steps_per_loop = 1
     )
+    
+    train_step_counter = tf.compat.v1.train.get_or_create_global_step()
+    
     # if not run_hyperparameter_tuning:
-    #     saver = policy_saver.PolicySaver(agent.policy)
-    saver = policy_saver.PolicySaver(agent.policy)
+    #     saver = policy_saver.PolicySaver(
+    #         agent.policy, 
+    #         train_step=train_step_counter
+    #     )
+    #     print(f"created saver: {saver}")
+    # saver = policy_saver.PolicySaver(agent.policy)
         
     # ====================================================
     # profiler - train loop
@@ -273,12 +286,13 @@ def train(
                     metric_results[type(metric).__name__].append(metric.result().numpy())
                     
                 if train_step > 0 and train_step % chkpt_interval == 0:
-                    saver.save(
-                        os.path.join(
-                            CHKPOINT_DIR, 
-                            'policy_%d' % step_metric.result()
-                        )
-                    )
+                    checkpoint_manager.save()
+                #     saver.save(
+                #         os.path.join(
+                #             CHKPOINT_DIR, 
+                #             'policy_%d' % step_metric.result()
+                #         )
+                #     )
                     logging.info(f"saved policy to: {CHKPOINT_DIR}")
                     
         tf.profiler.experimental.stop()
@@ -313,20 +327,22 @@ def train(
                 metric_results[type(metric).__name__].append(metric.result().numpy())
                 
             if train_step > 0 and train_step % chkpt_interval == 0:
-                saver.save(
-                    os.path.join(
-                        CHKPOINT_DIR, 
-                        'policy_%d' % step_metric.result()
-                    )
-                )
+                checkpoint_manager.save()
+            #     saver.save(
+            #         os.path.join(
+            #             CHKPOINT_DIR, 
+            #             'policy_%d' % step_metric.result()
+            #         )
+            #     )
                 logging.info(f"saved policy to: {CHKPOINT_DIR}")
                 
         runtime_mins = int((time.time() - start_time) / 60)
         logging.info(f"runtime_mins: {runtime_mins}")
     
     if not run_hyperparameter_tuning:
+        checkpoint_manager.save()
         # saver.save(model_dir)
-        saver.save(artifacts_dir)
-        logging.info(f"saved trained policy to: {artifacts_dir}")
+        # saver.save(artifacts_dir)
+        print(f"saved trained policy checkpoint to: {CHKPOINT_DIR}")
     
     return metric_results

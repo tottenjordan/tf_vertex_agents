@@ -65,6 +65,7 @@ options.threading.max_intra_op_parallelism = 1 # TODO
 
 def train_perarm(
     agent,
+    reward_spec,
     global_dim: int,
     per_arm_dim: int, 
     num_iterations: int,
@@ -80,8 +81,8 @@ def train_perarm(
     # split: str,
     _trajectory_fn = None,
     # _run_bandit_eval_fn = None,
-    log_interval: int = 1,
-    chkpt_interval: int = 1,
+    log_interval: int = 10,
+    chkpt_interval: int = 100,
     async_steps_per_loop = 1,
     resume_training_loops = False,
     additional_metrics: Optional[List[TFStepMetric]] = None,
@@ -137,13 +138,34 @@ def train_perarm(
     # metrics
     # ====================================================
     step_metric = tf_metrics.EnvironmentSteps()
+    
+    # metrics = [
+    #     # tf_metrics.NumberOfEpisodes(),
+    #     # tf_metrics.AverageEpisodeLengthMetric(batch_size=batch_size),
+    #     tf_metrics.AverageReturnMetric(batch_size=batch_size)
+    # ]
+    # if additional_metrics:
+    #     metrics += additional_metrics
+    
     metrics = [
-        # tf_metrics.NumberOfEpisodes(),
-        # tf_metrics.AverageEpisodeLengthMetric(batch_size=batch_size),
-        tf_metrics.AverageReturnMetric(batch_size=batch_size)
+        tf_metrics.NumberOfEpisodes()
+        , tf_metrics.EnvironmentSteps()
+        , tf_metrics.AverageEpisodeLengthMetric(batch_size=batch_size)
     ]
     if additional_metrics:
         metrics += additional_metrics
+
+    if isinstance(reward_spec, dict):
+        metrics += [
+            tf_metrics.AverageReturnMultiMetric(
+                reward_spec=reward_spec
+                , batch_size=batch_size
+            )
+        ]
+    else:
+        metrics += [
+            tf_metrics.AverageReturnMetric(batch_size=batch_size)
+        ]
 
     metric_results = defaultdict(list)
     
@@ -163,10 +185,10 @@ def train_perarm(
     
     # train_step_counter = tf.compat.v1.train.get_or_create_global_step()
     
-    saver = policy_saver.PolicySaver(
-        agent.policy, 
-        train_step=global_step
-    )
+    # saver = policy_saver.PolicySaver(
+    #     agent.policy, 
+    #     train_step=global_step
+    # )
     
     if resume_training_loops:
         train_step_count_per_loop = (
@@ -241,12 +263,13 @@ def train_perarm(
                 )
 
             if i > 0 and i % chkpt_interval == 0:
-                saver.save(
-                    os.path.join(
-                        CHKPOINT_DIR, 
-                        'policy_%d' % step_metric.result()
-                    )
-                )
+                checkpoint_manager.save()
+                # saver.save(
+                #     os.path.join(
+                #         CHKPOINT_DIR, 
+                #         'policy_%d' % step_metric.result()
+                #     )
+                # )
                 print(f"saved policy to: {CHKPOINT_DIR}")
 
         tf.profiler.experimental.stop()
@@ -278,18 +301,21 @@ def train_perarm(
                 )
 
             if i > 0 and i % chkpt_interval == 0:
-                saver.save(
-                    os.path.join(
-                        CHKPOINT_DIR, 
-                        'policy_%d' % step_metric.result()
-                    )
-                )
+                checkpoint_manager.save()
+                # saver.save(
+                #     os.path.join(
+                #         CHKPOINT_DIR, 
+                #         'policy_%d' % step_metric.result()
+                #     )
+                # )
                 print(f"saved policy to: {CHKPOINT_DIR}")
             
         runtime_mins = int((time.time() - start_time) / 60)
         print(f"runtime_mins: {runtime_mins}")
 
-    saver.save(model_dir)
-    print(f"saved trained policy to: {model_dir}")
+    # saver.save(model_dir)
+    # print(f"saved trained policy to: {model_dir}")
+    checkpoint_manager.save()
+    print(f"saved trained policy to: {CHKPOINT_DIR}")
     
     return list_o_loss, agent  # agent | val_loss

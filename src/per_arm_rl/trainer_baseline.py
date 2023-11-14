@@ -34,6 +34,8 @@ from tf_agents.bandits.metrics import tf_metrics as tf_bandit_metrics
 from tf_agents.environments import TFEnvironment, tf_py_environment
 from tf_agents.metrics.tf_metric import TFStepMetric
 
+# from tensorboard.plugins.hparams import api as hp
+
 tf = tf.compat.v2
 
 AGENT_CHECKPOINT_NAME = 'agent'
@@ -287,10 +289,14 @@ def train(
         async_steps_per_loop,
         log_interval
     )
+    
+    metric_results = defaultdict(list)
+    
     checkpoint_manager = restore_and_get_checkpoint_manager(
         artifact_dir, agent, metrics, step_metric
     )
     train_step_counter = tf.compat.v1.train.get_or_create_global_step()
+    
     if save_policy:
         saver = policy_saver.PolicySaver(
             agent.policy, train_step=train_step_counter

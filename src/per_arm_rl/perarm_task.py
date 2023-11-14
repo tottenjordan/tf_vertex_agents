@@ -29,7 +29,7 @@ from google.cloud import aiplatform, storage
 import hypertune
 
 from . import policy_util
-from . import data_utils
+# from . import data_utils
 from . import train_utils
 from . import data_config
 from . import my_per_arm_py_env
@@ -162,12 +162,27 @@ def main(args: argparse.Namespace) -> None:
         
     logging.info(f'TensorBoard log_dir: {log_dir}')
     
+    # ====================================================
+    # Model Directory
+    # ====================================================
     # [Do Not Change] Set the root directory for training artifacts.
     MODEL_DIR = os.environ["AIP_MODEL_DIR"] if not args.run_hyperparameter_tuning else ""
     logging.info(f'MODEL_DIR: {MODEL_DIR}')
     
     root_dir = args.root_dir if not args.run_hyperparameter_tuning else ""
     logging.info(f'root_dir: {root_dir}')
+    
+    # ====================================================
+    # Policy checkpoints
+    # ====================================================
+    if 'AIP_CHECKPOINT_DIR' in os.environ:
+        CHKPOINT_DIR=os.environ['AIP_CHECKPOINT_DIR']
+        logging.info(f'AIP_CHECKPOINT_DIR: {CHKPOINT_DIR}')
+    else:
+        CHKPOINT_DIR=f'gs://{args.bucket_name}/{args.experiment_name}/{args.experiment_run}/ckpt'
+
+    # CHKPOINT_DIR = f"{log_dir}/chkpoint"
+    logging.info(f"setting checkpoint_manager: {CHKPOINT_DIR}")
     
     # ====================================================
     # Set Device Strategy
@@ -272,7 +287,7 @@ def main(args: argparse.Namespace) -> None:
             , enable_summaries = args.debug_summaries
         )
     
-    agent.initialize()
+        agent.initialize()
     logging.info(f"agent: {agent.name}")
     logging.info("TimeStep Spec (for each batch):\n%s\n", agent.time_step_spec)
     logging.info("Action Spec (for each batch):\n%s\n", agent.action_spec)
@@ -325,8 +340,9 @@ def main(args: argparse.Namespace) -> None:
         , run_hyperparameter_tuning=args.run_hyperparameter_tuning
         , root_dir=root_dir if not args.run_hyperparameter_tuning else None
         , artifacts_dir=args.artifacts_dir if not args.run_hyperparameter_tuning else None
-        , model_dir = MODEL_DIR
+        # , model_dir = MODEL_DIR
         , log_dir = log_dir
+        , chkpt_dir = CHKPOINT_DIR
         , profiler = args.profiler
         , train_summary_writer = train_summary_writer
         , chkpt_interval = args.chkpt_interval,
@@ -348,12 +364,11 @@ def main(args: argparse.Namespace) -> None:
     else:
         logging.info(f"Logging data to experiment run: {args.experiment_run}")
         
-        SESSION_id = "".join(random.choices(string.ascii_lowercase + string.digits, k=3)) # handle restarts 
         
         if task_type == 'chief':
             logging.info(f" task_type logging experiments  : {task_type}")
             logging.info(f" task_id logging experiments    : {task_id}")
-            logging.info(f" logging data to experiment run : {args.experiment_run}-{SESSION_id}")
+            logging.info(f" logging data to experiment run : {args.experiment_run}")
         
         # gather the metrics for the last epoch to be saved in metrics
         exp_metrics = {
@@ -375,7 +390,7 @@ def main(args: argparse.Namespace) -> None:
         }
         
         with vertex_ai.start_run(
-            f'{args.experiment_run}-{SESSION_id}',
+            f'{args.experiment_run}',
         ) as my_run:
             
             logging.info(f"logging metrics...")
@@ -403,203 +418,3 @@ if __name__ == "__main__":
     main(args = args)
     
     logging.info("Reinforcement learning task completed.")
-    
-    
-# ====================================================
-### ARCHIVE
-# ====================================================
-
-    # execute_task(
-    #     args = args
-    #     , best_hyperparameters_blob = best_hyperparameters_blob
-    #     , hypertune_client = hypertune_client
-    #     , task_type = task_type
-    # )
-
-# def execute_task(
-#     task_type: str
-#     , args: argparse.Namespace
-#     , best_hyperparameters_blob: Union[storage.Blob, None]
-#     , hypertune_client: Union[hypertune.HyperTune, None]
-# ) -> None:
-#     """Executes training, or hyperparameter tuning, for the policy.
-
-#     Parses parameters and hyperparameters from the command line, reads best
-#     hyperparameters if applicable, constructs the logical modules for RL, and
-#     executes training or hyperparameter tuning. Tracks the training process
-#     and resources using TensorBoard Profiler if applicable.
-
-#     Args:
-#       args: An argpase.Namespace object of (hyper)parameter values.
-#       best_hyperparameters_blob: An object containing best hyperparameters in
-#         Google Cloud Storage.
-#       hypertune_client: Client for submitting hyperparameter tuning metrics.
-#     """
-#     # ====================================================
-#     # set Vertex AI env vars
-#     # ====================================================
-#     if 'AIP_TENSORBOARD_LOG_DIR' in os.environ:
-#         log_dir=os.environ['AIP_TENSORBOARD_LOG_DIR']
-#         logging.info(f'AIP_TENSORBOARD_LOG_DIR: {log_dir}')
-#     else:
-#         log_dir = args.log_dir
-#         logging.info(f'log_dir: {log_dir}')
-        
-#     logging.info(f'TensorBoard log_dir: {log_dir}')
-    
-#     # [Do Not Change] Set the root directory for training artifacts.
-#     MODEL_DIR = os.environ["AIP_MODEL_DIR"] if not args.run_hyperparameter_tuning else ""
-#     logging.info(f'MODEL_DIR: {MODEL_DIR}')
-    
-#     root_dir = args.root_dir if not args.run_hyperparameter_tuning else ""
-#     logging.info(f'root_dir: {root_dir}')
-
-#     # ====================================================
-#     # Use best hparams learned from previous hpt job
-#     # ====================================================
-#     if args.train_with_best_hyperparameters:
-#         logging.info(f'train_with_best_hyperparameters engaged...')
-#         logging.info(f" train_with_best_hyperparameters: {args.train_with_best_hyperparameters}")
-#         best_hyperparameters = json.loads(
-#             best_hyperparameters_blob.download_as_string()
-#         )
-        
-#         if "batch-size" in best_hyperparameters:
-#             args.batch_size = int(best_hyperparameters["batch-size"])
-#         if "training-loops" in best_hyperparameters:
-#             args.training_loops = int(best_hyperparameters["training-loops"])
-#         if "steps-per-loop" in best_hyperparameters:
-#             args.step_per_loop = int(best_hyperparameters["steps-per-loop"])
-#         if "num-actions" in best_hyperparameters:
-#             args.num_actions = int(best_hyperparameters["num-actions"])
-
-#     # ====================================================
-#     # Define RL environment
-#     # ====================================================
-#     env = my_per_arm_py_env.MyMovieLensPerArmPyEnvironment(
-#         project_number = args.project_number
-#         , data_path = args.data_path
-#         , bucket_name = args.bucket_name
-#         , data_gcs_prefix = args.data_gcs_prefix
-#         , user_age_lookup_dict = data_config.USER_AGE_LOOKUP
-#         , user_occ_lookup_dict = data_config.USER_OCC_LOOKUP
-#         , movie_gen_lookup_dict = data_config.MOVIE_GEN_LOOKUP
-#         , num_users = data_config.MOVIELENS_NUM_USERS
-#         , num_movies = data_config.MOVIELENS_NUM_MOVIES
-#         , rank_k = args.rank_k
-#         , batch_size = args.batch_size
-#         , num_actions = args.num_actions
-#     )
-#     environment = tf_py_environment.TFPyEnvironment(env)
-    
-#     strategy = train_utils.get_train_strategy(distribute_arg=args.distribute)
-#     logging.info(f'TF training strategy (execute task) = {strategy}')
-    
-#     with strategy.scope():
-#         # Define RL agent/algorithm.
-#         agent = lin_ucb_agent.LinearUCBAgent(
-#             time_step_spec=environment.time_step_spec()
-#             , action_spec=environment.action_spec()
-#             , tikhonov_weight=args.tikhonov_weight
-#             , alpha=args.agent_alpha
-#             , dtype=tf.float32
-#             , accepts_per_arm_features=PER_ARM
-#             , summarize_grads_and_vars = args.sum_grads_vars
-#             , enable_summaries = args.debug_summaries
-#         )
-#     logging.info("TimeStep Spec (for each batch):\n%s\n", agent.time_step_spec)
-#     logging.info("Action Spec (for each batch):\n%s\n", agent.action_spec)
-#     logging.info("Reward Spec (for each batch):\n%s\n", environment.reward_spec())
-
-#     # ====================================================
-#     # Define RL metric.
-#     # ====================================================
-
-#     optimal_reward_fn = functools.partial(
-#         environment_utilities.compute_optimal_reward_with_movielens_environment
-#         , environment=environment
-#     )
-
-#     regret_metric = tf_bandit_metrics.RegretMetric(optimal_reward_fn)
-
-#     suboptimal_arms_metric = tf_bandit_metrics.SuboptimalArmsMetric(
-#       optimal_action_fn
-#     )
-
-#     metrics = [regret_metric, suboptimal_arms_metric]
-
-#     # Perform on-policy training with the simulation MovieLens environment.
-#     # if args.profiler:
-#     #     tf.profiler.experimental.start(log_dir)
-        
-#     start_time = time.time()
-  
-#     metric_results = policy_util.train(
-#         agent=agent
-#         , environment=environment
-#         , training_loops=args.training_loops
-#         , steps_per_loop=args.steps_per_loop
-#         , additional_metrics=metrics
-#         , run_hyperparameter_tuning=args.run_hyperparameter_tuning
-#         , root_dir=root_dir if not args.run_hyperparameter_tuning else None
-#         , artifacts_dir=args.artifacts_dir if not args.run_hyperparameter_tuning else None
-#         , model_dir = MODEL_DIR
-#         , log_dir = log_dir
-#         , profiler = args.profiler
-#     )
-    
-#     end_time = time.time()
-#     runtime_mins = int((end_time - start_time) / 60)
-    
-#     # if args.profiler:
-#     #     tf.profiler.experimental.stop()
-
-#     # Report training metrics to Vertex AI for hyperparameter tuning
-#     if args.run_hyperparameter_tuning:
-#         hypertune_client.report_hyperparameter_tuning_metric(
-#             hyperparameter_metric_tag="final_average_return"
-#             , metric_value=metric_results["AverageReturnMetric"][-1]
-#             # , global_step=args.training_loops
-#         )
-        
-#     if args.run_hyperparameter_tuning:
-#         logging.info("hp-tuning engaged; not logging training output to Vertex Experiments")
-#     else:
-#         logging.info(f"Logging data to experiment run: {args.experiment_run}")
-        
-#         SESSION_id = "".join(random.choices(string.ascii_lowercase + string.digits, k=3)) # handle restarts 
-#         if task_type == 'chief':
-#             print(f" task_type logging experiments: {task_type}")
-#             print(f" task_id logging experiments: {task_id}")
-#             print(f" logging data to experiment run: {args.experiment_run}-{SESSION_id}")
-        
-#         # gather the metrics for the last epoch to be saved in metrics
-#         exp_metrics = {
-#             "AverageReturnMetric" : float(metric_results["AverageReturnMetric"][-1])
-#             , "FinalRegretMetric" : float(metric_results["RegretMetric"][-1])
-#         }
-        
-#         # gather the param values
-#         exp_params = {
-#             "runtime": runtime_mins
-#             , "batch_size": args.batch_size
-#             , "training_loops": args.training_loops
-#             , "steps_pre_loop": args.steps_per_loop
-#             , "rank_k": args.rank_k
-#             , "num_actions": args.num_actions
-#             , "per_arm": PER_ARM
-#             , "tikhonov_weight": args.tikhonov_weight
-#             , "agent_alpha": args.agent_alpha
-#         }
-        
-#         with aiplatform.start_run(
-#             args.experiment_run
-#         ) as my_run:
-            
-#             aiplatform.log_params(exp_params)
-            
-#             aiplatform.log_metrics(exp_metrics)
-            
-#             aiplatform.end_run()
-            
-#         logging.info(f"EXPERIMENT RUN: '{args.experiment_run}' has ended")

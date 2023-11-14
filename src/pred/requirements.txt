@@ -1,0 +1,10 @@
+google-cloud-aiplatform==1.33.1
+google-cloud-storage
+numpy
+six
+typing-extensions
+tensorflow==2.13.0
+tf-agents==0.17.0
+urllib3
+pillow
+wrapt==1.14.1

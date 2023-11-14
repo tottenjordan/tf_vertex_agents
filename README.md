@@ -30,6 +30,14 @@ Suppose we are looking to improve user engagement by recommending to a user the 
 
 <img src='imgs/deep_rl_mab_example_v2.png' width='800' height='545'>
 
+### Problem formulation
+
+basic questions we need to answer:
+* how is the **environment defined:** (e.g., real or simulated environmnet)
+* how do we **incentivize the agent:** (e.g., linear or non-linear rewards)
+* structure and logic of the **policy** (e.g., neuarl networks or look-up tables)
+* Choose a **training algorithm**
+
 ### Training data used in this repo
 
 We use the

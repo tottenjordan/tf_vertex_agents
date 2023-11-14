@@ -11,4 +11,5 @@ tensorboard-data-server
 tensorflow-io
 urllib3
 pillow
+wrapt==1.14.1
 

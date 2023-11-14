@@ -65,7 +65,7 @@ from . import emb_features as emb_features
 
 from src.per_arm_rl import data_utils
 from src.per_arm_rl import train_utils
-from src.per_arm_rl import data_config
+# from src.per_arm_rl import data_config
 
 if tf.__version__[0] != "2":
     raise Exception("The trainer only runs with TensorFlow version 2.")
@@ -371,6 +371,15 @@ def main(args: argparse.Namespace):
         observation_spec = observation_spec, 
     )
     print(f"time_step_spec: {time_step_spec}")
+    
+    reward_spec = {
+        "reward": array_spec.ArraySpec(
+            shape=[args.batch_size], 
+            dtype=np.float32, 
+            name="reward"
+        )
+    }
+    reward_tensor_spec = train_utils.from_spec(reward_spec)
 
     with distribution_strategy.scope():
 
@@ -445,6 +454,7 @@ def main(args: argparse.Namespace):
 
     metric_results, trained_agent = train_perarm.train_perarm(
         agent = agent,
+        reward_spec = reward_tensor_spec,
         global_dim = args.global_dim,
         per_arm_dim = args.per_arm_dim,
         num_iterations = args.training_loops,
@@ -516,15 +526,15 @@ def main(args: argparse.Namespace):
     # ====================================================
     # log Vertex Experiments
     # ====================================================
-    SESSION_id = "".join(random.choices(string.ascii_lowercase + string.digits, k=3)) # handle restarts 
+    # SESSION_id = "".join(random.choices(string.ascii_lowercase + string.digits, k=3)) # handle restarts 
     
     if task_type == 'chief':
         print(f" task_type logging experiments: {task_type}")
         print(f" task_id logging experiments: {task_id}")
-        print(f" logging data to experiment run: {args.experiment_run}-{SESSION_id}")
+        print(f" logging data to experiment run: {args.experiment_run}")
         
         with vertex_ai.start_run(
-            f'{args.experiment_run}', #-{SESSION_id}', 
+            f'{args.experiment_run}',
             # tensorboard=args.tb_resource_name
         ) as my_run:
             
@@ -558,7 +568,7 @@ def main(args: argparse.Namespace):
             )
 
             vertex_ai.end_run()
-            print(f"EXPERIMENT RUN: {args.experiment_run}-{SESSION_id} has ended")
+            print(f"EXPERIMENT RUN: {args.experiment_run} has ended")
 
 if __name__ == "__main__":
     logging.basicConfig(
