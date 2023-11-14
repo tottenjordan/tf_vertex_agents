@@ -183,12 +183,13 @@ def train_perarm(
         step_metric=step_metric
     )
     
-    # train_step_counter = tf.compat.v1.train.get_or_create_global_step()
+    train_step_counter = tf.compat.v1.train.get_or_create_global_step()
     
-    # saver = policy_saver.PolicySaver(
-    #     agent.policy, 
-    #     train_step=global_step
-    # )
+    saver = policy_saver.PolicySaver(
+        agent.policy, 
+        train_step=global_step,
+        # train_step=train_step_counter
+    )
     
     if resume_training_loops:
         train_step_count_per_loop = (
@@ -263,13 +264,13 @@ def train_perarm(
                 )
 
             if i > 0 and i % chkpt_interval == 0:
-                checkpoint_manager.save()
-                # saver.save(
-                #     os.path.join(
-                #         CHKPOINT_DIR, 
-                #         'policy_%d' % step_metric.result()
-                #     )
-                # )
+                # checkpoint_manager.save()
+                saver.save(
+                    os.path.join(
+                        CHKPOINT_DIR, 
+                        'policy_%d' % step_metric.result()
+                    )
+                )
                 print(f"saved policy to: {CHKPOINT_DIR}")
 
         tf.profiler.experimental.stop()
@@ -301,21 +302,21 @@ def train_perarm(
                 )
 
             if i > 0 and i % chkpt_interval == 0:
-                checkpoint_manager.save()
-                # saver.save(
-                #     os.path.join(
-                #         CHKPOINT_DIR, 
-                #         'policy_%d' % step_metric.result()
-                #     )
-                # )
+                # checkpoint_manager.save()
+                saver.save(
+                    os.path.join(
+                        CHKPOINT_DIR, 
+                        'policy_%d' % step_metric.result()
+                    )
+                )
                 print(f"saved policy to: {CHKPOINT_DIR}")
             
         runtime_mins = int((time.time() - start_time) / 60)
         print(f"runtime_mins: {runtime_mins}")
 
-    # saver.save(model_dir)
-    # print(f"saved trained policy to: {model_dir}")
-    checkpoint_manager.save()
-    print(f"saved trained policy to: {CHKPOINT_DIR}")
+    saver.save(model_dir)
+    print(f"saved trained policy to: {model_dir}")
+    # checkpoint_manager.save()
+    # print(f"saved trained policy to: {CHKPOINT_DIR}")
     
     return list_o_loss, agent  # agent | val_loss
