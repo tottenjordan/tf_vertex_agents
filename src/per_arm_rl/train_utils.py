@@ -66,7 +66,7 @@ def _get_train_dataset(
     print(f"train_files: {train_files}")
 
     train_dataset = tf.data.TFRecordDataset(train_files)          # original
-    # train_dataset = train_dataset.take(total_take)
+    train_dataset = train_dataset.take(total_take)
     train_dataset = train_dataset.map(data_utils.parse_tfrecord)  # original
     
     # tmp - test start

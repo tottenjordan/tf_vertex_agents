@@ -53,6 +53,10 @@ from tf_agents.trajectories import trajectory
 from tf_agents.policies import py_tf_eager_policy
 from tf_agents.train.utils import strategy_utils
 
+from tf_agents.policies import policy_saver
+
+from tf_agents.specs import array_spec
+
 from tensorflow.python.client import device_lib
 
 nest = tf.nest
@@ -69,6 +73,9 @@ from src.per_arm_rl import train_utils
 
 if tf.__version__[0] != "2":
     raise Exception("The trainer only runs with TensorFlow version 2.")
+    
+import wrapt
+print(f"wrapt version: {wrapt.__version__}")
 
 
 PER_ARM = True  # Use the non-per-arm version of the MovieLens environment.
@@ -350,9 +357,7 @@ def main(args: argparse.Namespace):
     
     observation_spec = {
         'global': tf.TensorSpec([args.global_dim], tf.float32),
-        'per_arm': tf.TensorSpec(
-            [args.num_actions, args.per_arm_dim], tf.float32
-        ) #excluding action dim here
+        'per_arm': tf.TensorSpec([args.num_actions, args.per_arm_dim], tf.float32)
     }
     print(f"observation_spec: {observation_spec}")
 
@@ -363,7 +368,7 @@ def main(args: argparse.Namespace):
         maximum=args.num_actions-1, 
         # n degrees of freedom and will dictate 
         # the expected mean reward spec shape
-        name="action_spec"
+        # name="action_spec"
     )
     print(f"action_spec: {action_spec}")
 
@@ -405,8 +410,21 @@ def main(args: argparse.Namespace):
         )
     
     agent.initialize()
-    print(f"agent: {agent}")
+    print(f"agent: {agent.name}")
     print(f"network_type: {args.network_type}")
+    
+    print("Inpsecting agent policy from task file...")
+    print(f"agent.policy: {agent.policy}")
+    # print(f"agent.policy.validate_args: {agent.policy.validate_args}")
+    # print(f"agent.action_spec: {agent.action_spec}")
+    # print(f"agent.time_step_spec: {agent.time_step_spec}")
+    # print(f"agent.training_data_spec: {agent.training_data_spec}")
+    print("Inpsecting agent policy from task file: Complete")
+    
+    # saver = policy_saver.PolicySaver(
+    #     agent.policy, 
+    #     train_step=global_step
+    # )
     
     # ====================================================
     # train dataset
@@ -449,11 +467,16 @@ def main(args: argparse.Namespace):
     # ====================================================
     # train loop
     # ====================================================
+    
+    # Reset the train step
+    # agent.train_step_counter.assign(0)
+    
     #start the timer and training
     start_time = time.time()
 
     metric_results, trained_agent = train_perarm.train_perarm(
         agent = agent,
+        epsilon = args.epsilon,
         reward_spec = reward_tensor_spec,
         global_dim = args.global_dim,
         per_arm_dim = args.per_arm_dim,
@@ -484,7 +507,8 @@ def main(args: argparse.Namespace):
         total_train_take = TOTAL_TRAIN_TAKE,
         global_step = global_step,
         num_replicas = NUM_REPLICAS,
-        cache_train_data = args.cache_train
+        cache_train_data = args.cache_train,
+        # saver = saver,
     )
 
     end_time = time.time()
@@ -538,6 +562,11 @@ def main(args: argparse.Namespace):
             # tensorboard=args.tb_resource_name
         ) as my_run:
             
+            print(f"logging time-series metrics...")
+            for i in range(len(metric_results)):
+                vertex_ai.log_time_series_metrics({'loss': metric_results[i]}, step=i)
+            
+            
             print(f"logging metrics...")
             # gather the metrics for the last epoch to be saved in metrics
             my_run.log_metrics(
@@ -557,13 +586,13 @@ def main(args: argparse.Namespace):
                     "training_loops": args.training_loops,
                     # "steps_pre_loop": args.steps_per_loop,
                     # "rank_k": RANK_K,
-                    "num_actions": args.num_actions,
-                    "per_arm": str(PER_ARM),
+                    # "num_actions": args.num_actions,
+                    # "per_arm": str(PER_ARM),
                     "global_lyrs": args.global_layers,
                     "arm_lyrs": args.arm_layers,
                     "common_lyrs": args.common_layers,
                     "encoding_dim": args.encoding_dim,
-                    "eps_steps": args.eps_phase_steps,
+                    # "eps_steps": args.eps_phase_steps,
                 }
             )
 

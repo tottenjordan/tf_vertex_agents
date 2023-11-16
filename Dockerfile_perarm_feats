@@ -1,5 +1,5 @@
 
-FROM gcr.io/deeplearning-platform-release/tf2-gpu.2-13.py310
+FROM tensorflow/tensorflow:2.14.0-gpu
 
 ENV PYTHONUNBUFFERED True
 
@@ -22,6 +22,8 @@ RUN apt update && apt -y install nvtop
 RUN ls $APP_HOME
 
 RUN export PYTHONPATH=${PYTHONPATH}:${APP_HOME}/
+
+# RUN pip freeze
 
 # Sets up the entry point to invoke the task.
 ENTRYPOINT ["python3", "-m", "src.perarm_features.task"]

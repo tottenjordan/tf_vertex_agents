@@ -145,11 +145,13 @@ def _bytes_feature(value):
     Get byte features
     """
     # value = tf.io.serialize_tensor(value)
-    # value = value.numpy()
-    if type(value) == list:
-        return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
+    value = value.numpy()[0]
+    if type(value) == np.ndarray: # list
+        # return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
+        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[int(v) for v in value]))
     else:
-        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[i.numpy() for i in [value]]))
+        # return tf.train.Feature(bytes_list=tf.train.BytesList(value=[i.numpy() for i in [value]]))
+        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
     
 def _bytes_array_feature(value):
     """
@@ -185,7 +187,8 @@ def _int64_feature(value):
     """
     Get int64 feature
     """
-    if type(value) == list:
+    value = value.numpy()[0]
+    if type(value) == np.ndarray:
         return tf.train.Feature(int64_list=tf.train.Int64List(value=[int(v) for v in value]))
     else:
         return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
@@ -202,8 +205,8 @@ def _int64_list_feature_v2(value):
     """
     # value = value.numpy().tolist() #[0]
     value = value.numpy().tolist()[0]
-    # return tf.train.Feature(int64_list=tf.train.Int64List(value=[int(v) for v in value]))
-    return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=[int(v) for v in value]))
+    # return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
 def _string_array(value, shape=1):
     """
@@ -219,8 +222,10 @@ def _float_feature(value, shape=1):
     """
     Returns a float_list from a float / double.
     """
-    if type(value) == np.ndarray: #list:
-        return tf.train.Feature(float_list=tf.train.FloatList(value=value))
+    value = value.numpy()[0]
+    if type(value) == np.ndarray: # list
+        # return tf.train.Feature(float_list=tf.train.FloatList(value=value))
+        return tf.train.Feature(float_list=tf.train.FloatList(value=[int(v) for v in value]))
     else:
         return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
     
