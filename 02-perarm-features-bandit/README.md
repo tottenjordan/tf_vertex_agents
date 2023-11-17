@@ -1,5 +1,21 @@
-# Contextual Bandits with per-arm features
+# Supervised Contextual Bandits with per-arm features
 
+> in this section, we use a training dataset fit for supervised learning (i.e., a labled dataset with logged user feedback) and use it to train a contextual bandit algorithm, where the labels (user feedback) is used as a proxy for immediate rewards
+
+## Objectives
+
+  * `02a-train-supervised-bandit-simulation.ipynb` - Use labeled dataset and stationary stochastic environment to train bandit locally
+  * `02b-train-supervised-bandit-locally.ipynb` - Use labeled dataset to train bandit locally (same as 1 except no "environment")
+  * `02c-accelerated-bandits.ipynb` - (Optional) profile train job on local notebook GPU
+  * `02d-build-training-image.ipynb` - build docker image for scaling training with Vertex AI
+  * `02e-scale-bandit-training-vertex.ipynb` - submit train job to Vertex AI
+  * `02f-cpr-deploy-bandit-policy.ipynb` - deploy trained bandit policy to Vertex AI online endpoint
+
+## Supervised-to-bandit datasets
+
+> TODO
+
+## Contextual Bandits with per-arm features
 In some Bandits use cases, each arm has its own features. For movie recommendations, the movies represent arms (aka `actions`) an agent can choose from. The features describing each movie (or `arm`) are referred to as `per-arm` features. The `per-arm` features for movies could be `title`, `text description`, `genre`, `starring actors`, etc. The ability to process these additional arm features has shown to be effective in learning complex relationships e.g., user preferences evolving over time
 
 These problems are often referred to as `per-arm features problems`
@@ -19,15 +35,8 @@ Instead of numbering the movies, we can do something more intuitive: we can repr
 * Easy to remove from, or introduce new movies to the system
 
 In this new setting, the number of actions does not even have to be the same in every time step.
-
-# Objectives
-
-  * `02a-build-perarm-bandit-locally.ipynb` - build bandit model manually, train locally, understand components
-  * `02b-build-training-image.ipynb` - build docker image for scaling training with Vertex AI
-  * `02c-accelerated-bandits.ipynb` - (Optional) profile train job on local notebook GPU
-  * `02d-scale-bandit-training-vertex.ipynb` - submit train job to Vertex AI
   
-## Per-arm features in TF-Agents
+### Per-arm features in TF-Agents
 * Many agents implemented in `tf-agents` can run on environments that have features for its actions. These environments are feferred to as `per-arm environments`
 * Reward is modeled not per-arm, but globally
 

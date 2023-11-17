@@ -1,0 +1,13 @@
+{
+    "instances": [
+        {
+            'bucketized_user_age': 25.0,
+            'movie_genres':[4],
+            'movie_id': '211',
+            'timestamp':874948475,
+            'user_id': '346',
+            'user_occupation_text':'other',
+            'user_rating': 4.,
+        }
+    ]
+}
