@@ -220,8 +220,9 @@ def append_dataset_to_bigquery(
       "table".
   """
   
-  # _bq_dataset_ref = f"{project_id}.{bigquery_dataset_name}"
-  _bq_dataset_ref = f"{bigquery_dataset_name}"
+  _bq_dataset_ref = f"{project_id}.{bigquery_dataset_name}"
+  # _bq_dataset_ref = f"{bigquery_dataset_name}"
+  _bq_table_id = f"{project_id}.{bigquery_dataset_name}.{bigquery_table_name}"
 
   # Construct a BigQuery client object.
   client = bigquery.Client(project=project_id)
@@ -258,7 +259,7 @@ def append_dataset_to_bigquery(
 
   with open(dataset_file, "rb") as source_file:
     load_job = client.load_table_from_file(
-        source_file, bigquery_table_name, job_config=job_config)
+        file_obj=source_file, destination=_bq_table_id, job_config=job_config)
 
   load_job.result()  # Wait for the job to complete.
 

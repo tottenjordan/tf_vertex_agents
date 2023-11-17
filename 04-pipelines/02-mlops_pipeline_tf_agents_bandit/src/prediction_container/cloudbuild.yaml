@@ -3,8 +3,8 @@ steps:
   args: ["--destination=gcr.io/hybrid-vertex/pred-mab-e2e-v2:latest",
          "--cache=false",
          "--cache-ttl=99h"]
-  env: ["AIP_STORAGE_URI=gs://rec-bandits-v2-hybrid-vertex-bucket/mab-pipe-rec-bandits-v2/run-20231019-184119/artifacts",
+  env: ["AIP_STORAGE_URI=gs://rec-bandits-v2-hybrid-vertex-bucket/mab-pipe-rec-bandits-v2/run-20231025-165806/artifacts",
         "PROJECT_ID=hybrid-vertex",
-        "LOGGER_PUBSUB_TOPIC=logger-pubsub-topic"]
+        "LOGGER_PUBSUB_TOPIC=logger-pubsub-topic-rec-bandits-v2"]
 options:
   machineType: "E2_HIGHCPU_8"

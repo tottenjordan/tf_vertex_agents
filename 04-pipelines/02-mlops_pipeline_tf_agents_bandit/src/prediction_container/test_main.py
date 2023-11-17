@@ -30,7 +30,7 @@ from src.utils import data_config
 from src.prediction_container import main  # pylint: disable=g-import-not-at-top
 
 # Path and configurations
-TRAINING_ARTIFACTS_DIR= f"{data_config.ARTIFACT_DIR}"
+TRAINING_ARTIFACTS_DIR= f"{data_config.ARTIFACTS_DIR}"
 PROJECT_ID = f"{data_config.PROJECT_ID}"
 LOGGER_PUBSUB_TOPIC = "logger-pubsub-topic"
 

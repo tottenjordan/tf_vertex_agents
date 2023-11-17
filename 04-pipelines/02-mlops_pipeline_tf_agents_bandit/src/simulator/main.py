@@ -18,7 +18,7 @@ import os
 from typing import Any, Dict
 
 import dataclasses
-from google import cloud                   # TODO: jt check this
+# from google import cloud                   # TODO: jt check this
 from google.cloud import aiplatform        # For using the module.
 import tensorflow as tf                    # For tf_agents to work.
 
@@ -105,9 +105,14 @@ def simulate(event: Dict[str, Any], context) -> None:  # pylint: disable=unused-
       list(observation_batch) for observation_batch in observation_array
   ]
 
-  cloud.aiplatform.init(
+  # cloud.aiplatform.init(
+      # project=env_vars.project_id, location=env_vars.region)
+  # endpoint = cloud.aiplatform.Endpoint(env_vars.endpoint_id)
+    
+  aiplatform.init(
       project=env_vars.project_id, location=env_vars.region)
-  endpoint = cloud.aiplatform.Endpoint(env_vars.endpoint_id)
+
+  endpoint = aiplatform.Endpoint(env_vars.endpoint_id)
 
   # Send prediction request to endpoint and get prediction result.
   predictions = endpoint.predict(

@@ -222,7 +222,7 @@ def train_reinforcement_learning_policy(
         tikhonov_weight=tikhonov_weight,
         alpha=agent_alpha,
         dtype=tf.float32,
-        accepts_per_arm_features=per_arm
+        accepts_per_arm_features=per_arm,
         enable_summaries=True,                # TODO
         summarize_grads_and_vars=True,
     )
