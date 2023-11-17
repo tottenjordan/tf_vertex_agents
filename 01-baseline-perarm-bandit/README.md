@@ -1,14 +1,31 @@
-# Baseline PerArm Bandit for Movielens
+# Online simulation for training Contextual Bandits
 
-Here we will start with a few, simple contextual bandit implementations, where each will make use of *per-arm* features (i.e., features describing the arms or items to recomemnd)
+> *Simulate* a real-world interaction environment of users and their respective preferences. To illustrate this, we take a partially labeled dataset (i.e., a dataset with feedback for a subset of `<user, item>` pairs), and create an environment that approximates feedback/rewards for all `<user, item>` pairs
 
-**Notebooks**
-* [01a-build_perarm_stationary_env.ipynb](01a-build_perarm_stationary_env.ipynb) - demonstrate how to use a pre-built environment to train a policy
-* [01b-build_perarm_mf_env.ipynb](01b-build_perarm_mf_env.ipynb) - demonstrate how to build a custom environment class to train a policy
-* [01c-build-training-image.ipynb](01c-build-training-image.ipynb) - build a training image for Vertex AI Training
-* [01d-train_perarm_tf_agents_vertex.ipynb](01d-train_perarm_tf_agents_vertex.ipynb) - Submit hptuning job, using best hpt params, launch full-scale training job (both hpt and full-training submitted to Vertex AI training)
+## Objectives
+
+  * `01a_train_perarm_mf_env.ipynb` - Train bandit with environment generating training data with approximated rewards
+  * `01b-build-training-image.ipynb` - Build docker image for scaling training with Vertex AI
+  * `01c_train_perarm_tf_agents_vertex.ipynb` - Submit hptuning job, using best hpt params, launch full-scale training job (both hpt and full-training submitted to Vertex AI training)
+  
+## Why environment simulation?
+To evaluate the performance of your RL model, you may need to run offline simulation first to determine if your RL model meets production criteria. In this case, you may have a static dataset, similar to the MovieLens dataset but potentially larger, and you can construct a custom simulation environment to use in place of the MovieLens one. In the custom environment, you may decide how to formulate observations and rewards, such as in terms of how to represent users with user vectors and what those vectors look like, perhaps via an embedding layer in a neural network. You may apply the rest of the steps and code in this demo just as you did for MovieLens, and then evaluate your model. After offline simulation, you may proceed to the next-steps of launching your model, such as A/B testing.
+
+## Our custom environment
+
+> TODO
+
+the MF-based environment simulates real-world environment containing users and their respective preferences. Internally, the MovieLens simulation environment takes the user-by-movie-item rating matrix and performs a `RANK_K` matrix factorization on the rating matrix, in order to address the sparsity of the matrix. 
+* After this construction step, the environment can generate user vectors of dimension `RANK_K` to represent users in the simulation environment, and is able to determine the approximate reward for any user and movie item pair. 
+* In RL's language, user vectors are observations, recommended movie items are actions, and approximate ratings are rewards. 
+
+This environment therefore defines the RL problem at hand: 
+
+> how to recommend movies that maximize user ratings, in a simulated world of users with their respective preferences defined by the MovieLens dataset, while having zero knowledge of the internal mechanism of the environment
 
 ### Managed Tensorboard
+
+> TODO
 
 #### Hyperparameter tuning jobs
 
