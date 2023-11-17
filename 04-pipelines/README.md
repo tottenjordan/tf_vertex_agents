@@ -1,7 +1,10 @@
-# RL for RecSys: develop contextual bandits with TF-Agents, orchstrate their MLOps with KFP, deploy and scale with Vertex AI
----
+# RL MLOps for RecSys
 
->  Here we adapt [examples from the Vertex AI community samples](https://github.com/GoogleCloudPlatform/vertex-ai-samples/tree/main/community-content/tf_agents_bandits_movie_recommendation_with_kfp_and_vertex_sdk) that demonstrate how to use TF-Agents, Kubeflow Pipelines (KFP) and Vertex AI to build RL RecSys applications
+> develop contextual bandits with TF-Agents and orchstrate their MLOps with KFP; deploy and scale with Vertex AI
+
+Here we adapt [examples from the Vertex AI community samples](https://github.com/GoogleCloudPlatform/vertex-ai-samples/tree/main/community-content/tf_agents_bandits_movie_recommendation_with_kfp_and_vertex_sdk) that demonstrate how to use TF-Agents, Kubeflow Pipelines (KFP) and Vertex AI to build RL RecSys applications
+
+---
 
 #### This section of the repo includes two main workstreams:
 
