@@ -28,7 +28,7 @@ Suppose we are looking to improve user engagement by recommending to a user the 
 * *Context* could include user features (e.g., location, device, demographics), as well as additional features about each item (movie)
 * *Feedback* could be whether the user clicked or watched a movie
 
-<img src='imgs/deep_rl_mab_example_v2.png' width='800' height='545'>
+<img src='imgs/deep_rl_mab_example_v3.png' width='800' height='545'>
 
 ### Problem formulation
 
