@@ -75,11 +75,15 @@ Agents take care of changing the policy based on training samples (represented a
 
 > TODO
 
-
 ### Trajectorties
 In TF-Agents, `trajectories` are the training examples used to train an agent. More specifically, they are named tuples that contain samples from previous steps taken. These samples are then used by the agent to train and update the policy. In RL, trajectories must contain information about the current state, the next state, and whether the current episode has ended
 
 > TODO: example trajectory
+
+The [functools](https://docs.python.org/3/library/functools.html) package is commonly used to develop RL agents with TF-Agents because it provides a number of useful functions for working with nested structures of tensors 
+* These functions can be used to create and manipulate data structures such as arrays, lists, and dictionaries, which are commonly used in RL algorithms
+* Also used for higher-order functions (i.e., functions that act on or return other functions). In general, any callable object can be treated as a function for the purposes of this module
+
 
 ### Regret
 Bandits' most important metric is *regret*, calculated as the difference between the reward collected by the agent and the expected reward of an oracle policy that has access to the reward functions of the environment. The [RegretMetric](https://github.com/tensorflow/agents/blob/master/tf_agents/bandits/metrics/tf_metrics.py) thus needs a `baseline_reward_fn` function that calculates the best achievable expected reward given an observation
