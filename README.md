@@ -119,10 +119,11 @@ Bandits' most important metric is *regret*, calculated as the difference between
 
 ![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/tb_input_bottleneck_analysis.png)
 
-# More repo details
+# Repo details
 
 > **TODO**
 
+> Helper notebooks for staying organized, minimizing overhead, and validating reproducibility
 * [00-env-setup.ipynb](00-env-setup.ipynb)
 * [00-movielens-data-prep.ipynb](00-movielens-data-prep.ipynb)
 
@@ -145,23 +146,22 @@ Bandits' most important metric is *regret*, calculated as the difference between
 * [03-ranking/](03-ranking/)
   * [03a-ranking-bandit-local-train.ipynb](03-ranking/03a-ranking-bandit-local-train.ipynb)
   * [03x-baseline-train-ranking-bandit.ipynb](03-ranking/03x-baseline-train-ranking-bandit.ipynb)
-  * TODO
   
 > (WIP) Step-by-step guide to MLOps tasks --> then how to orchestrate them with pipelines
 * [04-pipelines/](04-pipelines/)
-  * [01 Train, Hptune, and deploy agents: step_by_step](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/)
-    * [README: Step-by-Step MLOps Demo](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/README.md)
+  * [01 Step-by-Step MLOps Demo](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/)
+    * [README](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/README.md)
     * [notebook](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/01-train_deploy_mab.ipynb)
     * [src/](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/src/)
-  * [02 Orchestrate all train-deploy steps with Vertex AI Pipelines](04-pipelines/02-mlops_pipeline_tf_agents_bandit/)
-    * [README: End-to-End MLOps Pipeline Demo](04-pipelines/02-mlops_pipeline_tf_agents_bandit/README.md)
+  * [02 End-to-End MLOps Pipeline Demo](04-pipelines/02-mlops_pipeline_tf_agents_bandit/)
+    * [README](04-pipelines/02-mlops_pipeline_tf_agents_bandit/README.md)
     * [notebook](04-pipelines/02-mlops_pipeline_tf_agents_bandit/02-mab_mlops_pipeline.ipynb)
     * [src/](04-pipelines/02-mlops_pipeline_tf_agents_bandit/src/)
     
-> (WIP) Discussion and commentary for related topics
+> (WIP) Discussion and commentary for related RL and RecSys topics
 * [learning/](learning/)
-  * [Relevant details for RL Agents used in this repo](learning/agents.md)
-  * [Concepts and practical considerations for applying RL to RecSys](learning/rl-for-recsys.md)
-  * [Relevant details for implementing RL with TF-Agents](learning/tf-agents-overview.md)
+  * [RL Agents used in this repo](learning/agents.md)
+  * [RL for RecSys -> concepts and practical considerations](learning/rl-for-recsys.md)
+  * [Implementing RL with TF-Agents](learning/tf-agents-overview.md)
   * TODO
 
