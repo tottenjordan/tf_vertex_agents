@@ -93,6 +93,20 @@ Bandits' most important metric is *regret*, calculated as the difference between
 
 > TODO
 
+#### Track Agent training performance with Vertex AI Experiments
+
+> Vertex AI enables users to track the steps (e.g., preprocessing, training) of an experiment run, and track inputs (e.g., algorithm, parameters, datasets) and outputs (fe.g.,, models, checkpoints, metrics) of those steps.
+
+**How are parameters and metrics stored / organized?**
+* `Experiments` describe a context that groups your runs and the artifacts you create into a logical session. For example, in this notebook you create an Experiment and log data to that experiment.
+* an `Experiment Run` represents a single path/avenue that you executed while performing an experiment. A run includes artifacts that you used as inputs or outputs, and parameters that you used in this execution. An Experiment can contain multiple runs.
+
+**Loggin' and sharin'**
+* Use the Vertex AI (Python) SDK to track metrics, params, and metadata for models trained (either local or cloud) for each experiment across several experiment runs
+* Link a [Managed TensorBoard](https://cloud.google.com/vertex-ai/docs/experiments/tensorboard-introduction) instance to visualize, compare, and share ML experiments with your team 
+* Save time and effort by [Autologging experiment data](https://cloud.google.com/vertex-ai/docs/experiments/autolog-data) from training jobs, and [pipeline runs](https://cloud.google.com/vertex-ai/docs/experiments/add-pipelinerun-experiment) 
+* To learn more, see [Introduction to Vertex AI Experiments](https://cloud.google.com/vertex-ai/docs/experiments/intro-vertex-ai-experiments)
+
 ### Profiling Agents
 
 > TODO
@@ -111,20 +125,40 @@ Bandits' most important metric is *regret*, calculated as the difference between
 
 * [00-env-setup.ipynb](00-env-setup.ipynb)
 * [00-movielens-data-prep.ipynb](00-movielens-data-prep.ipynb)
-* [01-baseline-perarm-bandit/](01-baseline-perarm-bandit/)
-  * [01a-build_perarm_tf_agents_model.ipynb](01-baseline-perarm-bandit/01a-build_perarm_tf_agents_model.ipynb)
-  * [01b-train_perarm_tf_agents_vertex.ipynb](01-baseline-perarm-bandit/01b-train_perarm_tf_agents_vertex.ipynb)
-* [02-perarm-features-bandit/](02-perarm-features-bandit/)
-  * [02a-build-perarm-bandit-locally.ipynb](02-perarm-features-bandit/02a-build-perarm-bandit-locally.ipynb)
-  * [02b-build-training-image.ipynb](02-perarm-features-bandit/02b-build-training-image.ipynb)
-  * [02c-accelerated-bandits.ipynb](02-perarm-features-bandit/02c-accelerated-bandits.ipynb)
-  * [02d-scale-bandit-training-vertex.ipynb](02-perarm-features-bandit/02d-scale-bandit-training-vertex.ipynb)
+* [01-online-bandit-simulation/](01-online-bandit-simulation/)
+  * [01a-train-bandit-mf-env-simulation.ipynb](01-online-bandit-simulation/01a-train-bandit-mf-env-simulation.ipynb)
+  * [01b-build-training-image.ipynb](01-online-bandit-simulation/01b-build-training-image.ipynb)
+  * [01c-scale-bandit-simulation-vertex.ipynb](01-online-bandit-simulation/01c-scale-bandit-simulation-vertex.ipynb)
+* [02-supervised-to-bandit-training/](02-supervised-to-bandit-training/)
+  * [02a-train-supervised-bandit-simulation.ipynb](02-supervised-to-bandit-training/02a-train-supervised-bandit-simulation.ipynb)
+  * [02b-train-supervised-bandit-locally.ipynb](02-supervised-to-bandit-training/02b-train-supervised-bandit-locally.ipynb)
+  * [02c-accelerated-bandits.ipynb](02-supervised-to-bandit-training/02c-accelerated-bandits.ipynb)
+  * [02d-build-training-image.ipynb](02-supervised-to-bandit-training/02d-build-training-image.ipynb)
+  * [02e-scale-bandit-training-vertex.ipynb](02-supervised-to-bandit-training/02e-scale-bandit-training-vertex.ipynb)
+  * [02f-cpr-deploy-bandit-policy.ipynb](02-supervised-to-bandit-training/02f-cpr-deploy-bandit-policy.ipynb)
 * [03-ranking/](03-ranking/)
-  * [baseline-ranking-agents.ipynb](03-ranking/baseline-ranking-agents.ipynb)
-  * `TODO`
-  * `TODO`
-  * `TODO`
+  * [03a-ranking-bandit-local-train.ipynb](03-ranking/03a-ranking-bandit-local-train.ipynb)
+  * [03x-baseline-train-ranking-bandit.ipynb](03-ranking/03x-baseline-train-ranking-bandit.ipynb)
 * [04-pipelines/](04-pipelines/)
-  * [step_by_step_sdk_tf_agents_bandits_movie_recommendation](04-pipelines/step_by_step_sdk_tf_agents_bandits_movie_recommendation)
-  * [mlops_pipeline_tf_agents_bandits_movie_recommendation](04-pipelines/mlops_pipeline_tf_agents_bandits_movie_recommendation)
+  * [01-step_by_step_sdk_tf_agents_bandit](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/)
+    * [01-train_deploy_mab.ipynb](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/01-train_deploy_mab.ipynb)
+    * [src/](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/src/)
+      * [prediction](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/src/prediction)
+      * [tests](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/src/tests)
+      * [training](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/src/training)
+      * [utils](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/src/utils)
+  * [02-mlops_pipeline_tf_agents_bandit](04-pipelines/02-mlops_pipeline_tf_agents_bandit/)
+    * [02-mab_mlops_pipeline.ipynb](04-pipelines/02-mlops_pipeline_tf_agents_bandit/02-mab_mlops_pipeline.ipynb)
+    * [src/](04-pipelines/02-mlops_pipeline_tf_agents_bandit/src/)
+      * [generator](04-pipelines/02-mlops_pipeline_tf_agents_bandit/src/generator/)
+      * [ingester](04-pipelines/02-mlops_pipeline_tf_agents_bandit/src/ingester/)
+      * [logger](04-pipelines/02-mlops_pipeline_tf_agents_bandit/src/logger/)
+      * [prediction_container](04-pipelines/02-mlops_pipeline_tf_agents_bandit/src/prediction_container/)
+      * [simulator](04-pipelines/02-mlops_pipeline_tf_agents_bandit/src/simulator/)
+      * [trainer](04-pipelines/02-mlops_pipeline_tf_agents_bandit/src/trainer/)
+      * [utils]((04-pipelines/02-mlops_pipeline_tf_agents_bandit/src/utils/)
+* [learning/](learning/)
+  * [agents.md](learning/agents.md)
+  * [rl-for-recsys.md](learning/rl-for-recsys.md)
+  * [tf-agents-overview.md](learning/tf-agents-overview.md)
 
