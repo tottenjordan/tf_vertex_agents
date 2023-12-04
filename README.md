@@ -123,17 +123,17 @@ Bandits' most important metric is *regret*, calculated as the difference between
 
 > **TODO**
 
-> Helper notebooks for staying organized, minimizing overhead, and validating reproducibility
+> 00 - Helper notebooks for staying organized, minimizing overhead, and validating reproducibility
 * [00-env-setup.ipynb](00-env-setup.ipynb)
 * [00-movielens-data-prep.ipynb](00-movielens-data-prep.ipynb)
 
-> Simulate a real-world interaction environment of users and their respective preferences.
+> 01 - Simulate a real-world interaction environment of users and their respective preferences.
 * [01-online-bandit-simulation/](01-online-bandit-simulation/)
   * [01a-train-bandit-mf-env-simulation.ipynb](01-online-bandit-simulation/01a-train-bandit-mf-env-simulation.ipynb)
   * [01b-build-training-image.ipynb](01-online-bandit-simulation/01b-build-training-image.ipynb)
   * [01c-scale-bandit-simulation-vertex.ipynb](01-online-bandit-simulation/01c-scale-bandit-simulation-vertex.ipynb)
   
-> Convert a training dataset fit for supervised learning (i.e., a labled dataset with logged user feedback) and use it to train a contextual bandit algorithm, where the labels (user feedback) is used as a proxy for immediate rewards
+> 02 - Convert a training dataset fit for supervised learning (i.e., a labled dataset with logged user feedback) and use it to train a contextual bandit algorithm, where the labels (user feedback) is used as a proxy for immediate rewards
 * [02-supervised-to-bandit-training/](02-supervised-to-bandit-training/)
   * [02a-train-supervised-bandit-simulation.ipynb](02-supervised-to-bandit-training/02a-train-supervised-bandit-simulation.ipynb)
   * [02b-train-supervised-bandit-locally.ipynb](02-supervised-to-bandit-training/02b-train-supervised-bandit-locally.ipynb)
@@ -142,12 +142,12 @@ Bandits' most important metric is *regret*, calculated as the difference between
   * [02e-scale-bandit-training-vertex.ipynb](02-supervised-to-bandit-training/02e-scale-bandit-training-vertex.ipynb)
   * [02f-cpr-deploy-bandit-policy.ipynb](02-supervised-to-bandit-training/02f-cpr-deploy-bandit-policy.ipynb)
   
-> (WIP) Train ranking policies that score set of items; currently explores `score_vector` and `cascading_feedback` frameworks
+> 03 - (WIP) Train ranking policies that score set of items; currently explores `score_vector` and `cascading_feedback` frameworks
 * [03-ranking/](03-ranking/)
   * [03a-ranking-bandit-local-train.ipynb](03-ranking/03a-ranking-bandit-local-train.ipynb)
   * [03x-baseline-train-ranking-bandit.ipynb](03-ranking/03x-baseline-train-ranking-bandit.ipynb)
   
-> (WIP) Step-by-step guide to MLOps tasks --> then how to orchestrate them with pipelines
+> 04 - (WIP) Step-by-step guide to MLOps tasks --> then how to orchestrate them with pipelines
 * [04-pipelines/](04-pipelines/)
   * [01 Step-by-Step MLOps Demo](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/)
     * [README](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/README.md)
