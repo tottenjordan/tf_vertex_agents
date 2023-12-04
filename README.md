@@ -125,10 +125,14 @@ Bandits' most important metric is *regret*, calculated as the difference between
 
 * [00-env-setup.ipynb](00-env-setup.ipynb)
 * [00-movielens-data-prep.ipynb](00-movielens-data-prep.ipynb)
+
+> Simulate a real-world interaction environment of users and their respective preferences.
 * [01-online-bandit-simulation/](01-online-bandit-simulation/)
   * [01a-train-bandit-mf-env-simulation.ipynb](01-online-bandit-simulation/01a-train-bandit-mf-env-simulation.ipynb)
   * [01b-build-training-image.ipynb](01-online-bandit-simulation/01b-build-training-image.ipynb)
   * [01c-scale-bandit-simulation-vertex.ipynb](01-online-bandit-simulation/01c-scale-bandit-simulation-vertex.ipynb)
+  
+> Convert a training dataset fit for supervised learning (i.e., a labled dataset with logged user feedback) and use it to train a contextual bandit algorithm, where the labels (user feedback) is used as a proxy for immediate rewards
 * [02-supervised-to-bandit-training/](02-supervised-to-bandit-training/)
   * [02a-train-supervised-bandit-simulation.ipynb](02-supervised-to-bandit-training/02a-train-supervised-bandit-simulation.ipynb)
   * [02b-train-supervised-bandit-locally.ipynb](02-supervised-to-bandit-training/02b-train-supervised-bandit-locally.ipynb)
@@ -136,18 +140,28 @@ Bandits' most important metric is *regret*, calculated as the difference between
   * [02d-build-training-image.ipynb](02-supervised-to-bandit-training/02d-build-training-image.ipynb)
   * [02e-scale-bandit-training-vertex.ipynb](02-supervised-to-bandit-training/02e-scale-bandit-training-vertex.ipynb)
   * [02f-cpr-deploy-bandit-policy.ipynb](02-supervised-to-bandit-training/02f-cpr-deploy-bandit-policy.ipynb)
+  
+> (WIP) Train ranking policies that score set of items; currently explores `score_vector` and `cascading_feedback` frameworks
 * [03-ranking/](03-ranking/)
   * [03a-ranking-bandit-local-train.ipynb](03-ranking/03a-ranking-bandit-local-train.ipynb)
   * [03x-baseline-train-ranking-bandit.ipynb](03-ranking/03x-baseline-train-ranking-bandit.ipynb)
+  * TODO
+  
+> (WIP) Step-by-step guide to MLOps tasks --> then how to orchestrate them with pipelines
 * [04-pipelines/](04-pipelines/)
-  * [01-step_by_step_sdk_tf_agents_bandit](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/)
-    * [Train, Hptune, and deploy agent](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/01-train_deploy_mab.ipynb)
+  * [01 Train, Hptune, and deploy agents: step_by_step](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/)
+    * [README: Step-by-Step MLOps Demo](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/README.md)
+    * [notebook](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/01-train_deploy_mab.ipynb)
     * [src/](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/src/)
-  * [02-mlops_pipeline_tf_agents_bandit](04-pipelines/02-mlops_pipeline_tf_agents_bandit/)
-    * [Orchestrate all steps with Pipelines](04-pipelines/02-mlops_pipeline_tf_agents_bandit/02-mab_mlops_pipeline.ipynb)
+  * [02 Orchestrate all train-deploy steps with Vertex AI Pipelines](04-pipelines/02-mlops_pipeline_tf_agents_bandit/)
+    * [README: End-to-End MLOps Pipeline Demo](04-pipelines/02-mlops_pipeline_tf_agents_bandit/README.md)
+    * [notebook](04-pipelines/02-mlops_pipeline_tf_agents_bandit/02-mab_mlops_pipeline.ipynb)
     * [src/](04-pipelines/02-mlops_pipeline_tf_agents_bandit/src/)
+    
+> (WIP) Discussion and commentary for related topics
 * [learning/](learning/)
-  * [Relevant details for agents used in this repo](learning/agents.md)
+  * [Relevant details for RL Agents used in this repo](learning/agents.md)
   * [Concepts and practical considerations for applying RL to RecSys](learning/rl-for-recsys.md)
-  * [Relevant details for applying RL with TF-Agents](learning/tf-agents-overview.md)
+  * [Relevant details for implementing RL with TF-Agents](learning/tf-agents-overview.md)
+  * TODO
 
