@@ -21,6 +21,58 @@ The Contextual Bandit (CB) problem is a special case of Reinforcement Learning: 
 
 As in other RL domains, the goal of a Contextual Bandit agent is to find a *policy* that collects as much reward as possible. It would be a mistake, however, to always try to exploit the action that promises the highest reward, because then there is a chance that we miss out on better actions if we do not explore enough. This is the main problem to be solved in CB, often referred to as the *exploration-exploitation dilemma*.
 
+## Online vs Offline RL
+The concept of "Online RL" (aka "Online Learning" or "Online Agent's") is growing in popularity, particularly for RecSys becasue we can further improve the notion of **user-in-the-loop**. Let's first describe the general interaction between users and RecSys:
+
+A typical supervised learning-based RecSys consists of the following parts:
+* A `regression model` (linear or deep) that predicts a score for each (user, item) pair, and
+* A `ranker` that ranks item based on the score of the regression model return top K items.
+
+The interaction between users and the recommendation system is as follows
+1. The **users see** a combination of those K products at the batch, and **give feedback** (click, like, etc) for the impressions
+2. The system will **re-train** model based on the examples and users' feedback.
+3. User's treatment will change when a **new model is pushed**.
+4. The impressions will also affect user's latent state (e.g., preferences, future behavior, etc.)
+
+> TODO
+
+
+**offline, supervised learning** depolyments:
+
+(1) Currently deployed model makes recommendations
+(2) Predictions and user feedback logged for future training
+(3) Predictions begin to deviate --> kick off MLOps retraining 
+(4) Train new model with most recent collected data
+(5) Deploy newly trained model
+
+The **motivation for "online RL"** is mainly two fold:
+(1) batch, "offline" learning deployments are always behind
+(2) improve velocity of making future improvements, i.e., reduce cycle time of offline steps above
+
+**Intuition**
+For "online learning" to take place, the agent's policy needs to be updated, Where "updated" is conceptually similar to retraining a traditional supervised learning model (with latest training examples) and deploying the newly trained model
+
+The bandit agent's policy is updated (i.e., learns) when it receives a trajectory that includes both the prediction/action AND the (often delayed) feedback from the pred/action
+
+Conceptually, we can think of these steps:
+[1] prediction request (`pred_1`) sent to online bandit agent
+[2] bandit agent makes prediction (takes action) given current policy (`policy_v1`)
+[3] delayed feedback for `pred_1` comes from user
+[4] trajectory for `pred_1`, including user feedback is fed to online bandit agent (in TF-Agents: ` agent.train(...)`)
+
+Step [4] implies that our online bandit will be making at least two actions: `prediction` and `learning`. 
+* Once our online agent trains (` agent.train(...)`) on the most recent trajectory, the policy is updated (e.g., `policy_v2`). 
+* Then agent owns the policy and updates its weights
+
+In this way we can see the velocity at which an Online Agent can learn from near-real time feedback and update its policy much faster than the offline variant described above
+
+> an Online Agent refines its policy by only using user’s (and system’s) feedback to its past predictions. 
+
+**Challenges with online RL**
+
+> TODO
+
+
 ### Example: movie recommendations
 
 Suppose we are looking to improve user engagement by recommending to a user the best movie from a set of movies. 
