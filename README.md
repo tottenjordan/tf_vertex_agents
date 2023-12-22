@@ -22,7 +22,9 @@ The Contextual Bandit (CB) problem is a special case of Reinforcement Learning: 
 As in other RL domains, the goal of a Contextual Bandit agent is to find a *policy* that collects as much reward as possible. It would be a mistake, however, to always try to exploit the action that promises the highest reward, because then there is a chance that we miss out on better actions if we do not explore enough. This is the main problem to be solved in CB, often referred to as the *exploration-exploitation dilemma*.
 
 ## Online vs Offline RL
-A popular deployment paradigm to consider with the *exploration-exploitation tradeoff*, is the concept of "Online RL" (aka "Online Learning", "Online Agent's"). In an online approach, the deployed agent learns over time from it's own experiences (i.e., its actions and their rewards). At each step, the agent needs to get the feedback from the past, update its policy, take actions based on the policy, and observe a reward value for the actions. One aspect that can significantly impact the complexity of the deployment is: **the degree to which the online agent learns in "real-time" vs "near real-time"**
+A popular deployment paradigm to consider with the *exploration-exploitation tradeoff*, is the concept of "Online RL" (aka "Online Learning", "Online Agent's"). In an online approach, the deployed agent learns over time from it's own experiences (i.e., its actions and their rewards). At each step, the agent needs to get the feedback from the past, update its policy, take actions based on the policy, and observe a reward value for the actions. 
+
+One aspect that can significantly impact the complexity of the deployment is: **the degree to which the online agent learns in "real-time" vs "near real-time"**
 
 See [online-agents](learning/online-agents.md) in the `learning/` subfolder for more on this topic!
 

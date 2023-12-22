@@ -1,11 +1,8 @@
-## The online learning paradigm
+# The online learning paradigm
 
 > an Online Agent refines its policy by only using user’s (and system’s) feedback to its past predictions. 
 
-RL deployments that run batch training and push models at a specific cadence are commonly categorized into `off-policy learning`. And, they are prone to `system bias` because of the long delay from user feedback to model updates
-* In RL terms, this means the algorithm accumulates *regret* as user’s preferences change
-
-Supervised learning approaches also ignore *exploration*, which is crucial to respond to changing items and user preferences. 
+**TODO** - add a TLDR here
 
 **To better understand the need for Online RL in RecSys, let's first describe the general interaction between users and a RecSys**
 
