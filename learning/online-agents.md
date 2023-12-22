@@ -1,10 +1,12 @@
 # The online learning paradigm
 
-> an Online Agent refines its policy by only using user’s (and system’s) feedback to its past predictions. 
+*An Online Agent refines its policy by only using user’s (and system’s) feedback to its past predictions*
 
-**TODO** - add a TLDR here
+> TODO - add a TLDR here
 
-**To better understand the need for Online RL in RecSys, let's first describe the general interaction between users and a RecSys**
+## Supervised learning-based RecSys
+
+**To better understand the need for Online RL in RecSys**, let's first describe the general interaction between users and a RecSys...
 
 A typical supervised learning-based RecSys consists of the following parts:
 * A `regression model` (linear or deep) that predicts a score for each (user, item) pair, and
@@ -20,33 +22,37 @@ The interaction between users and the recommendation system is as follows
 
 We can think of the general **offline, supervised learning depolyment MLOps** like this:
 
-(1) Currently deployed model predicts (recommends) relevant candidates
-(2) Predictions and user feedback logged for future training
-(3) Predictions begin to deviate --> kick off MLOps retraining 
-(4) Train new model with most recent collected data
-(5) Deploy newly trained model
-(6) Newly deployed model serves predictions influenced by retraining procedure
+1. Currently deployed model predicts (recommends) relevant candidates
+2. Predictions and user feedback logged for future training
+3. Predictions begin to deviate --> kick off MLOps retraining 
+4. Train new model with most recent collected data
+5. Deploy newly trained model
+6. Newly deployed model serves predictions influenced by retraining procedure
 
-#### Motivation for Online learning in Contextual Bandits
+## Motivation for Online learning in Contextual Bandits
 
-From here, the **motivation for "online RL"** becomes more clear, and it is mainly two fold:
-(1) batch, "offline" learning deployments are always behind
-(2) improve velocity of making future improvements, i.e., reduce cycle time of offline steps above
+From here, the **motivation for "online RL"** starts to become more clear, and it is mainly two fold:
 
-#### Online learning intuition
+1. batch, "offline" learning deployments are always behind, i.e., user behaviors and preferences are constantly changing
+2. improve velocity of making future improvements, i.e., reduce cycle time of offline steps above
+
+## Conceptual understanding of Online learning deployments
 
 For "online learning" to take place, the agent's policy needs to be updated, where "updated" is conceptually similar to retraining a traditional supervised learning model (with latest training examples) and deploying the newly trained model
 
 The bandit agent's policy is updated when the agent receives a trajectory that includes both the prediction/action AND the (often delayed) feedback from the pred/action
 
-**Conceptually, we can think of these steps:**
-[1] prediction request sent to online bandit agent
-[2] bandit agent makes prediction (`pred_1`) given current policy (`policy_v1`)
-[3] delayed feedback for `pred_1` comes from user
-[4] trajectory for `pred_1`, including user feedback is fed to online bandit agent (in TF-Agents: ` agent.train()`)
-[5] Bandit agent's policy updated from `policy_v1` to `policy_v2`
+> TODO - insert visual
 
-Step [4] implies that our online bandit will be making at least two actions: `prediction` and `learning`. 
+**Conceptually, we can think of these steps:**
+
+1. prediction request sent to online bandit agent
+2. bandit agent makes prediction (`pred_1`) given current policy (`policy_v1`)
+3. delayed feedback for `pred_1` comes from user
+4. trajectory for `pred_1`, including user feedback is fed to online bandit agent (in TF-Agents: ` agent.train()`)
+5. Bandit agent's policy updated from `policy_v1` to `policy_v2`
+
+Step (4) implies that our online bandit will be making at least two actions: `prediction` and `learning`. 
 * Once our online agent trains on the most recent trajectory, the policy is updated (e.g., `policy_v2`). 
 * As soon as you call `agent.train()` the policy is updated; its no longer `policy_v1` because the agent owns the policy and updates its weights
 
@@ -55,8 +61,9 @@ In this way we can see the improved **velocity** in which an Online Agent can le
 
 ### Challenges with online learning
 
-* **Large output space** --> large exploration space without action space reduction
-* **Efficient bandits learning in real-time** --> modeling user and context with a *good* tradeoff between accuracy and learning efficiency
+* Real-time and even "near real-time" infra is difficult
+* Delayed feedback
+* Efficient bandits learning in real-time --> modeling user and context with a *good* tradeoff between accuracy and learning efficiency
 
 > TODO
 
