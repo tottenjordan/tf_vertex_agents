@@ -86,32 +86,6 @@ For custom training, we implement **off-policy training**, using a static set of
 * This method can learn from training trajectory generated from any policy
 * During training, policy is typically trained on static set of pre-collected data; includes observation, action, and reward
 
-
-## The online learning paradigm
-* RL deployments that run batch training and push models at a specific cadence are commonly categorized into `off-policy learning`. And, they are prone to `system bias` because of the long delay from user feedback to model updates
-> * In RL terms, this means the algorithm accumulates *regret* as user’s preferences change
-* Supervised learning approaches also ignore *exploration*, which is crucial to respond to changing items and user preferences. 
-* However, an online approach using continuous training can minimize overall regret
-> * match users and items with real-time algorhtms and systems
-> * Online and on-policy learning with principled exploration (aka `bandits`)
-> * In practice, on-policy systems may reduce the end-to-end policy update delay to < 1 hour, where their batch counterparts could have a delay of several hours to several days 
-
-### Online challenges 
-* **Large output space** --> large exploration space without action space reduction
-* **Efficient bandits learning in real-time** --> modeling user and context with a *good* tradeoff between accuracy and learning efficiency
-
-### Online + Offline
-One approach is to use concepts from both online and offline:
-* Offline: dual-encoder models for learning user and item embeddings
-* Online: sparse [bipartite graph](https://www.geeksforgeeks.org/bipartite-graph/#:~:text=A%20Bipartite%20Graph%20is%20a,V%20and%20v%20to%20U.) created from offline embeddings
-
-This can help with (a) the cold-start problem by connecting users with fresh content, as well as both (b) corpus exploration and (c) interest exploration
-
-### References
-1. [Cascading Linear Submodular Bandits: Accounting for Position Bias and Diversity in Online Learning to Rank](http://auai.org/uai2019/proceedings/papers/248.pdf), G. Hiranandani, H. Singh, P. Gupta, I. A. Burhanuddin, Z. Wen and B. Kveton, 35th Conference on Uncertainty in Artificial Intelligence (2019)
-> * account for both position bias and diversity in forming the list of items to recommend
-2. [Contextual Combinatorial Cascading Bandits](http://proceedings.mlr.press/v48/lif16.html), , S. Li, B. Wang, S. Zhang, W. Chen, Proceedings of The 33rd International Conference on Machine Learning, PMLR 48:1245-1253, 2016
-
 ## Q-learning
 
 > TODO
