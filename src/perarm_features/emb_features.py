@@ -188,34 +188,51 @@ class EmbeddingModel:
         # get global context (user) sampling function
         # ====================================================
         
-    # numpy.ndarray
-    def _get_global_context_features(self, x) -> np.ndarray:
+    # def _get_global_context_features(self, x) -> np.ndarray:
+    def _get_global_context_features(self, x) -> tf.Tensor:
         """
         This function generates a single global observation vector.
         """
 
-        _id = np.array(self.user_id_model(x['user_id']).numpy())
-        _age = np.array(self.user_age_model(x['bucketized_user_age']).numpy())
-        _occ = np.array(self.user_occ_model(x['user_occupation_text']).numpy())
-        _ts = np.array(self.user_ts_model(x['timestamp']).numpy())
+#         _id = np.array(self.user_id_model(x['user_id']).numpy())
+#         _age = np.array(self.user_age_model(x['bucketized_user_age']).numpy())
+#         _occ = np.array(self.user_occ_model(x['user_occupation_text']).numpy())
+#         _ts = np.array(self.user_ts_model(x['timestamp']).numpy())
 
-        concat = np.concatenate(
+#         concat = np.concatenate(
+#             [_id, _age, _occ, _ts], axis=-1
+#         ).astype(np.float32)
+
+        _id = self.user_id_model(x['user_id'])
+        _age = self.user_age_model(x['bucketized_user_age'])
+        _occ = self.user_occ_model(x['user_occupation_text'])
+        _ts = self.user_ts_model(x['timestamp'])
+
+        concat = tf.concat(
             [_id, _age, _occ, _ts], axis=-1
-        ).astype(np.float32)
+        )
 
         return concat
         
-    def _get_per_arm_features(self, x) -> np.ndarray:
+    # def _get_per_arm_features(self, x) -> np.ndarray:
+    def _get_per_arm_features(self, x) -> tf.Tensor:
         """
         This function generates a single global observation vector.
         """
 
-        _mid = np.array(self.mv_id_model(x['movie_id']).numpy())
-        _mgen = np.array(self.mv_gen_model(x['movie_genres']).numpy())
+#         _mid = np.array(self.mv_id_model(x['movie_id']).numpy())
+#         _mgen = np.array(self.mv_gen_model(x['movie_genres']).numpy())
 
-        concat = np.concatenate(
+#         concat = np.concatenate(
+#             [_mid, _mgen], axis=-1
+#         ).astype(np.float32)
+
+        _mid = self.mv_id_model(x['movie_id'])
+        _mgen = self.mv_gen_model(x['movie_genres'])
+
+        concat = tf.concat(
             [_mid, _mgen], axis=-1
-        ).astype(np.float32)
+        )
 
         return concat
     

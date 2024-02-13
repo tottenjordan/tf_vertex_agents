@@ -28,6 +28,7 @@ from tf_agents.drivers import dynamic_step_driver
 
 from tf_agents.policies import py_tf_eager_policy
 from tf_agents.train.utils import strategy_utils
+from tf_agents.utils import eager_utils
 
 # logging
 import logging
@@ -35,7 +36,7 @@ logging.disable(logging.WARNING)
 
 from google.cloud import aiplatform as vertex_ai
 from google.cloud import storage
-from google.cloud.aiplatform.training_utils import cloud_profiler
+# from google.cloud.aiplatform.training_utils import cloud_profiler
 import traceback
 
 # this repo
@@ -70,7 +71,7 @@ def train_perarm(
     num_eval_steps: int,
     log_dir: str,
     model_dir: str,
-    root_dir: str,
+    chkpoint_dir: str,
     batch_size: int,
     eval_batch_size: int,
     bucket_name: str,
@@ -91,18 +92,20 @@ def train_perarm(
     num_replicas = 1,
     cache_train_data = True,
     saver = None,
+    strategy: tf.distribute.Strategy = None,
     train_summary_writer: Optional[tf.summary.SummaryWriter] = None,
 ) -> Dict[str, List[float]]:
     
     # # GPU - All variables & Agents need to be created under strategy.scope()
-    distribution_strategy = strategy_utils.get_strategy(
-        tpu=use_tpu, use_gpu=use_gpu
-    )
-    # print(f"distribution_strategy: {distribution_strategy}")
+    if strategy is None:
+        distribution_strategy = strategy_utils.get_strategy(
+            tpu=use_tpu, use_gpu=use_gpu
+        )
+    else:
+        distribution_strategy = strategy
     
-    # if train_summary_writer:
-    #     train_summary_writer.set_as_default()
-    
+    tf.print(f"distribution_strategy: {distribution_strategy}")
+
     # ====================================================
     # train dataset
     # ====================================================
@@ -119,24 +122,12 @@ def train_perarm(
     # train_dataset = train_dataset.cache()
     # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
     # train_dataset = distribution_strategy.experimental_distribute_dataset(train_dataset)
-    train_ds_iterator = iter(train_dataset)
-    print(f"train_ds_iterator: {train_ds_iterator}")
-    
-#     val_dataset = _get_train_dataset(
-#         bucket_name=bucket_name, 
-#         data_dir_prefix_path=data_dir_prefix_path, 
-#         split="val"
-#     )
-#     eval_ds = val_dataset.batch(eval_batch_size) #.repeat(2)
-    
-#     if num_eval_steps > 0:
-#         eval_ds = eval_ds.take(num_eval_steps)
-    
+
     # ====================================================
     # metrics
     # ====================================================
     step_metric = tf_metrics.EnvironmentSteps()
-    
+
     metrics = [
         # tf_metrics.NumberOfEpisodes(),
         # tf_metrics.AverageEpisodeLengthMetric(batch_size=batch_size),
@@ -144,195 +135,148 @@ def train_perarm(
     ]
     if additional_metrics:
         metrics += additional_metrics
-    
-#     metrics = [
-#         tf_metrics.NumberOfEpisodes()
-#         , tf_metrics.EnvironmentSteps()
-#         , tf_metrics.AverageEpisodeLengthMetric(batch_size=batch_size)
-#     ]
-#     if additional_metrics:
-#         metrics += additional_metrics
 
-#     if isinstance(reward_spec, dict):
-#         metrics += [
-#             tf_metrics.AverageReturnMultiMetric(
-#                 reward_spec=reward_spec
-#                 , batch_size=batch_size
-#             )
-#         ]
-#     else:
-#         metrics += [
-#             tf_metrics.AverageReturnMetric(batch_size=batch_size)
-#         ]
-
-    # metric_results = defaultdict(list)
-    
     # ====================================================
     # chkpt and saver
     # ====================================================
-    print("Inpsecting agent policy from train_peram file...")
-    print(f"agent.policy: {agent.policy}")
-    # print(f"agent.policy.validate_args: {agent.policy.validate_args}")
-    # print(f"agent.action_spec: {agent.action_spec}")
-    # print(f"agent.time_step_spec: {agent.time_step_spec}")
-    # print(f"agent.training_data_spec: {agent.training_data_spec}")
-    print("Inpsecting agent policy from train_peram file: Complete")
+    tf.print("Inpsecting agent policy from train_peram file...")
+    tf.print(f"agent.policy: {agent.policy}")
+    tf.print("Inpsecting agent policy from train_peram file: Complete")
     
     # get checkpoint manager
-    # CHKPOINT_DIR = f"{root_dir}/chkpoint"
-    CHKPOINT_DIR = root_dir
-    print(f"setting checkpoint_manager: {CHKPOINT_DIR}")
-    
+    tf.print(f"setting checkpoint_manager: {chkpoint_dir}")
     checkpoint_manager = train_utils.restore_and_get_checkpoint_manager(
-        root_dir=root_dir, 
+        root_dir=chkpoint_dir, 
         agent=agent, 
         metrics=metrics, 
         step_metric=step_metric
     )
-    
-    # train_step_counter = tf.compat.v1.train.get_or_create_global_step()
-    
+    tf.print(f"agent.train_step_counter: {agent.train_step_counter.value().numpy()}")
     # ====================================================
     # saver
     # ====================================================
-#     from tf_agents.policies import epsilon_greedy_policy
-    
-#     my_tf_policy = epsilon_greedy_policy.EpsilonGreedyPolicy(agent.policy, epsilon=epsilon)
-#     my_wrapped_policy = my_tf_policy.wrapped_policy
-    
     saver = policy_saver.PolicySaver(
-        agent.policy,   # my_wrapped_policy
+        agent.policy,
         train_step=global_step,
         # batch_size=None,
     )
-    
-    if resume_training_loops:
-        train_step_count_per_loop = (
-            steps_per_loop * batch_size * async_steps_per_loop
-        )
-        last_checkpointed_step = step_metric.result().numpy()
-        if last_checkpointed_step % train_step_count_per_loop != 0:
-            raise ValueError(
-                'Last checkpointed step is expected to be a multiple of '
-                'steps_per_loop * batch_size * async_steps_per_loop, but found '
-                f'otherwise: last checkpointed step: {last_checkpointed_step}, '
-                f'steps_per_loop: {steps_per_loop}, batch_size: '
-                f'{batch_size}, async_steps_per_loop: '
-                f'{async_steps_per_loop}'
-            )
-        starting_loop = last_checkpointed_step // train_step_count_per_loop
-    else:
-        starting_loop = 0
-
     # ====================================================
     # train setp function
     # ====================================================
-    
     # (Optional) Optimize by wrapping some of the 
     # code in a graph using TF function.
     # Big perfromance boost right here
-    print('wrapping agent.train in tf-function')
-    agent.train = common.function(agent.train)
+    
+    # tf.print('wrapping agent.train in tf-function')
+    # agent.train = common.function(agent.train)
     
     # @tf.function # TODO: replace numpy with TF for perf boost
-    def _train_step_fn():
+    @common.function()
+    def _train_step_fn(iterator):
         
-        data = next(train_ds_iterator)
+        def replicated_train_step(experience):
+            return agent.train(experience).loss
+        
+        # with distribution_strategy.scope():
+        
+        # data = next(train_ds_iterator)
+        data = eager_utils.get_next(iterator)
         trajectories = _trajectory_fn(data)
-        # loss = agent.train(experience=trajectories)
+        # loss = agent.train(experience=trajectories).loss
         
-        return agent.train(experience=trajectories)
-    
-    print(f"starting_loop: {starting_loop}")
+        per_replica_losses = distribution_strategy.run(
+            replicated_train_step, 
+            args=(trajectories,)
+        )
+
+        # return agent.train(experience=trajectories)
+        return distribution_strategy.reduce(
+            tf.distribute.ReduceOp.MEAN, 
+            per_replica_losses, # loss, 
+            axis=None
+        )
 
     # start the timer and training
-    print(f"starting train loop...")
+    tf.print(f"starting train loop...")
     list_o_loss = []
     
     # ====================================================
     # profiler - train loop
     # ====================================================    
     if profiler:
+        
         start_time = time.time()
-        tf.profiler.experimental.start(log_dir)
-        for i in range(num_iterations):
+        
+        with distribution_strategy.scope():
+            train_ds_iterator = iter(train_dataset)
+            
+            tf.profiler.experimental.start(log_dir)
+            for i in tf.range(num_iterations):
 
-            step = agent.train_step_counter.numpy()
+                step = agent.train_step_counter #.numpy()
+                with tf.profiler.experimental.Trace(
+                    "tr_step", step_num=step.numpy(), _r=1
+                ):
+                    loss = _train_step_fn(train_ds_iterator)
+                    # data = eager_utils.get_next(train_ds_iterator)
+                    # trajectories = _trajectory_fn(data)
+                    # loss = agent.train(experience=trajectories).loss
 
-            with tf.profiler.experimental.Trace(
-                "tr_step", step_num=step, _r=1
-            ):
-                loss = _train_step_fn()
+                list_o_loss.append(loss.numpy())
+                # train_utils._export_metrics_and_summaries(
+                #     step=i, 
+                #     metrics=metrics
+                # )
 
-            list_o_loss.append(loss.loss.numpy())
-
-            # train_utils._export_metrics_and_summaries(
-            #     step=i, 
-            #     metrics=metrics
-            # )
-
-            # print 
-            if step % log_interval == 0:
-                print(
-                    'step = {0}: loss = {1}'.format(
-                        step, round(loss.loss.numpy(), 2)
+                if step % log_interval == 0:
+                    tf.print(
+                        'step = {0}: loss = {1}'.format(
+                            step.numpy(), round(loss.numpy(), 2)
+                        )
                     )
-                )
+                if i > 0 and i % chkpt_interval == 0:
+                    checkpoint_manager.save(global_step)
 
-            if i > 0 and i % chkpt_interval == 0:
-                checkpoint_manager.save(global_step)
-                saver.save(
-                    os.path.join(
-                        CHKPOINT_DIR, 
-                        'policy_%d' % step_metric.result()
-                    )
-                )
-                print(f"saved policy to: {CHKPOINT_DIR}")
-
-        tf.profiler.experimental.stop()
+            tf.profiler.experimental.stop()
         runtime_mins = int((time.time() - start_time) / 60)
-        print(f"runtime_mins: {runtime_mins}")
+        tf.print(f"runtime_mins: {runtime_mins}")
     # ====================================================
     # non-profiler - train loop
     # ====================================================
     if not profiler:
         
         start_time = time.time()
-        for i in range(num_iterations):
-
-            step = agent.train_step_counter.numpy()
-            loss = _train_step_fn()
-            list_o_loss.append(loss.loss.numpy())
-
-            train_utils._export_metrics_and_summaries(
-                step=i, 
-                metrics=metrics
-            )
-
-            # print 
-            if step % log_interval == 0:
-                print(
-                    'step = {0}: loss = {1}'.format(
-                        step, round(loss.loss.numpy(), 2)
-                    )
-                )
-
-            if i > 0 and i % chkpt_interval == 0:
-                checkpoint_manager.save(global_step)
-                saver.save(
-                    os.path.join(
-                        CHKPOINT_DIR, 
-                        'policy_%d' % step_metric.result()
-                    )
-                )
-                print(f"saved policy to: {CHKPOINT_DIR}")
+        
+        with distribution_strategy.scope():
+            train_ds_iterator = iter(train_dataset)
             
+            for i in tf.range(num_iterations):
+
+                step = agent.train_step_counter
+                # loss = _train_step_fn()
+                loss = _train_step_fn(train_ds_iterator)
+                
+                list_o_loss.append(loss.numpy())
+
+                train_utils._export_metrics_and_summaries(
+                    step=step.numpy(), 
+                    metrics=metrics
+                )
+                if step % log_interval == 0:
+                    tf.print(
+                        'step = {0}: loss = {1}'.format(
+                            step.numpy(), round(loss.numpy(), 2)
+                        )
+                    )
+                if i > 0 and i % chkpt_interval == 0:
+                    checkpoint_manager.save(global_step)
+
         runtime_mins = int((time.time() - start_time) / 60)
-        print(f"runtime_mins: {runtime_mins}")
+        tf.print(f"runtime_mins: {runtime_mins}")
 
     saver.save(model_dir)
-    print(f"saved trained policy to: {model_dir}")
+    tf.print(f"saved trained policy to: {model_dir}")
     checkpoint_manager.save(global_step)
-    # print(f"saved trained policy to: {CHKPOINT_DIR}")
+    tf.print(f"saved trained policy to: {chkpoint_dir}")
     
     return list_o_loss, agent  # agent | val_loss

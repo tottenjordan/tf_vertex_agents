@@ -52,6 +52,62 @@ from . import trainer_baseline
 # import traceback
 # from google.cloud.aiplatform.training_utils import cloud_profiler
 
+def _get_training_loop(
+    driver, replay_buffer, agent, steps, async_steps_per_loop, log_interval=10
+):
+    """Returns a `tf.function` that runs the driver and training loops.
+
+    Args:
+    driver: an instance of `Driver`.
+    replay_buffer: an instance of `ReplayBuffer`.
+    agent: an instance of `TFAgent`.
+    steps: an integer indicating how many driver steps should be executed and
+      presented to the trainer during each training loop.
+    async_steps_per_loop: an integer. In each training loop, the driver runs
+      this many times, and then the agent gets asynchronously trained over this
+      many batches sampled from the replay buffer.
+    """
+
+    def _export_metrics_and_summaries(step, metrics):
+        """Exports metrics and tf summaries."""
+        metric_utils.log_metrics(metrics)
+        export_utils.export_metrics(step=step, metrics=metrics)
+        for metric in metrics:
+            metric.tf_summaries(train_step=step)
+
+    def training_loop(train_step, metrics):
+        """Returns a function that runs a single training loop and logs metrics."""
+        for batch_id in range(async_steps_per_loop):
+            driver.run()
+            _export_metrics_and_summaries(
+                step=train_step * async_steps_per_loop + batch_id, metrics=metrics
+            )
+        batch_size = driver.env.batch_size
+        dataset_it = iter(
+            replay_buffer.as_dataset(
+                sample_batch_size=batch_size,
+                num_steps=steps,
+                single_deterministic_pass=True,
+            )
+        )
+        for batch_id in range(async_steps_per_loop):
+            experience, unused_buffer_info = dataset_it.get_next()
+            set_expected_shape(experience, steps)
+            loss_info = agent.train(experience)
+            export_utils.export_metrics(
+                step=train_step * async_steps_per_loop + batch_id,
+                metrics=[],
+                loss_info=loss_info,
+            )
+            if train_step % log_interval == 0:
+                print(
+                    f'step = {train_step}: train loss = {round(loss_info.loss.numpy(), 2)}'
+                )
+
+        replay_buffer.clear()
+
+    return training_loop
+
 
 T = TypeVar("T")
 
@@ -118,13 +174,13 @@ def train(
     # ====================================================
     if train_summary_writer:
         train_summary_writer.set_as_default()
-        
-    logging.info(f" log_dir: {log_dir}")
+
     # train_summary_writer = tf.compat.v2.summary.create_file_writer(
     #     log_dir, flush_millis=10 * 1000
     # )
     # train_summary_writer.set_as_default()
     
+    logging.info(f" log_dir: {log_dir}")
     # ====================================================
     # get data spec
     # ====================================================
@@ -326,23 +382,23 @@ def train(
                 metric.tf_summaries(train_step = step_metric.result())
                 metric_results[type(metric).__name__].append(metric.result().numpy())
                 
-            if train_step > 0 and train_step % chkpt_interval == 0:
-                checkpoint_manager.save()
+            # if train_step > 0 and train_step % chkpt_interval == 0:
+                # checkpoint_manager.save()
             #     saver.save(
             #         os.path.join(
             #             CHKPOINT_DIR, 
             #             'policy_%d' % step_metric.result()
             #         )
             #     )
-                logging.info(f"saved policy to: {CHKPOINT_DIR}")
+                # logging.info(f"saved policy to: {CHKPOINT_DIR}")
                 
         runtime_mins = int((time.time() - start_time) / 60)
         logging.info(f"runtime_mins: {runtime_mins}")
     
-    if not run_hyperparameter_tuning:
-        checkpoint_manager.save()
+    # if not run_hyperparameter_tuning:
+        # checkpoint_manager.save()
         # saver.save(model_dir)
         # saver.save(artifacts_dir)
-        print(f"saved trained policy checkpoint to: {CHKPOINT_DIR}")
+        # print(f"saved trained policy checkpoint to: {CHKPOINT_DIR}")
     
     return metric_results
