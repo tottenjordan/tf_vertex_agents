@@ -275,6 +275,9 @@ def main(args: argparse.Namespace) -> None:
     logging.info(f'TF training strategy (execute task) = {strategy}')
     
     with distribution_strategy.scope():
+        
+        global_step = tf.compat.v1.train.get_or_create_global_step()
+        
         # Define RL agent/algorithm.
         agent = lin_ucb_agent.LinearUCBAgent(
             time_step_spec=environment.time_step_spec()
@@ -288,10 +291,12 @@ def main(args: argparse.Namespace) -> None:
         )
     
         agent.initialize()
-    logging.info(f"agent: {agent.name}")
-    logging.info("TimeStep Spec (for each batch):\n%s\n", agent.time_step_spec)
-    logging.info("Action Spec (for each batch):\n%s\n", agent.action_spec)
-    logging.info("Reward Spec (for each batch):\n%s\n", environment.reward_spec())
+        
+    tf.print(f"agent: {agent.name}")
+    tf.print(f"global_step: {global_step.value().numpy()}")
+    tf.print("TimeStep Spec (for each batch):\n%s\n", agent.time_step_spec)
+    tf.print("Action Spec (for each batch):\n%s\n", agent.action_spec)
+    tf.print("Reward Spec (for each batch):\n%s\n", environment.reward_spec())
     
     # ====================================================
     # TB summary writer
@@ -345,7 +350,8 @@ def main(args: argparse.Namespace) -> None:
         , chkpt_dir = CHKPOINT_DIR
         , profiler = args.profiler
         , train_summary_writer = train_summary_writer
-        , chkpt_interval = args.chkpt_interval,
+        , chkpt_interval = args.chkpt_interval
+        , global_step = global_step
     )
     
     end_time = time.time()

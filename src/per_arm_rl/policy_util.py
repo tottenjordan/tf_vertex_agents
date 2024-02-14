@@ -126,7 +126,8 @@ def train(
     , root_dir: Optional[str] = None
     , artifacts_dir: Optional[str] = None
     , model_dir: Optional[str] = None
-    , train_summary_writer: Optional[tf.summary.SummaryWriter] = None,
+    , train_summary_writer: Optional[tf.summary.SummaryWriter] = None
+    , global_step = None
 ) -> Dict[str, List[float]]:
     """
     Performs `training_loops` iterations of training on the agent's policy.
@@ -300,14 +301,14 @@ def train(
         , async_steps_per_loop = 1
     )
     
-    train_step_counter = tf.compat.v1.train.get_or_create_global_step()
+    # train_step_counter = tf.compat.v1.train.get_or_create_global_step()
     
     # if not run_hyperparameter_tuning:
     #     saver = policy_saver.PolicySaver(
     #         agent.policy, 
-    #         train_step=train_step_counter
+    #         train_step=global_step.numpy()
     #     )
-    #     print(f"created saver: {saver}")
+    #     tf.print(f"created saver: {saver}")
     # saver = policy_saver.PolicySaver(agent.policy)
         
     # ====================================================
@@ -340,20 +341,13 @@ def train(
                 for metric in metrics:
                     metric.tf_summaries(train_step = step_metric.result())
                     metric_results[type(metric).__name__].append(metric.result().numpy())
-                    
-                if train_step > 0 and train_step % chkpt_interval == 0:
-                    checkpoint_manager.save()
-                #     saver.save(
-                #         os.path.join(
-                #             CHKPOINT_DIR, 
-                #             'policy_%d' % step_metric.result()
-                #         )
-                #     )
-                    logging.info(f"saved policy to: {CHKPOINT_DIR}")
-                    
+
         tf.profiler.experimental.stop()
         runtime_mins = int((time.time() - start_time) / 60)
-        logging.info(f"runtime_mins: {runtime_mins}")
+        tf.print(f"runtime_mins: {runtime_mins}")
+        
+        checkpoint_manager.save(global_step)
+        tf.print(f"saved policy checkpoint to: {CHKPOINT_DIR}")
         
     # ====================================================
     # non-profiler - train loop
@@ -393,7 +387,10 @@ def train(
                 # logging.info(f"saved policy to: {CHKPOINT_DIR}")
                 
         runtime_mins = int((time.time() - start_time) / 60)
-        logging.info(f"runtime_mins: {runtime_mins}")
+        tf.print(f"runtime_mins: {runtime_mins}")
+        
+        checkpoint_manager.save(global_step)
+        tf.print(f"saved policy checkpoint to: {CHKPOINT_DIR}")
     
     # if not run_hyperparameter_tuning:
         # checkpoint_manager.save()

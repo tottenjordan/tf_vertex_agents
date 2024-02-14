@@ -115,7 +115,11 @@ class MyMovieLensPerArmPyEnvironment(bandit_py_environment.BanditPyEnvironment):
         options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
         
         train_files = []
-        for blob in storage_client.list_blobs(f"{self.bucket_name}", prefix=f'{self.data_gcs_prefix}/', delimiter="/"):
+        for blob in storage_client.list_blobs(
+            f"{self.bucket_name}", 
+            prefix=f'{self.data_gcs_prefix}/', 
+            # delimiter="/"
+        ):
             if '.tfrecord' in blob.name:
                 train_files.append(blob.public_url.replace("https://storage.googleapis.com/", "gs://"))
                 
