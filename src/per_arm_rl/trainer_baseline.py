@@ -124,7 +124,7 @@ def _get_training_loop(
             loss_info = agent.train(experience)
             export_utils.export_metrics(
                 step=train_step * async_steps_per_loop + batch_id,
-                metrics=[],
+                metrics=[], # TODO
                 loss_info=loss_info,
             )
             if train_step % log_interval == 0:
@@ -328,3 +328,5 @@ def train(
         checkpoint_manager.save()
         if save_policy & (i % 100 == 0):
             saver.save(os.path.join(artifact_dir, 'policy_%d' % step_metric.result()))
+            
+    return metric_results

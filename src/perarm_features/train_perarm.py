@@ -126,6 +126,7 @@ def train_perarm(
     # ====================================================
     # metrics
     # ====================================================
+    # with distribution_strategy.scope():
     step_metric = tf_metrics.EnvironmentSteps()
 
     metrics = [
@@ -170,63 +171,60 @@ def train_perarm(
     # tf.print('wrapping agent.train in tf-function')
     # agent.train = common.function(agent.train)
     
+    # data = next(train_ds_iterator)
+    # def _train_step_fn(iterator):
+    # data = eager_utils.get_next(iterator)
+    
     # @tf.function # TODO: replace numpy with TF for perf boost
+    
     @common.function()
-    def _train_step_fn(iterator):
+    def _train_step_fn(data):
         
         def replicated_train_step(experience):
             return agent.train(experience).loss
         
-        # with distribution_strategy.scope():
-        
-        # data = next(train_ds_iterator)
-        data = eager_utils.get_next(iterator)
         trajectories = _trajectory_fn(data)
-        # loss = agent.train(experience=trajectories).loss
-        
+
         per_replica_losses = distribution_strategy.run(
             replicated_train_step, 
             args=(trajectories,)
         )
 
-        # return agent.train(experience=trajectories)
+        # return agent.train(experience=trajectories).loss
         return distribution_strategy.reduce(
             tf.distribute.ReduceOp.MEAN, 
             per_replica_losses, # loss, 
             axis=None
         )
 
+    with distribution_strategy.scope():
+        train_ds_iterator = iter(train_dataset)
+    
     # start the timer and training
     tf.print(f"starting train loop...")
     list_o_loss = []
-    
     # ====================================================
     # profiler - train loop
     # ====================================================    
     if profiler:
         
         start_time = time.time()
+        tf.profiler.experimental.start(log_dir)
         
         with distribution_strategy.scope():
-            train_ds_iterator = iter(train_dataset)
             
-            tf.profiler.experimental.start(log_dir)
             for i in tf.range(num_iterations):
 
-                step = agent.train_step_counter #.numpy()
+                step = agent.train_step_counter
+
                 with tf.profiler.experimental.Trace(
-                    "tr_step", step_num=step.numpy(), _r=1
+                    "tr_step", step_num=i, _r=1 # step.numpy()
                 ):
-                    loss = _train_step_fn(train_ds_iterator)
-                    # data = eager_utils.get_next(train_ds_iterator)
-                    # trajectories = _trajectory_fn(data)
-                    # loss = agent.train(experience=trajectories).loss
+                    
+                    data = next(train_ds_iterator)
+                    loss = _train_step_fn(data)
 
                 list_o_loss.append(loss.numpy())
-                # train_utils._export_metrics_and_summaries(
-                #     step=i, 
-                #     metrics=metrics
-                # )
 
                 if step % log_interval == 0:
                     tf.print(
@@ -237,7 +235,7 @@ def train_perarm(
                 if i > 0 and i % chkpt_interval == 0:
                     checkpoint_manager.save(global_step)
 
-            tf.profiler.experimental.stop()
+        tf.profiler.experimental.stop()
         runtime_mins = int((time.time() - start_time) / 60)
         tf.print(f"runtime_mins: {runtime_mins}")
     # ====================================================
@@ -248,13 +246,13 @@ def train_perarm(
         start_time = time.time()
         
         with distribution_strategy.scope():
-            train_ds_iterator = iter(train_dataset)
             
             for i in tf.range(num_iterations):
 
                 step = agent.train_step_counter
-                # loss = _train_step_fn()
-                loss = _train_step_fn(train_ds_iterator)
+                
+                data = next(train_ds_iterator)
+                loss = _train_step_fn(data)
                 
                 list_o_loss.append(loss.numpy())
 

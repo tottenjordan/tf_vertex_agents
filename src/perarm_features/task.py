@@ -582,7 +582,6 @@ def main(args: argparse.Namespace):
                     "arm_lyrs": args.arm_layers,
                     "common_lyrs": args.common_layers,
                     "encoding_dim": args.encoding_dim,
-                    # "eps_steps": args.eps_phase_steps,
                 }
             )
 
