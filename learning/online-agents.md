@@ -1,6 +1,7 @@
 # The online learning paradigm
 
-*An Online Agent refines its policy by only using user’s (and system’s) feedback to its past predictions*
+*Online reinforcement learning (RL) agents incrementally update their parameters (of the policy,
+value function or model) while they observe a stream of experience. An online agent refines its policy by only using user’s (and system’s) feedback to its past predictions*
 
 > TODO - add a TLDR here
 
