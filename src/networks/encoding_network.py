@@ -84,13 +84,13 @@ class EmbeddingModel:
             dtype=tf.int64
         )
         user_age_lookup = tf.keras.layers.IntegerLookup(
-            vocabulary=self.vocab_dict['user_age'], # bucketized_user_age
+            vocabulary=self.vocab_dict['user_age_vocab'], # bucketized_user_age
             num_oov_indices=self.num_oov_buckets,
             oov_value=0,
         )(user_age_input_layer)
         user_age_embedding = tf.keras.layers.Embedding(
             # Let's use the explicit vocabulary lookup.
-            input_dim=len(self.vocab_dict['user_age']) + self.num_oov_buckets,
+            input_dim=len(self.vocab_dict['user_age_vocab']) + self.num_oov_buckets,
             output_dim=self.global_emb_size
         )(user_age_lookup)
         user_age_embedding = tf.reduce_sum(user_age_embedding, axis=-2)
@@ -108,14 +108,14 @@ class EmbeddingModel:
             dtype=tf.string
         )
         user_occ_lookup = tf.keras.layers.StringLookup(
-            max_tokens=len(self.vocab_dict['user_occupation_text']) + self.num_oov_buckets,
+            max_tokens=len(self.vocab_dict['user_occ_vocab']) + self.num_oov_buckets,
             num_oov_indices=self.num_oov_buckets,
             mask_token=None,
-            vocabulary=self.vocab_dict['user_occupation_text'],
+            vocabulary=self.vocab_dict['user_occ_vocab'],
         )(user_occ_input_layer)
         user_occ_embedding = tf.keras.layers.Embedding(
             # Let's use the explicit vocabulary lookup.
-            input_dim=len(self.vocab_dict['user_occupation_text']) + self.num_oov_buckets,
+            input_dim=len(self.vocab_dict['user_occ_vocab']) + self.num_oov_buckets,
             output_dim=self.global_emb_size
         )(user_occ_lookup)
         user_occ_embedding = tf.reduce_sum(user_occ_embedding, axis=-2)
@@ -155,14 +155,14 @@ class EmbeddingModel:
             dtype=tf.string
         )
         user_zip_lookup = tf.keras.layers.StringLookup(
-            max_tokens=len(self.vocab_dict['user_zip_code']) + self.num_oov_buckets,
+            max_tokens=len(self.vocab_dict['user_zip_vocab']) + self.num_oov_buckets,
             num_oov_indices=self.num_oov_buckets,
             mask_token=None,
-            vocabulary=self.vocab_dict['user_zip_code'],
+            vocabulary=self.vocab_dict['user_zip_vocab'],
         )(user_zip_input_layer)
         user_zip_embedding = tf.keras.layers.Embedding(
             # Let's use the explicit vocabulary lookup.
-            input_dim=len(self.vocab_dict['user_zip_code']) + self.num_oov_buckets,
+            input_dim=len(self.vocab_dict['user_zip_vocab']) + self.num_oov_buckets,
             output_dim=self.global_emb_size
         )(user_zip_lookup)
         user_zip_embedding = tf.reduce_sum(user_zip_embedding, axis=-2)
@@ -180,14 +180,14 @@ class EmbeddingModel:
             dtype=tf.string
         )
         user_gender_lookup = tf.keras.layers.StringLookup(
-            max_tokens=len(self.vocab_dict['user_gender']) + self.num_oov_buckets,
+            max_tokens=len(self.vocab_dict['user_gender_vocab']) + self.num_oov_buckets,
             num_oov_indices=self.num_oov_buckets,
             mask_token=None,
-            vocabulary=self.vocab_dict['user_gender'],
+            vocabulary=self.vocab_dict['user_gender_vocab'],
         )(user_gender_input_layer)
         user_gender_embedding = tf.keras.layers.Embedding(
             # Let's use the explicit vocabulary lookup.
-            input_dim=len(self.vocab_dict['user_gender']) + self.num_oov_buckets,
+            input_dim=len(self.vocab_dict['user_gender_vocab']) + self.num_oov_buckets,
             output_dim=self.global_emb_size
         )(user_gender_lookup)
         user_gender_embedding = tf.reduce_sum(user_gender_embedding, axis=-2)
@@ -288,13 +288,13 @@ class EmbeddingModel:
         mv_genre_text = tf.keras.layers.TextVectorization(
             # max_tokens=max_tokens, 
             ngrams=2, 
-            vocabulary=vocab_dict['movie_genres'],
+            vocabulary=vocab_dict['movie_genre'],
             output_mode='int',
             output_sequence_length=MAX_GENRE_LENGTH,
         )(mv_genre_input_layer)
         mv_genre_embedding = tf.keras.layers.Embedding(
             # Let's use the explicit vocabulary lookup.
-            input_dim=len(self.vocab_dict['movie_genres']) + self.num_oov_buckets,
+            input_dim=len(self.vocab_dict['movie_genre']) + self.num_oov_buckets,
             output_dim=self.mv_emb_size
         )(mv_genre_text)
         mv_genre_reshape = tf.keras.layers.Reshape([-1, self.mv_emb_size])(mv_genre_embedding)

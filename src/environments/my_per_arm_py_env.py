@@ -30,8 +30,7 @@ from tf_agents.bandits.specs import utils as bandit_spec_utils
 from tf_agents.specs import array_spec
 from tf_agents.trajectories import time_step as ts
 
-# from . import data_utils
-from src.utils import movielens_ds_utils
+from src.data import data_utils as data_utils
 
 GLOBAL_KEY = bandit_spec_utils.GLOBAL_FEATURE_KEY
 PER_ARM_KEY = bandit_spec_utils.PER_ARM_FEATURE_KEY
@@ -127,13 +126,13 @@ class MyMovieLensPerArmPyEnvironment(bandit_py_environment.BanditPyEnvironment):
         logging.info(f'train_files: {train_files}')
         
         train_dataset = tf.data.TFRecordDataset(train_files)
-        train_dataset = train_dataset.map(movielens_ds_utils.parse_tfrecord)
+        train_dataset = train_dataset.map(data_utils._parse_function)
         
         self.dataset = train_dataset
         # =============================================
         # load data & compute ratings matrix
         # =============================================
-        self._data_matrix, self._user_age_int, self._user_occ_int = movielens_ds_utils.load_movielens_ratings(
+        self._data_matrix, self._user_age_int, self._user_occ_int = data_utils.load_movielens_ratings(
             ratings_dataset = train_dataset
             , num_users = self.num_users
             , num_movies = self.num_movies

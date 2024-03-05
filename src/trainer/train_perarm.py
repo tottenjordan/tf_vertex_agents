@@ -40,10 +40,7 @@ from google.cloud import storage
 import traceback
 
 # this repo
-# from src.per_arm_rl import train_utils
 from src import train_utils as train_utils
-# from src.per_arm_rl import data_utils
-# from src.per_arm_rl import data_config
 
 if tf.__version__[0] != "2":
     raise Exception("The trainer only runs with TensorFlow version 2.")

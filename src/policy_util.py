@@ -361,18 +361,18 @@ def train(
                 , metrics = metrics
             )
 
-#             # log tensorboard
-#             for metric in metrics:
-#                 metric.tf_summaries(
-#                     train_step=train_step
-#                     , step_metrics=metrics[:2]
-#                 )
+            # log tensorboard
+            for metric in metrics:
+                metric.tf_summaries(
+                    train_step=train_step
+                    , step_metrics=metrics[:2]
+                )
 
-#             metric_utils.log_metrics(metrics)
+            metric_utils.log_metrics(metrics)
 
-#             for metric in metrics:
-#                 metric.tf_summaries(train_step = step_metric.result())
-#                 metric_results[type(metric).__name__].append(metric.result().numpy())
+            for metric in metrics:
+                metric.tf_summaries(train_step = step_metric.result())
+                metric_results[type(metric).__name__].append(metric.result().numpy())
                 
         runtime_mins = int((time.time() - start_time) / 60)
         tf.print(f"runtime_mins: {runtime_mins}")

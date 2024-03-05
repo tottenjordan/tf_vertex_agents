@@ -260,6 +260,31 @@ class UserInfo(
 # ====================================================
 # helper functions
 # ====================================================
+def _no_gaps(sequence):
+    """
+    Returns True if a sequence has all values between 0..N with no gaps.
+    """
+    return set(sequence) == set(range(len(sequence)))
+
+
+def reindex(dataframes):
+    """
+    Returns dataframes that have been reindexed to remove gaps.
+    """
+    print(f"Reindexing dataframes...")
+    movies, users, ratings = dataframes
+    index_dict = pd.Series(
+        np.arange(movies.shape[0]), 
+        index=movies['movie_id'].values
+    ).to_dict()
+    movies['movie_id'] = np.arange(movies.shape[0])
+    ratings['movie_id'] = [index_dict[iden] for iden in ratings['movie_id']]
+    ratings['user_id'] -= 1
+    users['user_id'] -= 1
+    assert _no_gaps(movies['movie_id'])
+    assert _no_gaps(users['user_id'])
+
+    return movies, users, ratings
 
 def upload_local_directory_to_gcs(local_path, bucket, gcs_path):
     assert os.path.isdir(local_path)
@@ -377,6 +402,7 @@ def read_data(data_directory, min_rating=None, local_output_dir=None):
     movies_df['year'] = movies_df['title'].apply(
         lambda movie_name: re.search('\((\d*)\)', movie_name).groups(1)[0]
     )
+    movies_df["year"] = movies_df["year"].apply(int)
     users_df = pd.read_csv(
         os.path.join(data_directory, USERS_FILE_NAME),
         sep='::',
@@ -389,6 +415,7 @@ def read_data(data_directory, min_rating=None, local_output_dir=None):
     # write raw dfs to csv; store in GCS
     dataframes = movies_df, users_df, ratings_df
     write_csv_output(dataframes, local_dir=local_output_dir, gcs_path="")
+    movies_df, users_df, ratings_df = reindex(dataframes)
     
     return ratings_df, movies_df, users_df
 
