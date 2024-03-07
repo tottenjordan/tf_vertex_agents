@@ -176,7 +176,7 @@ def train_perarm(
     
     # @tf.function # TODO: replace numpy with TF for perf boost
     
-    @common.function()
+    @common.function(autograph=False)
     def _train_step_fn(data):
         
         def replicated_train_step(experience):
@@ -208,16 +208,15 @@ def train_perarm(
     if profiler:
         
         start_time = time.time()
-        tf.profiler.experimental.start(log_dir)
         
         with distribution_strategy.scope():
-            
+            tf.profiler.experimental.start(log_dir)
             for i in tf.range(num_iterations):
 
                 step = agent.train_step_counter
 
                 with tf.profiler.experimental.Trace(
-                    "tr_step", step_num=i, _r=1 # step.numpy()
+                    "tr_step", step_num=step, _r=1 # step.numpy()
                 ):
                     data = next(train_ds_iterator)
                     loss = _train_step_fn(data)
@@ -233,7 +232,7 @@ def train_perarm(
                 if i > 0 and i % chkpt_interval == 0:
                     checkpoint_manager.save(global_step)
 
-        tf.profiler.experimental.stop()
+            tf.profiler.experimental.stop()
         runtime_mins = int((time.time() - start_time) / 60)
         tf.print(f"runtime_mins: {runtime_mins}")
     # ====================================================
