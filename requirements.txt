@@ -1,7 +1,12 @@
+# validated for python=3.10
 google-cloud-aiplatform==1.33.1
+google-cloud-aiplatform[autologging]
 google-cloud-storage
 numpy
+numba
+matplotlib
 tensorflow[and-cuda]
+tensorflow==2.13
 tf-agents==0.17.0
 tensorflow-datasets
 tensorflow-probability
