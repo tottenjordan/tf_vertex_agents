@@ -43,7 +43,7 @@ def _get_train_dataset(
     batch_size,
     num_replicas = 1,
     cache: bool = True,
-    is_testing: bool = True,
+    is_testing: bool = False,
 ):
     """
     TODO: use `dataset.take(k).cache().repeat()`

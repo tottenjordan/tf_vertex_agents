@@ -92,7 +92,7 @@ def train_perarm(
     saver = None,
     strategy: tf.distribute.Strategy = None,
     train_summary_writer: Optional[tf.summary.SummaryWriter] = None,
-    is_testing: bool = True,
+    is_testing: bool = False,
 ) -> Dict[str, List[float]]:
     
     # # GPU - All variables & Agents need to be created under strategy.scope()

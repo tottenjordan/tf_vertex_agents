@@ -1,8 +1,6 @@
 
 FROM gcr.io/deeplearning-platform-release/tf2-gpu.2-13.py310
 
-ENV PYTHONUNBUFFERED True
-
 ENV APP_HOME /workspace
 
 WORKDIR $APP_HOME
@@ -14,9 +12,15 @@ RUN pip install cloudml-hypertune
 
 RUN apt update && apt -y install nvtop
 
-COPY src/per_arm_rl $APP_HOME/src/per_arm_rl
+COPY src/policy_util.py $APP_HOME/src/policy_util.py
+COPY src/train_utils.py $APP_HOME/src/train_utils.py
+COPY src/environments $APP_HOME/src/environments
+COPY src/trainer $APP_HOME/src/trainer
+COPY src/data $APP_HOME/src/data
 
 RUN export PYTHONPATH=${PYTHONPATH}:${APP_HOME}/
 
+RUN pip freeze | grep wrapt
+
 # Sets up the entry point to invoke the task.
-ENTRYPOINT ["python3", "-m", "src.per_arm_rl.perarm_task"]
+ENTRYPOINT ["python3", "-m", "src.trainer.train_env_task"]
