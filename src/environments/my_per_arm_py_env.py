@@ -55,7 +55,6 @@ class MyMovieLensPerArmPyEnvironment(bandit_py_environment.BanditPyEnvironment):
     def __init__(
         self
         , project_number
-        , data_path: str
         , bucket_name: str
         , data_gcs_prefix: str
         , user_age_lookup_dict: dict
@@ -79,7 +78,6 @@ class MyMovieLensPerArmPyEnvironment(bandit_py_environment.BanditPyEnvironment):
           name: (string) The name of this environment instance.
         """
         self.project_number = project_number
-        self.data_path = data_path
         self.bucket_name = bucket_name
         self.data_gcs_prefix = data_gcs_prefix
         self._batch_size = batch_size
@@ -126,7 +124,7 @@ class MyMovieLensPerArmPyEnvironment(bandit_py_environment.BanditPyEnvironment):
         logging.info(f'train_files: {train_files}')
         
         train_dataset = tf.data.TFRecordDataset(train_files)
-        train_dataset = train_dataset.map(data_utils._parse_function)
+        train_dataset = train_dataset.map(data_utils._mf_parse_function)
         
         self.dataset = train_dataset
         # =============================================

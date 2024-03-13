@@ -1,5 +1,5 @@
 
-FROM tensorflow/tensorflow:2.14.0-gpu
+FROM gcr.io/deeplearning-platform-release/tf-gpu.2-13.py310:m111
 
 ENV PYTHONUNBUFFERED True
 
@@ -23,7 +23,7 @@ RUN ls $APP_HOME
 
 RUN export PYTHONPATH=${PYTHONPATH}:${APP_HOME}/
 
-# RUN pip freeze
+RUN pip freeze
 
 # Sets up the entry point to invoke the task.
 ENTRYPOINT ["python3", "-m", "src.perarm_features.task"]

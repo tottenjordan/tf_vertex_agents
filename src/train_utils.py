@@ -6,13 +6,10 @@ logging.disable(logging.WARNING)
 
 from google.cloud import storage
 
-# from per_arm_rl import data_utils as data_utils
-# from src.utils import movielens_ds_utils as movielens_ds_utils
 from src.data import data_utils as data_utils
+from src.data import data_config as data_config
 
-project_number='hybrid-vertex'
-storage_client = storage.Client(project=project_number)
-
+storage_client = storage.Client(project=data_config.PROJECT_ID)
 # ====================================================
 # environemnt utils
 # ====================================================
