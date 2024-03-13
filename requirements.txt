@@ -5,7 +5,7 @@ google-cloud-storage
 numpy
 numba
 matplotlib
-tensorflow==2.13
+tensorflow==2.13.0
 tf-agents==0.17.0
 tensorflow-probability==0.20.1
 tensorflow-datasets
