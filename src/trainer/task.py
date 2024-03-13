@@ -26,11 +26,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 import tensorflow as tf
 
-# # TF-Agent env
-# from tf_agents.bandits.environments import environment_utilities
-# from tf_agents.bandits.environments import stationary_stochastic_per_arm_py_environment as p_a_env
-# from tf_agents.environments import tf_py_environment
-
 # TF-Agent agents & networks
 from tf_agents.bandits.agents import lin_ucb_agent
 from tf_agents.bandits.agents import neural_linucb_agent
@@ -56,17 +51,14 @@ from tf_agents.policies import policy_saver
 from tf_agents.specs import array_spec
 from tensorflow.python.client import device_lib
 
-nest = tf.nest
-
-from . import train_perarm as train_perarm
-from . import agent_factory as agent_factory
-from . import reward_factory as reward_factory
+# this repo
 from . import eval_perarm as eval_perarm
-from . import emb_features as emb_features
-
-from src.per_arm_rl import data_utils
-from src.per_arm_rl import train_utils
-# from src.per_arm_rl import data_config
+from . import train_perarm as train_perarm
+from src.data import data_utils as data_utils
+from src import train_utils as train_utils
+from src import reward_factory as reward_factory
+from src.agents import agent_factory as agent_factory
+from src.networks import encoding_network as emb_features
 
 if tf.__version__[0] != "2":
     raise Exception("The trainer only runs with TensorFlow version 2.")
@@ -74,13 +66,11 @@ if tf.__version__[0] != "2":
 import wrapt
 print(f"wrapt version: {wrapt.__version__}")
 
-
 PER_ARM = True  # Use the non-per-arm version of the MovieLens environment.
 
 # clients
 project_number = os.environ["CLOUD_ML_PROJECT_ID"]
 storage_client = storage.Client(project=project_number)
-
 # ====================================================
 # get train & val datasets
 # ====================================================
@@ -122,6 +112,7 @@ def get_args(raw_args: List[str]) -> argparse.Namespace:
     parser.add_argument("--batch_size", default=128, type=int)
     parser.add_argument("--eval_batch_size", default=1, type=int)
     parser.add_argument("--training_loops", default=4, type=int, help="Number of training iterations.")
+    parser.add_argument("--num_epochs", default=4, type=int, help="Number of cycle through train data.")
     parser.add_argument("--steps_per_loop", default=2, type=int)
     parser.add_argument("--num_eval_steps", default=1000, type=int)
     parser.add_argument("--rank_k", default=20, type=int)
@@ -153,6 +144,7 @@ def get_args(raw_args: List[str]) -> argparse.Namespace:
     parser.add_argument("--sum_grads_vars", action='store_true', help="include for True; ommit for False")
     parser.add_argument("--debug_summaries", action='store_true', help="include for True; ommit for False")
     parser.add_argument("--cache_train", action='store_true', help="include for True; ommit for False")
+    parser.add_argument("--is_testing", action='store_true', help="include for True; ommit for False")
 
     return parser.parse_args(raw_args)
 
@@ -302,10 +294,9 @@ def main(args: argparse.Namespace):
 
         def _trajectory_fn(element):
 
-            """Converts a dataset element into a trajectory."""
-            # global_features = _get_global_context_features(element)
-            # arm_features = _get_per_arm_features(element)
-
+            """
+            Converts a dataset element into a trajectory.
+            """
             global_features = embs._get_global_context_features(element)
             arm_features = embs._get_per_arm_features(element)
 
@@ -350,15 +341,10 @@ def main(args: argparse.Namespace):
     # ====================================================
     # create agent
     # ====================================================
-    
-    # with distribution_strategy.scope():
-    
     observation_spec = {
         'global': tf.TensorSpec([args.global_dim], tf.float32),
         'per_arm': tf.TensorSpec([args.num_actions, args.per_arm_dim], tf.float32)
     }
-    tf.print(f"observation_spec: {observation_spec}")
-
     action_spec = tensor_spec.BoundedTensorSpec(
         shape=[], 
         dtype=tf.int32,
@@ -366,15 +352,11 @@ def main(args: argparse.Namespace):
         maximum=args.num_actions-1, 
         # n degrees of freedom and will dictate 
         # the expected mean reward spec shape
-        # name="action_spec"
+        name="action_spec",
     )
-    tf.print(f"action_spec: {action_spec}")
-
     time_step_spec = ts.time_step_spec(
         observation_spec = observation_spec, 
     )
-    tf.print(f"time_step_spec: {time_step_spec}")
-    
     reward_spec = {
         "reward": array_spec.ArraySpec(
             shape=[args.batch_size], 
@@ -383,6 +365,10 @@ def main(args: argparse.Namespace):
         )
     }
     reward_tensor_spec = train_utils.from_spec(reward_spec)
+
+    tf.print(f"observation_spec : {observation_spec}")
+    tf.print(f"action_spec      : {action_spec}")
+    tf.print(f"time_step_spec   : {time_step_spec}")
 
     with distribution_strategy.scope():
 
@@ -417,13 +403,8 @@ def main(args: argparse.Namespace):
     tf.print("Inpsecting agent policy from task file: Complete")
 
     # ====================================================
-    # train dataset
+    # val dataset
     # ====================================================
-#     train_dataset = _get_train_dataset(
-#         args.bucket_name, args.data_dir_prefix_path, split="train"
-#     )
-#     train_ds_iterator = iter(train_dataset.batch(batch_size).repeat(num_iterations))
-    
     val_dataset = train_utils._get_eval_dataset(
         args.bucket_name, 
         args.data_dir_prefix_path, 
@@ -431,16 +412,14 @@ def main(args: argparse.Namespace):
         batch_size=args.eval_batch_size
     )
     eval_ds = val_dataset.batch(args.eval_batch_size)
-    # eval_ds = val_dataset.prefetch(tf.data.AUTOTUNE)
-    # train_ds_iterator = iter(dist_train_ds)
+
     if args.num_eval_steps > 0:
         eval_ds = eval_ds.take(args.num_eval_steps)
-        
+
     with distribution_strategy.scope():
         eval_ds = eval_ds.cache()
-    
-    tf.print(f"eval_ds: {eval_ds}")
 
+    tf.print(f"eval_ds: {eval_ds}")
     # ====================================================
     # TB summary writer
     # ====================================================
@@ -448,7 +427,6 @@ def main(args: argparse.Namespace):
     tf.print(f"current thread has eager execution enabled: {tf.executing_eagerly()}")
 
     with distribution_strategy.scope():
-    
         train_summary_writer = tf.compat.v2.summary.create_file_writer(
             log_dir, flush_millis=10 * 1000
         )
@@ -500,6 +478,8 @@ def main(args: argparse.Namespace):
         cache_train_data = args.cache_train,
         strategy = distribution_strategy,
         # saver = saver,
+        is_testing=args.is_testing,
+        num_epochs=args.num_epochs,
     )
 
     end_time = time.time()
@@ -540,23 +520,20 @@ def main(args: argparse.Namespace):
     # ====================================================
     # log Vertex Experiments
     # ====================================================
-    # SESSION_id = "".join(random.choices(string.ascii_lowercase + string.digits, k=3)) # handle restarts 
-    
     if task_type == 'chief':
         tf.print(f" task_type logging experiments: {task_type}")
         tf.print(f" task_id logging experiments: {task_id}")
         tf.print(f" logging data to experiment run: {args.experiment_run}")
-        
+
         with vertex_ai.start_run(
             f'{args.experiment_run}',
             # tensorboard=args.tb_resource_name
         ) as my_run:
-            
-            tf.print(f"logging time-series metrics...")
-            for i in range(len(metric_results)):
-                vertex_ai.log_time_series_metrics({'loss': metric_results[i]}, step=i)
-            
-            
+
+            # tf.print(f"logging time-series metrics...")
+            # for i in range(len(metric_results)):
+            #     vertex_ai.log_time_series_metrics({'loss': metric_results[i]}, step=i)
+
             tf.print(f"logging metrics...")
             # gather the metrics for the last epoch to be saved in metrics
             my_run.log_metrics(
@@ -574,10 +551,6 @@ def main(args: argparse.Namespace):
                     "runtime": runtime_mins,
                     "batch_size": args.batch_size, 
                     "training_loops": args.training_loops,
-                    # "steps_pre_loop": args.steps_per_loop,
-                    # "rank_k": RANK_K,
-                    # "num_actions": args.num_actions,
-                    # "per_arm": str(PER_ARM),
                     "global_lyrs": args.global_layers,
                     "arm_lyrs": args.arm_layers,
                     "common_lyrs": args.common_layers,
@@ -595,17 +568,13 @@ if __name__ == "__main__":
         datefmt='%d-%m-%y %H:%M:%S',
         stream=sys.stdout
     )
-    
-    # logging.getLogger().setLevel(logging.INFO)
     logging.info("Python Version = %s", sys.version)
     logging.info("TensorFlow Version = %s", tf.__version__)
-    # logging.info("TF_CONFIG = %s", os.environ.get("TF_CONFIG", "Not found"))
-    # logging.info("DEVICES = %s", device_lib.list_local_devices())
     logging.info("Reinforcement learning task started...")
-    
+
     args = get_args(sys.argv[1:])
     logging.info('Args: %s', args)
-    
+
     main(args = args)
-    
+
     logging.info("Reinforcement learning task completed.")

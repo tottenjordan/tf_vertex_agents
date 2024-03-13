@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from typing import Dict, List, Optional, Text, Tuple
+from google.cloud import aiplatform, bigquery, storage
 
 # tensorflow
 import tensorflow as tf
@@ -63,7 +64,6 @@ def download_blob(
 # ==========================================
 # parsing functions
 # ==========================================
-    
 feature_description = {
     # # context sequence item features
     # 'context_movie_id': tf.io.FixedLenFeature(shape=(MAX_CONTEXT_LENGTH), dtype=tf.string),
@@ -110,7 +110,6 @@ def get_dictionary_lookup_by_tf_data_key(key, dataset) -> Dict:
     
     #return a dictionary of keys by integer values for the feature space
     return {val: i for i, val in enumerate(unique_elems)}
-
 
 # ============================================
 # load movielens

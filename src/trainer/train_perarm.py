@@ -16,6 +16,9 @@ from tf_agents.trajectories import trajectory
 
 import tensorflow as tf
 
+if tf.__version__[0] != "2":
+    raise Exception("The trainer only runs with TensorFlow version 2.")
+
 # TF-Agents
 from tf_agents.metrics.tf_metric import TFStepMetric
 from tf_agents.eval import metric_utils
@@ -36,20 +39,15 @@ logging.disable(logging.WARNING)
 
 from google.cloud import aiplatform as vertex_ai
 from google.cloud import storage
-# from google.cloud.aiplatform.training_utils import cloud_profiler
-import traceback
 
 # this repo
 from src import train_utils as train_utils
-
-if tf.__version__[0] != "2":
-    raise Exception("The trainer only runs with TensorFlow version 2.")
+from src.data import data_config as data_config
 
 PER_ARM = True  # Use the non-per-arm version of the MovieLens environment.
 
 # clients
-PROJECT_ID='hybrid-vertex'  # TODO: param
-storage_client = storage.Client(project=PROJECT_ID)
+storage_client = storage.Client(project=data_config.PROJECT_ID)
 
 # ====================================================
 # get train & val datasets
@@ -66,6 +64,7 @@ def train_perarm(
     global_dim: int,
     per_arm_dim: int, 
     num_iterations: int,
+    num_epochs: int,
     steps_per_loop: int,
     num_eval_steps: int,
     log_dir: str,
@@ -93,6 +92,7 @@ def train_perarm(
     saver = None,
     strategy: tf.distribute.Strategy = None,
     train_summary_writer: Optional[tf.summary.SummaryWriter] = None,
+    is_testing: bool = False,
 ) -> Dict[str, List[float]]:
     
     # # GPU - All variables & Agents need to be created under strategy.scope()
@@ -116,11 +116,8 @@ def train_perarm(
         batch_size = batch_size,
         num_replicas = num_replicas,
         cache = cache_train_data,
+        is_testing=is_testing,
     )
-    # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
-    # train_dataset = train_dataset.cache()
-    # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
-    # train_dataset = distribution_strategy.experimental_distribute_dataset(train_dataset)
 
     # ====================================================
     # metrics
@@ -209,30 +206,33 @@ def train_perarm(
         
         start_time = time.time()
         
-        with distribution_strategy.scope():
-            tf.profiler.experimental.start(log_dir)
-            for i in tf.range(num_iterations):
+        for i in tf.range(num_epochs):
+            tf.print(f"epoch: {i+1}")
+        
+            with distribution_strategy.scope():
+                tf.profiler.experimental.start(log_dir)
+                
+                for i in tf.range(num_iterations):
+                    step = agent.train_step_counter
 
-                step = agent.train_step_counter
+                    with tf.profiler.experimental.Trace(
+                        "tr_step", step_num=step, _r=1 # step.numpy()
+                    ):
+                        data = next(train_ds_iterator)
+                        loss = _train_step_fn(data)
 
-                with tf.profiler.experimental.Trace(
-                    "tr_step", step_num=step, _r=1 # step.numpy()
-                ):
-                    data = next(train_ds_iterator)
-                    loss = _train_step_fn(data)
+                    list_o_loss.append(loss.numpy())
 
-                list_o_loss.append(loss.numpy())
-
-                if step % log_interval == 0:
-                    tf.print(
-                        'step = {0}: loss = {1}'.format(
-                            step.numpy(), round(loss.numpy(), 2)
+                    if step % log_interval == 0:
+                        tf.print(
+                            'step = {0}: loss = {1}'.format(
+                                step.numpy(), round(loss.numpy(), 2)
+                            )
                         )
-                    )
-                if i > 0 and i % chkpt_interval == 0:
-                    checkpoint_manager.save(global_step)
+                    if i > 0 and i % chkpt_interval == 0:
+                        checkpoint_manager.save(global_step)
 
-            tf.profiler.experimental.stop()
+                tf.profiler.experimental.stop()
         runtime_mins = int((time.time() - start_time) / 60)
         tf.print(f"runtime_mins: {runtime_mins}")
     # ====================================================
@@ -242,29 +242,32 @@ def train_perarm(
         
         start_time = time.time()
         
-        with distribution_strategy.scope():
-            
-            for i in tf.range(num_iterations):
+        for i in tf.range(num_epochs):
+            tf.print(f"epoch: {i+1}")
+        
+            with distribution_strategy.scope():
 
-                step = agent.train_step_counter
-                
-                data = next(train_ds_iterator)
-                loss = _train_step_fn(data)
-                
-                list_o_loss.append(loss.numpy())
+                for i in tf.range(num_iterations):
 
-                train_utils._export_metrics_and_summaries(
-                    step=step.numpy(), 
-                    metrics=metrics
-                )
-                if step % log_interval == 0:
-                    tf.print(
-                        'step = {0}: loss = {1}'.format(
-                            step.numpy(), round(loss.numpy(), 2)
-                        )
+                    step = agent.train_step_counter
+
+                    data = next(train_ds_iterator)
+                    loss = _train_step_fn(data)
+
+                    list_o_loss.append(loss.numpy())
+
+                    train_utils._export_metrics_and_summaries(
+                        step=step.numpy(), 
+                        metrics=metrics
                     )
-                if i > 0 and i % chkpt_interval == 0:
-                    checkpoint_manager.save(global_step)
+                    if step % log_interval == 0:
+                        tf.print(
+                            'step = {0}: loss = {1}'.format(
+                                step.numpy(), round(loss.numpy(), 2)
+                            )
+                        )
+                    if i > 0 and i % chkpt_interval == 0:
+                        checkpoint_manager.save(global_step)
 
         runtime_mins = int((time.time() - start_time) / 60)
         tf.print(f"runtime_mins: {runtime_mins}")

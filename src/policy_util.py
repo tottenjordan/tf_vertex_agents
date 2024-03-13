@@ -99,13 +99,12 @@ def _get_training_loop(
             )
             if train_step % log_interval == 0:
                 print(
-                    f'step = {train_step}: train loss = {round(loss_info.loss.numpy(), 2)}'
+                    f'step = {train_step}: train loss = {round(loss_info.loss.numpy(), 4)}'
                 )
 
         replay_buffer.clear()
 
     return training_loop
-
 
 T = TypeVar("T")
 
@@ -167,18 +166,12 @@ def train(
       A dict mapping metric names (eg. "AverageReturnMetric") to a list of
       intermediate metric values over `training_loops` iterations of training.
     """
-    
     # ====================================================
     # TB summary writer
     # ====================================================
     if train_summary_writer:
         train_summary_writer.set_as_default()
 
-    # train_summary_writer = tf.compat.v2.summary.create_file_writer(
-    #     log_dir, flush_millis=10 * 1000
-    # )
-    # train_summary_writer.set_as_default()
-    
     logging.info(f" log_dir: {log_dir}")
     # ====================================================
     # get data spec
@@ -195,7 +188,7 @@ def train(
         data_spec = training_data_spec_transformation_fn(
             agent.policy.trajectory_spec
         )
-        
+
     # ====================================================
     # define replay buffer
     # ====================================================
@@ -205,15 +198,12 @@ def train(
         , steps_per_loop = steps_per_loop
         , async_steps_per_loop = 1
     )
-
     # ====================================================
     # metrics
     # ====================================================
     # `step_metric` records the number of individual rounds of bandit interaction;
     # that is, (number of trajectories) * batch_size.
-    
     step_metric = tf_metrics.EnvironmentSteps()
-    
     metrics = [
         tf_metrics.NumberOfEpisodes()
         , tf_metrics.EnvironmentSteps()
@@ -233,10 +223,9 @@ def train(
         metrics += [
             tf_metrics.AverageReturnMetric(batch_size=environment.batch_size)
         ]
-
     # Store intermediate metric results, indexed by metric names.
     metric_results = collections.defaultdict(list)
-    
+
     # ====================================================
     # Policy checkpoints
     # ====================================================
@@ -246,20 +235,17 @@ def train(
     else:
         CHKPOINT_DIR=chkpt_dir
 
-    # CHKPOINT_DIR = f"{log_dir}/chkpoint"
     logging.info(f"setting checkpoint_manager: {CHKPOINT_DIR}")
-    
     checkpoint_manager = train_utils.restore_and_get_checkpoint_manager(
         root_dir=CHKPOINT_DIR, 
         agent=agent, 
         metrics=metrics, 
         step_metric=step_metric
     )
-    
+
     # ====================================================
     # Driver
     # ====================================================
-    
     if training_data_spec_transformation_fn is not None:
         add_batch_fn = lambda data: replay_buffer.add_batch(
             training_data_spec_transformation_fn(data)
@@ -298,9 +284,9 @@ def train(
         , steps = steps_per_loop
         , async_steps_per_loop = 1
     )
-    
+
     # train_step_counter = tf.compat.v1.train.get_or_create_global_step()
-    
+
     # if not run_hyperparameter_tuning:
     #     saver = policy_saver.PolicySaver(
     #         agent.policy, 
@@ -379,11 +365,5 @@ def train(
         
         checkpoint_manager.save(global_step)
         tf.print(f"saved policy checkpoint to: {CHKPOINT_DIR}")
-    
-    # if not run_hyperparameter_tuning:
-        # checkpoint_manager.save()
-        # saver.save(model_dir)
-        # saver.save(artifacts_dir)
-        # print(f"saved trained policy checkpoint to: {CHKPOINT_DIR}")
-    
+
     return metric_results

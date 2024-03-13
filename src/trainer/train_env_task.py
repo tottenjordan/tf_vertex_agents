@@ -28,12 +28,7 @@ import string
 from google.cloud import aiplatform, storage
 import hypertune
 
-from . import policy_util
-# from . import data_utils
-from . import train_utils
-from . import data_config
-from . import my_per_arm_py_env
-
+# tensorflow
 import tensorflow as tf
 from tensorflow.python.client import device_lib
 from tf_agents.bandits.agents import lin_ucb_agent
@@ -45,6 +40,12 @@ from tf_agents.train.utils import strategy_utils
 
 # import traceback
 # from google.cloud.aiplatform.training_utils import cloud_profiler
+
+# this repo
+from src import policy_util
+from src import train_utils
+from src.data import mv_lookup_dicts as mv_lookup_dicts
+from src.environments import my_per_arm_py_env
 
 tf.compat.v1.enable_v2_behavior()
 
@@ -74,7 +75,6 @@ def get_args(
     parser.add_argument("--train-with-best-hyperparameters", action="store_true")
     # Path parameters
     parser.add_argument("--artifacts-dir", type=str, help="Extra directory where model artifacts are saved.")
-    parser.add_argument("--data-path", type=str, help="Path to MovieLens 100K's 'u.data' file.")
     parser.add_argument("--best-hyperparameters-bucket", type=str, help="Path to MovieLens 100K's 'u.data' file.")
     parser.add_argument("--best-hyperparameters-path", type=str)
     # Hyperparameters
@@ -88,7 +88,6 @@ def get_args(
     parser.add_argument("--agent-alpha", default=10.0, type=float)
     parser.add_argument("--bucket_name", default="tmp", type=str)
     parser.add_argument("--data_gcs_prefix", default="data", type=str)
-    parser.add_argument("--data_path", default="gs://tmp/tmp", type=str)
     parser.add_argument("--project_number", default="934903580331", type=str)
     parser.add_argument("--distribute", default="single", type=str, help="")
     parser.add_argument("--artifacts_dir", default="gs://BUCKET/EXPERIMENT/RUN_NAME/artifacts", type=str)
@@ -218,17 +217,16 @@ def main(args: argparse.Namespace) -> None:
     logging.info(f'NUM_REPLICAS = {NUM_REPLICAS}')
     logging.info(f'task_type = {task_type}')
     logging.info(f'task_id = {task_id}')
-    
+
     # Here the batch size scales up by number of workers since
     # `tf.data.Dataset.batch` expects the global batch size.
     # GLOBAL_BATCH_SIZE = int(args.batch_size) * int(NUM_REPLICAS)
     # logging.info(f'GLOBAL_BATCH_SIZE = {GLOBAL_BATCH_SIZE}')
-    
-    
+
     # ====================================================
     # Use best hparams learned from previous hpt job
     # ====================================================
-    
+
     if args.train_with_best_hyperparameters:
         logging.info(f" best_hyperparameters_path: {args.best_hyperparameters_path}")
         storage_client = storage.Client(args.project_id)
@@ -246,34 +244,33 @@ def main(args: argparse.Namespace) -> None:
             args.step_per_loop = int(best_hyperparameters["steps-per-loop"])
         if "num-actions" in best_hyperparameters:
             args.num_actions = int(best_hyperparameters["num-actions"])
-    
+
     # else:
         # best_hyperparameters_blob = None
-    
+
     hypertune_client = hypertune.HyperTune() if args.run_hyperparameter_tuning else None
-    
+
     # ====================================================
     # Define RL environment
     # ====================================================
     env = my_per_arm_py_env.MyMovieLensPerArmPyEnvironment(
         project_number = args.project_number
-        , data_path = args.data_path
         , bucket_name = args.bucket_name
         , data_gcs_prefix = args.data_gcs_prefix
-        , user_age_lookup_dict = data_config.USER_AGE_LOOKUP
-        , user_occ_lookup_dict = data_config.USER_OCC_LOOKUP
-        , movie_gen_lookup_dict = data_config.MOVIE_GEN_LOOKUP
-        , num_users = data_config.MOVIELENS_NUM_USERS
-        , num_movies = data_config.MOVIELENS_NUM_MOVIES
+        , user_age_lookup_dict = mv_lookup_dicts.USER_AGE_LOOKUP
+        , user_occ_lookup_dict = mv_lookup_dicts.USER_OCC_LOOKUP
+        # , movie_gen_lookup_dict = mv_lookup_dicts.MOVIE_GEN_LOOKUP
+        , num_users = mv_lookup_dicts.MOVIELENS_NUM_USERS
+        , num_movies = mv_lookup_dicts.MOVIELENS_NUM_MOVIES
         , rank_k = args.rank_k
         , batch_size = args.batch_size
         , num_actions = args.num_actions
     )
     environment = tf_py_environment.TFPyEnvironment(env)
-    
+
     strategy = train_utils.get_train_strategy(distribute_arg=args.distribute)
     logging.info(f'TF training strategy (execute task) = {strategy}')
-    
+
     with distribution_strategy.scope():
         
         global_step = tf.compat.v1.train.get_or_create_global_step()
@@ -297,7 +294,7 @@ def main(args: argparse.Namespace) -> None:
     tf.print("TimeStep Spec (for each batch):\n%s\n", agent.time_step_spec)
     tf.print("Action Spec (for each batch):\n%s\n", agent.action_spec)
     tf.print("Reward Spec (for each batch):\n%s\n", environment.reward_spec())
-    
+
     # ====================================================
     # TB summary writer
     # ====================================================
@@ -321,7 +318,7 @@ def main(args: argparse.Namespace) -> None:
         , environment=environment
     )
     regret_metric = tf_bandit_metrics.RegretMetric(optimal_reward_fn)
-    
+
     # optimal action fn
     optimal_action_fn = functools.partial(
         train_utils.compute_optimal_action_with_my_environment,
@@ -400,7 +397,6 @@ def main(args: argparse.Namespace) -> None:
         ) as my_run:
             
             logging.info(f"logging metrics...")
-            
             my_run.log_params(exp_params)
             my_run.log_metrics(exp_metrics)
             
@@ -413,8 +409,6 @@ if __name__ == "__main__":
     logging.getLogger().setLevel(logging.INFO)
     logging.info("Python Version = %s", sys.version)
     logging.info("TensorFlow Version = %s", tf.__version__)
-    # logging.info("TF_CONFIG = %s", os.environ.get("TF_CONFIG", "Not found"))
-    # logging.info("DEVICES = %s", device_lib.list_local_devices())
     logging.info("Reinforcement learning task started...")
     
     # main()

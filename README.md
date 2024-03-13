@@ -9,8 +9,8 @@ This repo is organized across several notebooks. Complete the first two notebook
 Below are the high-level objectives of each notebook or set of examples. *See READMEs in each subdirectory for more details*
 
 * [00-env-setup.ipynb](00-env-setup.ipynb) - establish naming conventions and env config for repo
-* [00-movielens-data-prep.ipynb](00-movielens-data-prep.ipynb) - prepare movielens datasets for retreival and ranking use cases
-* [01-online-bandit-simulation/](01-online-bandit-simulation/) - implement custom `environment` for online simulation
+* [00-data-prep-eda/](00-data-prep-eda/) - download and prepare movielens datasets for retrieval and RL use cases
+* [01-offline-bandit-simulation/](01-offline-bandit-simulation/) - implement custom `environment` for online simulation
 * [02-supervised-to-bandit-training/](02-supervised-to-bandit-training/) - train contextual bandits with previously collected (logged) data
 * [03-ranking/](03-ranking/) - train contextual bandits for ranking problems
 * [04-pipelines/](04-pipelines/) - MLOps for contextual bandits
@@ -148,50 +148,3 @@ Bandits' most important metric is *regret*, calculated as the difference between
 > TODO
 
 ![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/tb_input_bottleneck_analysis.png)
-
-# Repo details
-
-> **TODO**
-
-> 00 - Helper notebooks for staying organized, minimizing overhead, and validating reproducibility
-* [00-env-setup.ipynb](00-env-setup.ipynb)
-* [00-movielens-data-prep.ipynb](00-movielens-data-prep.ipynb)
-
-> 01 - Simulate a real-world interaction environment of users and their respective preferences.
-* [01-online-bandit-simulation/](01-online-bandit-simulation/)
-  * [01a-train-bandit-mf-env-simulation.ipynb](01-online-bandit-simulation/01a-train-bandit-mf-env-simulation.ipynb)
-  * [01b-build-training-image.ipynb](01-online-bandit-simulation/01b-build-training-image.ipynb)
-  * [01c-scale-bandit-simulation-vertex.ipynb](01-online-bandit-simulation/01c-scale-bandit-simulation-vertex.ipynb)
-  
-> 02 - Convert a training dataset fit for supervised learning (i.e., a labled dataset with logged user feedback) and use it to train a contextual bandit algorithm, where the labels (user feedback) is used as a proxy for immediate rewards
-* [02-supervised-to-bandit-training/](02-supervised-to-bandit-training/)
-  * [02a-train-supervised-bandit-simulation.ipynb](02-supervised-to-bandit-training/02a-train-supervised-bandit-simulation.ipynb)
-  * [02b-train-supervised-bandit-locally.ipynb](02-supervised-to-bandit-training/02b-train-supervised-bandit-locally.ipynb)
-  * [02c-accelerated-bandits.ipynb](02-supervised-to-bandit-training/02c-accelerated-bandits.ipynb)
-  * [02d-build-training-image.ipynb](02-supervised-to-bandit-training/02d-build-training-image.ipynb)
-  * [02e-scale-bandit-training-vertex.ipynb](02-supervised-to-bandit-training/02e-scale-bandit-training-vertex.ipynb)
-  * [02f-cpr-deploy-bandit-policy.ipynb](02-supervised-to-bandit-training/02f-cpr-deploy-bandit-policy.ipynb)
-  
-> 03 - (WIP) Train ranking policies that score set of items; currently explores `score_vector` and `cascading_feedback` frameworks
-* [03-ranking/](03-ranking/)
-  * [03a-ranking-bandit-local-train.ipynb](03-ranking/03a-ranking-bandit-local-train.ipynb)
-  * [03x-baseline-train-ranking-bandit.ipynb](03-ranking/03x-baseline-train-ranking-bandit.ipynb)
-  
-> 04 - (WIP) Step-by-step guide to MLOps tasks --> then how to orchestrate them with pipelines
-* [04-pipelines/](04-pipelines/)
-  * [01 Step-by-Step MLOps Demo](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/)
-    * [README](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/README.md)
-    * [notebook](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/01-train_deploy_mab.ipynb)
-    * [src/](04-pipelines/01-step_by_step_sdk_tf_agents_bandit/src/)
-  * [02 End-to-End MLOps Pipeline Demo](04-pipelines/02-mlops_pipeline_tf_agents_bandit/)
-    * [README](04-pipelines/02-mlops_pipeline_tf_agents_bandit/README.md)
-    * [notebook](04-pipelines/02-mlops_pipeline_tf_agents_bandit/02-mab_mlops_pipeline.ipynb)
-    * [src/](04-pipelines/02-mlops_pipeline_tf_agents_bandit/src/)
-    
-> (WIP) Discussion and commentary for related RL and RecSys topics
-* [learning/](learning/)
-  * [RL Agents used in this repo](learning/agents.md)
-  * [RL for RecSys -> concepts and practical considerations](learning/rl-for-recsys.md)
-  * [Implementing RL with TF-Agents](learning/tf-agents-overview.md)
-  * TODO
-
