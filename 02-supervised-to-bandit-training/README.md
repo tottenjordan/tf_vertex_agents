@@ -4,8 +4,7 @@
 
 ## Objectives
 
-  * `02a-train-supervised-bandit-simulation.ipynb` - Use labeled dataset and stationary stochastic environment to train bandit locally
-  * `02b-train-supervised-bandit-locally.ipynb` - Use labeled dataset to train bandit locally (same as 1 except no "environment")
+  * `02a-train-supervised-bandit-locally.ipynb` - Use labeled dataset to train bandit locally (same as 1 except no "environment")
   * `02c-accelerated-bandits.ipynb` - (Optional) profile train job on local notebook GPU
   * `02d-build-training-image.ipynb` - build docker image for scaling training with Vertex AI
   * `02e-scale-bandit-training-vertex.ipynb` - submit train job to Vertex AI

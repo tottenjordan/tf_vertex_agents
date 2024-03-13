@@ -16,6 +16,9 @@ from tf_agents.trajectories import trajectory
 
 import tensorflow as tf
 
+if tf.__version__[0] != "2":
+    raise Exception("The trainer only runs with TensorFlow version 2.")
+
 # TF-Agents
 from tf_agents.metrics.tf_metric import TFStepMetric
 from tf_agents.eval import metric_utils
@@ -36,20 +39,15 @@ logging.disable(logging.WARNING)
 
 from google.cloud import aiplatform as vertex_ai
 from google.cloud import storage
-# from google.cloud.aiplatform.training_utils import cloud_profiler
-import traceback
 
 # this repo
 from src import train_utils as train_utils
-
-if tf.__version__[0] != "2":
-    raise Exception("The trainer only runs with TensorFlow version 2.")
+from src.data import data_config as data_config
 
 PER_ARM = True  # Use the non-per-arm version of the MovieLens environment.
 
 # clients
-PROJECT_ID='hybrid-vertex'  # TODO: param
-storage_client = storage.Client(project=PROJECT_ID)
+storage_client = storage.Client(project=data_config.PROJECT_ID)
 
 # ====================================================
 # get train & val datasets
@@ -120,10 +118,6 @@ def train_perarm(
         cache = cache_train_data,
         is_testing=is_testing,
     )
-    # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
-    # train_dataset = train_dataset.cache()
-    # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
-    # train_dataset = distribution_strategy.experimental_distribute_dataset(train_dataset)
 
     # ====================================================
     # metrics
@@ -221,8 +215,6 @@ def train_perarm(
                 for i in tf.range(num_iterations):
                     step = agent.train_step_counter
 
-                # for data in train_dataset:
-
                     with tf.profiler.experimental.Trace(
                         "tr_step", step_num=step, _r=1 # step.numpy()
                     ):
@@ -256,7 +248,6 @@ def train_perarm(
             with distribution_strategy.scope():
 
                 for i in tf.range(num_iterations):
-                # for data in train_dataset:
 
                     step = agent.train_step_counter
 
