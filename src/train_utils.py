@@ -46,6 +46,7 @@ def _get_train_dataset(
     batch_size,
     num_replicas = 1,
     cache: bool = True,
+    is_testing: bool = True,
 ):
     """
     TODO: use `dataset.take(k).cache().repeat()`
@@ -70,11 +71,12 @@ def _get_train_dataset(
                     "https://storage.googleapis.com/", "gs://"
                 )
             )
-            
+    if is_testing:
+        train_files = train_files[:2]
     print(f"number of train_files: {len(train_files)}")
 
     train_dataset = tf.data.TFRecordDataset(train_files)
-    train_dataset = train_dataset.take(total_take)
+    # train_dataset = train_dataset.take(total_take)
     train_dataset = train_dataset.map(data_utils._parse_function)
     if cache:
         train_dataset = train_dataset.batch(batch_size).cache().repeat()

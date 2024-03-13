@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from typing import Dict, List, Optional, Text, Tuple
+from google.cloud import aiplatform, bigquery, storage
 
 # tensorflow
 import tensorflow as tf

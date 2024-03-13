@@ -66,6 +66,7 @@ def train_perarm(
     global_dim: int,
     per_arm_dim: int, 
     num_iterations: int,
+    num_epochs: int,
     steps_per_loop: int,
     num_eval_steps: int,
     log_dir: str,
@@ -93,6 +94,7 @@ def train_perarm(
     saver = None,
     strategy: tf.distribute.Strategy = None,
     train_summary_writer: Optional[tf.summary.SummaryWriter] = None,
+    is_testing: bool = True,
 ) -> Dict[str, List[float]]:
     
     # # GPU - All variables & Agents need to be created under strategy.scope()
@@ -116,6 +118,7 @@ def train_perarm(
         batch_size = batch_size,
         num_replicas = num_replicas,
         cache = cache_train_data,
+        is_testing=is_testing,
     )
     # train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
     # train_dataset = train_dataset.cache()
@@ -209,30 +212,35 @@ def train_perarm(
         
         start_time = time.time()
         
-        with distribution_strategy.scope():
-            tf.profiler.experimental.start(log_dir)
-            for i in tf.range(num_iterations):
+        for i in tf.range(num_epochs):
+            tf.print(f"epoch: {i+1}")
+        
+            with distribution_strategy.scope():
+                tf.profiler.experimental.start(log_dir)
+                
+                for i in tf.range(num_iterations):
+                    step = agent.train_step_counter
 
-                step = agent.train_step_counter
+                # for data in train_dataset:
 
-                with tf.profiler.experimental.Trace(
-                    "tr_step", step_num=step, _r=1 # step.numpy()
-                ):
-                    data = next(train_ds_iterator)
-                    loss = _train_step_fn(data)
+                    with tf.profiler.experimental.Trace(
+                        "tr_step", step_num=step, _r=1 # step.numpy()
+                    ):
+                        data = next(train_ds_iterator)
+                        loss = _train_step_fn(data)
 
-                list_o_loss.append(loss.numpy())
+                    list_o_loss.append(loss.numpy())
 
-                if step % log_interval == 0:
-                    tf.print(
-                        'step = {0}: loss = {1}'.format(
-                            step.numpy(), round(loss.numpy(), 2)
+                    if step % log_interval == 0:
+                        tf.print(
+                            'step = {0}: loss = {1}'.format(
+                                step.numpy(), round(loss.numpy(), 2)
+                            )
                         )
-                    )
-                if i > 0 and i % chkpt_interval == 0:
-                    checkpoint_manager.save(global_step)
+                    if i > 0 and i % chkpt_interval == 0:
+                        checkpoint_manager.save(global_step)
 
-            tf.profiler.experimental.stop()
+                tf.profiler.experimental.stop()
         runtime_mins = int((time.time() - start_time) / 60)
         tf.print(f"runtime_mins: {runtime_mins}")
     # ====================================================
@@ -242,29 +250,33 @@ def train_perarm(
         
         start_time = time.time()
         
-        with distribution_strategy.scope():
-            
-            for i in tf.range(num_iterations):
+        for i in tf.range(num_epochs):
+            tf.print(f"epoch: {i+1}")
+        
+            with distribution_strategy.scope():
 
-                step = agent.train_step_counter
-                
-                data = next(train_ds_iterator)
-                loss = _train_step_fn(data)
-                
-                list_o_loss.append(loss.numpy())
+                for i in tf.range(num_iterations):
+                # for data in train_dataset:
 
-                train_utils._export_metrics_and_summaries(
-                    step=step.numpy(), 
-                    metrics=metrics
-                )
-                if step % log_interval == 0:
-                    tf.print(
-                        'step = {0}: loss = {1}'.format(
-                            step.numpy(), round(loss.numpy(), 2)
-                        )
+                    step = agent.train_step_counter
+
+                    data = next(train_ds_iterator)
+                    loss = _train_step_fn(data)
+
+                    list_o_loss.append(loss.numpy())
+
+                    train_utils._export_metrics_and_summaries(
+                        step=step.numpy(), 
+                        metrics=metrics
                     )
-                if i > 0 and i % chkpt_interval == 0:
-                    checkpoint_manager.save(global_step)
+                    if step % log_interval == 0:
+                        tf.print(
+                            'step = {0}: loss = {1}'.format(
+                                step.numpy(), round(loss.numpy(), 2)
+                            )
+                        )
+                    if i > 0 and i % chkpt_interval == 0:
+                        checkpoint_manager.save(global_step)
 
         runtime_mins = int((time.time() - start_time) / 60)
         tf.print(f"runtime_mins: {runtime_mins}")
