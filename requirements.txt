@@ -1,10 +1,14 @@
-google-cloud-aiplatform==1.33.1
+google-cloud-aiplatform==1.44.0
+# pip install google-cloud-aiplatform[cloud_profiler]
+google-cloud-aiplatform[autologging]
 google-cloud-storage
 numpy
-tensorflow[and-cuda]
+numba
+matplotlib
+tensorflow==2.13
 tf-agents==0.17.0
+tensorflow-probability==0.20.1
 tensorflow-datasets
-tensorflow-probability
 tensorboard
 tensorboard-plugin-profile
 tensorboard-plugin-wit
