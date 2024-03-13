@@ -64,7 +64,6 @@ def download_blob(
 # ==========================================
 # parsing functions
 # ==========================================
-    
 feature_description = {
     # # context sequence item features
     # 'context_movie_id': tf.io.FixedLenFeature(shape=(MAX_CONTEXT_LENGTH), dtype=tf.string),
@@ -112,38 +111,9 @@ def get_dictionary_lookup_by_tf_data_key(key, dataset) -> Dict:
     #return a dictionary of keys by integer values for the feature space
     return {val: i for i, val in enumerate(unique_elems)}
 
-
 # ============================================
 # load movielens
 # ============================================
-mf_feature_description = {
-    # # context sequence item features
-    # 'context_movie_id': tf.io.FixedLenFeature(shape=(MAX_CONTEXT_LENGTH), dtype=tf.string),
-    # 'context_movie_rating': tf.io.FixedLenFeature(shape=(MAX_CONTEXT_LENGTH), dtype=tf.float32),
-    # 'context_rating_timestamp': tf.io.FixedLenFeature(shape=(MAX_CONTEXT_LENGTH), dtype=tf.int64),
-    # 'context_movie_genre': tf.io.FixedLenFeature(shape=(MAX_GENRE_LENGTH), dtype=tf.string),
-    # 'context_movie_year': tf.io.FixedLenFeature(shape=(MAX_CONTEXT_LENGTH), dtype=tf.int64),
-    # 'context_movie_title': tf.io.FixedLenFeature(shape=(MAX_CONTEXT_LENGTH), dtype=tf.string),
-
-    # target/label item features
-    'target_movie_id': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
-    'target_movie_rating': tf.io.FixedLenFeature(shape=(), dtype=tf.float32),
-    # 'target_rating_timestamp': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
-    # 'target_movie_genres': tf.io.FixedLenFeature(shape=(data_config.MAX_GENRE_LENGTH), dtype=tf.string),
-    # 'target_movie_year': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
-    # 'target_movie_title': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
-
-    # user - global context features
-    'user_id': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
-    # 'user_gender': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
-    'user_age': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
-    'user_occupation_text': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
-    # 'user_zip_code': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
-}
-def _mf_parse_function(example_proto):
-    return tf.io.parse_single_example(
-        example_proto, mf_feature_description
-    )
 def load_movielens_ratings(
     ratings_dataset
     , num_users: int

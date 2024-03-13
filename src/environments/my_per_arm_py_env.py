@@ -124,7 +124,7 @@ class MyMovieLensPerArmPyEnvironment(bandit_py_environment.BanditPyEnvironment):
         logging.info(f'train_files: {train_files}')
         
         train_dataset = tf.data.TFRecordDataset(train_files)
-        train_dataset = train_dataset.map(data_utils._mf_parse_function)
+        train_dataset = train_dataset.map(data_utils._parse_function)
         
         self.dataset = train_dataset
         # =============================================
