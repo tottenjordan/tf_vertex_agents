@@ -42,8 +42,8 @@ from tf_agents.train.utils import strategy_utils
 # from google.cloud.aiplatform.training_utils import cloud_profiler
 
 # this repo
-from src import policy_util
-from src import train_utils
+from src.utils import policy_util
+from src.utils import train_utils
 from src.data import mv_lookup_dicts as mv_lookup_dicts
 from src.environments import my_per_arm_py_env
 

@@ -41,7 +41,7 @@ from google.cloud import aiplatform as vertex_ai
 from google.cloud import storage
 
 # this repo
-from src import train_utils as train_utils
+from src.utils import train_utils as train_utils
 from src.data import data_config as data_config
 
 PER_ARM = True  # Use the non-per-arm version of the MovieLens environment.
@@ -66,27 +66,20 @@ def train_perarm(
     num_iterations: int,
     num_epochs: int,
     steps_per_loop: int,
-    num_eval_steps: int,
     log_dir: str,
     model_dir: str,
     chkpoint_dir: str,
     batch_size: int,
-    eval_batch_size: int,
     bucket_name: str,
     data_dir_prefix_path: str,
-    # split: str,
     _trajectory_fn = None,
-    # _run_bandit_eval_fn = None,
     log_interval: int = 10,
     chkpt_interval: int = 100,
-    async_steps_per_loop = 1,
-    resume_training_loops = False,
     additional_metrics: Optional[List[TFStepMetric]] = None,
     use_gpu = False,
     use_tpu = False,
     profiler = False,
     global_step = None,
-    total_train_take: int = 10000,
     num_replicas = 1,
     cache_train_data = True,
     saver = None,
@@ -102,9 +95,7 @@ def train_perarm(
         )
     else:
         distribution_strategy = strategy
-    
     tf.print(f"distribution_strategy: {distribution_strategy}")
-
     # ====================================================
     # train dataset
     # ====================================================
@@ -112,7 +103,6 @@ def train_perarm(
         bucket_name=bucket_name, 
         data_dir_prefix_path=data_dir_prefix_path, 
         split="train",
-        total_take=total_train_take,
         batch_size = batch_size,
         num_replicas = num_replicas,
         cache = cache_train_data,
@@ -250,10 +240,8 @@ def train_perarm(
                 for i in tf.range(num_iterations):
 
                     step = agent.train_step_counter
-
                     data = next(train_ds_iterator)
                     loss = _train_step_fn(data)
-
                     list_o_loss.append(loss.numpy())
 
                     train_utils._export_metrics_and_summaries(

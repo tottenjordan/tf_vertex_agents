@@ -9,14 +9,9 @@ import tensorflow as tf
 from tf_agents.bandits.policies import policy_utilities
 
 # this project
-# from src.perarm_features import emb_feature as emb_features
+from src.data import data_config as data_config
 from src.networks import encoding_network as emb_features
-
-# from src.perarm_features import reward_factory as reward_factory
-from src import reward_factory as reward_factory
-
-# from src.per_arm_rl import train_utils
-from src import train_utils as train_utils
+from src.utils import reward_factory, train_utils
 
 # ====================================================
 # run bandit eval
@@ -42,6 +37,7 @@ def _run_bandit_eval(
         num_oov_buckets = num_oov_buckets,
         global_emb_size = global_emb_size,
         mv_emb_size = mv_emb_size,
+        max_genre_length = data_config.MAX_GENRE_LENGTH
     )
     
     dummy_arm = tf.zeros([eval_batch_size, per_arm_dim], dtype=tf.float32)
