@@ -27,10 +27,6 @@ import tensorflow as tf
 # ====================================================
 # get global and per-arm features
 # ====================================================
-# from src.data import data_config as data_config
-# # TAG_MAX_LENGTH = 10
-# MAX_GENRE_LENGTH = data_config.MAX_GENRE_LENGTH
-
 class EmbeddingModel:
     
     def __init__(

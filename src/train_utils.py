@@ -38,8 +38,7 @@ options.threading.max_intra_op_parallelism = 1 # TODO
 def _get_train_dataset(
     bucket_name, 
     data_dir_prefix_path, 
-    split, 
-    total_take, 
+    split,  
     batch_size,
     num_replicas = 1,
     cache: bool = True,
@@ -73,7 +72,6 @@ def _get_train_dataset(
     print(f"number of train_files: {len(train_files)}")
 
     train_dataset = tf.data.TFRecordDataset(train_files)
-    # train_dataset = train_dataset.take(total_take)
     train_dataset = train_dataset.map(data_utils._parse_function)
     if cache:
         train_dataset = train_dataset.batch(batch_size).cache().repeat()
