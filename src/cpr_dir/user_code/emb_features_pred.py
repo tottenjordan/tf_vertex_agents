@@ -35,7 +35,7 @@ class EmbeddingModel:
         num_oov_buckets: int,
         global_emb_size: int,
         mv_emb_size: int,
-        max_genre_length int,
+        max_genre_length: int,
     ):
         
         self.vocab_dict = vocab_dict

@@ -13,23 +13,24 @@
 """Class implementation of the per-arm MovieLens Bandit environment."""
 from __future__ import absolute_import
 import os
-import gin
+# import gin
 import random
 import numpy as np
 from typing import Optional, Text
-
 import logging
 
+# tensorflow
 import tensorflow as tf
-
 tf.compat.v1.enable_v2_behavior()
 
+# tf-agents
+from tf_agents.specs import array_spec
+from tf_agents.trajectories import time_step as ts
 from tf_agents.bandits.environments import bandit_py_environment
 from tf_agents.bandits.environments import dataset_utilities
 from tf_agents.bandits.specs import utils as bandit_spec_utils
-from tf_agents.specs import array_spec
-from tf_agents.trajectories import time_step as ts
 
+# this repo
 from src.data import data_utils as data_utils
 
 GLOBAL_KEY = bandit_spec_utils.GLOBAL_FEATURE_KEY

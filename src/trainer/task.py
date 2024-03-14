@@ -54,10 +54,8 @@ from tensorflow.python.client import device_lib
 # this repo
 from . import eval_perarm as eval_perarm
 from . import train_perarm as train_perarm
-from src.data import data_utils as data_utils
-from src.data import data_config as data_config
-from src import train_utils as train_utils
-from src import reward_factory as reward_factory
+from src.data import data_utils, data_config
+from src.utils import train_utils, reward_factory
 from src.agents import agent_factory as agent_factory
 from src.networks import encoding_network as emb_features
 
@@ -70,8 +68,7 @@ print(f"wrapt version: {wrapt.__version__}")
 PER_ARM = True  # Use the non-per-arm version of the MovieLens environment.
 
 # clients
-project_number = os.environ["CLOUD_ML_PROJECT_ID"]
-storage_client = storage.Client(project=project_number)
+storage_client = storage.Client(project=data_config.PROJECT_ID)
 # ====================================================
 # get train & val datasets
 # ====================================================
@@ -116,14 +113,10 @@ def get_args(raw_args: List[str]) -> argparse.Namespace:
     parser.add_argument("--num_epochs", default=4, type=int, help="Number of cycle through train data.")
     parser.add_argument("--steps_per_loop", default=2, type=int)
     parser.add_argument("--num_eval_steps", default=1000, type=int)
-    parser.add_argument("--rank_k", default=20, type=int)
     parser.add_argument("--num_actions", default=20, type=int, help="Number of actions (movie items) to choose from.")
     # agent & network config
-    parser.add_argument("--async_steps_per_loop", type=int, default=1, help="")
     parser.add_argument("--global_dim", type=int, default=1, help="")
     parser.add_argument("--per_arm_dim", type=int, default=1, help="")
-    parser.add_argument("--resume_training_loops", action='store_true', help="include for True; ommit for False")
-    parser.add_argument("--split", default=None, type=str, help="data split")
     parser.add_argument("--log_interval", type=int, default=1, help="")
     parser.add_argument("--chkpt_interval", type=int, default=100, help="")
     parser.add_argument('--global_layers', type=str, required=False)
@@ -192,48 +185,41 @@ def main(args: argparse.Namespace):
     from google.cloud import aiplatform as vertex_ai
     from google.cloud import storage
 
-    project_number = os.environ["CLOUD_ML_PROJECT_ID"]
-    storage_client = storage.Client(project=project_number)
+    storage_client = storage.Client(project=data_config.PROJECT_ID)
     
     vertex_ai.init(
-        project=project_number
+        project=data_config.PROJECT_ID
         , location='us-central1'
         , experiment=args.experiment_name
     )
     # ====================================================
     # Set env variables
     # ====================================================
-
     GLOBAL_LAYERS = train_utils.get_arch_from_string(args.global_layers)
     ARM_LAYERS = train_utils.get_arch_from_string(args.arm_layers)
     COMMON_LAYERS = train_utils.get_arch_from_string(args.common_layers)
-    
-    print(f'GLOBAL_LAYERS = {GLOBAL_LAYERS}')
-    print(f'ARM_LAYERS    = {ARM_LAYERS}')
-    print(f'COMMON_LAYERS = {COMMON_LAYERS}')
-    
-    TOTAL_TRAIN_TAKE = args.training_loops * args.batch_size
-    print(f'TOTAL_TRAIN_TAKE = {TOTAL_TRAIN_TAKE}')
+    print(f'GLOBAL_LAYERS    : {GLOBAL_LAYERS}')
+    print(f'ARM_LAYERS       : {ARM_LAYERS}')
+    print(f'COMMON_LAYERS    : {COMMON_LAYERS}')
     # ====================================================
     # Set Device Strategy
     # ====================================================
     print("Detecting devices....")
     print("Setting device strategy...")
-    
     # GPU - All variables and Agents need to be created under strategy.scope()
     if args.use_gpu:
         distribution_strategy = strategy_utils.get_strategy(tpu=args.use_tpu, use_gpu=args.use_gpu)
         # distribution_strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
-        
+
     if args.use_tpu:
         cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu="local")
         tf.config.experimental_connect_to_cluster(cluster_resolver)
         tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
         distribution_strategy = tf.distribute.TPUStrategy(cluster_resolver)
         logging.info("All devices: ", tf.config.list_logical_devices('TPU'))
-        
+
     print(f"distribution_strategy: {distribution_strategy}")
-    
+
     if distribution_strategy == 'multiworker':
         task_type, task_id = (
             strategy.cluster_resolver.task_type,
@@ -241,7 +227,7 @@ def main(args: argparse.Namespace):
         )
     else:
         task_type, task_id = 'chief', None
-        
+
     NUM_REPLICAS = distribution_strategy.num_replicas_in_sync
     tf.print(f'NUM_REPLICAS = {NUM_REPLICAS}')
     tf.print(f'task_type = {task_type}')
@@ -255,9 +241,8 @@ def main(args: argparse.Namespace):
     else:
         log_dir = args.log_dir
         tf.print(f'log_dir: {log_dir}')
-        
     tf.print(f'TensorBoard log_dir: {log_dir}')
-    
+
     # [Do Not Change] Set the root directory for training artifacts.
     MODEL_DIR = os.environ["AIP_MODEL_DIR"]
     tf.print(f'MODEL_DIR: {MODEL_DIR}')
@@ -274,25 +259,21 @@ def main(args: argparse.Namespace):
         source_blob_name = f"{args.vocab_prefix_path}/{args.vocab_filename}", 
         destination_file_name= args.vocab_filename
     )
-
     tf.print(f"Downloaded vocab from: {EXISTING_VOCAB_FILE}\n")
-
     filehandler = open(f"{args.vocab_filename}", 'rb')
     VOCAB_DICT = pkl.load(filehandler)
     filehandler.close()
-    
     # ====================================================
     # trajectory_fn
     # ====================================================
     with distribution_strategy.scope():
-        
+
         embs = emb_features.EmbeddingModel(
             vocab_dict = VOCAB_DICT,
             num_oov_buckets = args.num_oov_buckets,
             global_emb_size = args.global_emb_size,
             mv_emb_size = args.mv_emb_size,
             max_genre_length = data_config.MAX_GENRE_LENGTH,
-            
         )
 
         def _trajectory_fn(element):
@@ -411,7 +392,6 @@ def main(args: argparse.Namespace):
     # train_dataset = train_utils._get_train_dataset(
     #     bucket_name=args.bucket_name,
     #     data_dir_prefix_path=args.data_dir_prefix_path, 
-    #     split="train",
     #     batch_size = args.batch_size,
     #     num_replicas = NUM_REPLICAS,
     #     cache = args.cache_train,
@@ -461,13 +441,10 @@ def main(args: argparse.Namespace):
         per_arm_dim = args.per_arm_dim,
         num_iterations = args.training_loops,
         steps_per_loop = args.steps_per_loop,
-        num_eval_steps = args.num_eval_steps,
         # data
         batch_size=args.batch_size,
-        eval_batch_size=args.eval_batch_size,
         # functions
         _trajectory_fn = _trajectory_fn,
-        # _run_bandit_eval_fn = _run_bandit_eval,
         # train intervals
         chkpt_interval = args.chkpt_interval,
         log_interval = args.log_interval,
@@ -476,15 +453,11 @@ def main(args: argparse.Namespace):
         data_dir_prefix_path=args.data_dir_prefix_path,
         log_dir=args.log_dir,
         model_dir=args.artifacts_dir,
-        # root_dir=args.root_dir,
         chkpoint_dir=args.chkpoint_dir,
-        async_steps_per_loop = args.async_steps_per_loop,
-        resume_training_loops = args.resume_training_loops,
         use_gpu=args.use_gpu,
         use_tpu=args.use_tpu,
         profiler=args.profiler,
         train_summary_writer = train_summary_writer,
-        total_train_take = TOTAL_TRAIN_TAKE,
         global_step = global_step,
         num_replicas = NUM_REPLICAS,
         cache_train_data = args.cache_train,
