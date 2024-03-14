@@ -1,0 +1,13 @@
+google-cloud-aiplatform[prediction]==1.41.0
+google-cloud-storage
+numpy
+six
+typing-extensions
+tensorflow==2.13.0
+tf-agents==0.17.0
+urllib3
+pillow
+tensorflow-io
+tensorflow-datasets
+tensorflow-probability
+fastapi

@@ -55,6 +55,7 @@ from tensorflow.python.client import device_lib
 from . import eval_perarm as eval_perarm
 from . import train_perarm as train_perarm
 from src.data import data_utils as data_utils
+from src.data import data_config as data_config
 from src import train_utils as train_utils
 from src import reward_factory as reward_factory
 from src.agents import agent_factory as agent_factory
@@ -290,6 +291,8 @@ def main(args: argparse.Namespace):
             num_oov_buckets = args.num_oov_buckets,
             global_emb_size = args.global_emb_size,
             mv_emb_size = args.mv_emb_size,
+            max_genre_length = data_config.MAX_GENRE_LENGTH,
+            
         )
 
         def _trajectory_fn(element):
@@ -405,6 +408,15 @@ def main(args: argparse.Namespace):
     # ====================================================
     # val dataset
     # ====================================================
+    # train_dataset = train_utils._get_train_dataset(
+    #     bucket_name=args.bucket_name,
+    #     data_dir_prefix_path=args.data_dir_prefix_path, 
+    #     split="train",
+    #     batch_size = args.batch_size,
+    #     num_replicas = NUM_REPLICAS,
+    #     cache = args.cache_train,
+    #     is_testing=args.is_testing,
+    # )
     val_dataset = train_utils._get_eval_dataset(
         args.bucket_name, 
         args.data_dir_prefix_path, 
