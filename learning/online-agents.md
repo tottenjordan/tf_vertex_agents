@@ -3,7 +3,11 @@
 *Online reinforcement learning (RL) agents incrementally update their parameters (of the policy,
 value function or model) while they observe a stream of experience. An online agent refines its policy by only using user’s (and system’s) feedback to its past predictions*
 
-> TODO - add a TLDR here
+## Online vs Offline RL
+A popular deployment paradigm to consider with the *exploration-exploitation tradeoff*, is the concept of "Online RL" (aka "Online Learning", "Online Agent's"). In an online approach, the deployed agent learns over time from it's own experiences (i.e., its actions and their rewards). At each step, the agent needs to get the feedback from the past, update its policy, take actions based on the policy, and observe a reward value for the actions. 
+
+One aspect that can significantly impact the complexity of the deployment is: **the degree to which the online agent learns in "real-time" vs "near real-time"**
+
 
 ## Supervised learning-based RecSys
 

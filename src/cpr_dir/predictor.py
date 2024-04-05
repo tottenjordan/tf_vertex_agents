@@ -67,6 +67,7 @@ class BanditPolicyPredictor(Predictor):
         self._num_oov_buckets = pred_config.NUM_OOV_BUCKETS
         self._global_embedding_size = pred_config.GLOBAL_EMBEDDING_SIZE
         self._mv_embedding_size = pred_config.MV_EMBEDDING_SIZE
+        self.max_genre_length = pred_config.MAX_GENRE_LENGTH
         return
         
     def load(self, artifacts_uri: str):
@@ -113,6 +114,7 @@ class BanditPolicyPredictor(Predictor):
             num_oov_buckets = self._num_oov_buckets,
             global_emb_size = self._global_embedding_size,
             mv_emb_size = self._mv_embedding_size,
+            max_genre_length = self.max_genre_length
         )
         
         # preprocess example

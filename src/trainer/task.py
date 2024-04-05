@@ -381,7 +381,7 @@ def main(args: argparse.Namespace):
     tf.print(f"agent: {agent.name}")
     tf.print(f"network_type: {args.network_type}")
     tf.print(f"global_step: {global_step.value().numpy()}")
-    
+
     tf.print("Inpsecting agent policy from task file...")
     tf.print(f"agent.policy: {agent.policy}")
     tf.print("Inpsecting agent policy from task file: Complete")
