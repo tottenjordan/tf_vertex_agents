@@ -31,6 +31,12 @@ tensorflow-metadata==0.14.0
 tensorflow-probability==0.23.0
 tensorflow-serving-api==2.13.0
 tensorflow-transform==0.14.0
+
+tensorboard==2.16.2
+tensorboard-data-server==0.7.1
+tensorboard-plugin-wit==1.8.1
+tensorboard_plugin_profile==2.15.1
+tensorboardX==2.6.2.2
 ```
 </details>
 
