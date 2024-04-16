@@ -209,11 +209,10 @@ def train_perarm(
                             step.numpy(), round(loss.numpy(), 2)
                         )
                     )
-                if i > 0 and i % chkpt_interval == 0:
-                    checkpoint_manager.save(global_step)
         if profiler:
             tf.profiler.experimental.stop()
 
+    checkpoint_manager.save(global_step)
     runtime_mins = int((time.time() - start_time) / 60)
     tf.print(f"runtime_mins: {runtime_mins}")
 #     # ====================================================

@@ -1,6 +1,4 @@
-google-cloud-aiplatform==1.43.0
-# pip install google-cloud-aiplatform[cloud_profiler]
-google-cloud-aiplatform[autologging]
+google-cloud-aiplatform==1.46.0
 google-cloud-storage
 numpy
 numba
