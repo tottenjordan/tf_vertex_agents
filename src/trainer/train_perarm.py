@@ -44,8 +44,6 @@ from google.cloud import storage
 from src.utils import train_utils as train_utils
 from src.data import data_config as data_config
 
-PER_ARM = True  # Use the non-per-arm version of the MovieLens environment.
-
 # clients
 storage_client = storage.Client(project=data_config.PROJECT_ID)
 
@@ -182,9 +180,6 @@ def train_perarm(
             per_replica_losses, # loss, 
             axis=None
         )
-
-    with distribution_strategy.scope():
-        train_ds_iterator = iter(train_dataset)
     
     # start the timer and training
     tf.print(f"starting train loop...")
@@ -193,76 +188,75 @@ def train_perarm(
     # profiler - train loop
     # ====================================================
     if profiler:
+        tf.profiler.experimental.start(log_dir)
+    start_time = time.time()
+    with distribution_strategy.scope():
+        dist_dataset = distribution_strategy.experimental_distribute_dataset(train_dataset)
+        train_ds_iterator = iter(dist_dataset)
         
-        start_time = time.time()
-        
-        for i in tf.range(num_epochs):
-            tf.print(f"epoch: {i+1}")
-        
-            with distribution_strategy.scope():
-                tf.profiler.experimental.start(log_dir)
+        for epoch in tf.range(num_epochs):
+            tf.print(f"epoch: {epoch+1}")
                 
-                for i in tf.range(num_iterations):
-                    step = agent.train_step_counter
+            for i in tf.range(num_iterations):
+                step = agent.train_step_counter
+                data = next(train_ds_iterator)
+                loss = _train_step_fn(data)
+                list_o_loss.append(loss.numpy())
 
-                    with tf.profiler.experimental.Trace(
-                        "tr_step", step_num=step, _r=1 # step.numpy()
-                    ):
-                        data = next(train_ds_iterator)
-                        loss = _train_step_fn(data)
-
-                    list_o_loss.append(loss.numpy())
-
-                    if step % log_interval == 0:
-                        tf.print(
-                            'step = {0}: loss = {1}'.format(
-                                step.numpy(), round(loss.numpy(), 2)
-                            )
+                if step % log_interval == 0:
+                    tf.print(
+                        'step = {0}: loss = {1}'.format(
+                            step.numpy(), round(loss.numpy(), 2)
                         )
-                    if i > 0 and i % chkpt_interval == 0:
-                        checkpoint_manager.save(global_step)
-
-                tf.profiler.experimental.stop()
-        runtime_mins = int((time.time() - start_time) / 60)
-        tf.print(f"runtime_mins: {runtime_mins}")
-    # ====================================================
-    # non-profiler - train loop
-    # ====================================================
-    if not profiler:
-        
-        start_time = time.time()
-        
-        for i in tf.range(num_epochs):
-            tf.print(f"epoch: {i+1}")
-        
-            with distribution_strategy.scope():
-
-                for i in tf.range(num_iterations):
-
-                    step = agent.train_step_counter
-                    data = next(train_ds_iterator)
-                    loss = _train_step_fn(data)
-                    list_o_loss.append(loss.numpy())
-
-                    train_utils._export_metrics_and_summaries(
-                        step=step.numpy(), 
-                        metrics=metrics
                     )
-                    if step % log_interval == 0:
-                        tf.print(
-                            'step = {0}: loss = {1}'.format(
-                                step.numpy(), round(loss.numpy(), 2)
-                            )
-                        )
-                    if i > 0 and i % chkpt_interval == 0:
-                        checkpoint_manager.save(global_step)
+        if profiler:
+            tf.profiler.experimental.stop()
 
-        runtime_mins = int((time.time() - start_time) / 60)
-        tf.print(f"runtime_mins: {runtime_mins}")
-
-    saver.save(model_dir)
-    tf.print(f"saved trained policy to: {model_dir}")
     checkpoint_manager.save(global_step)
-    tf.print(f"saved trained policy to: {chkpoint_dir}")
+    runtime_mins = int((time.time() - start_time) / 60)
+    tf.print(f"runtime_mins: {runtime_mins}")
+#     # ====================================================
+#     # non-profiler - train loop
+#     # ====================================================
+        # with tf.profiler.experimental.Trace(
+        #     "tr_step", step_num=step, _r=1 # step.numpy()
+        # ):
+
+#     if not profiler:
+        
+#         start_time = time.time()
+        
+#         for i in tf.range(num_epochs):
+#             tf.print(f"epoch: {i+1}")
+        
+#             with distribution_strategy.scope():
+
+#                 for i in tf.range(num_iterations):
+
+#                     step = agent.train_step_counter
+#                     data = next(train_ds_iterator)
+#                     loss = _train_step_fn(data)
+#                     list_o_loss.append(loss.numpy())
+
+#                     train_utils._export_metrics_and_summaries(
+#                         step=step.numpy(), 
+#                         metrics=metrics
+#                     )
+#                     if step % log_interval == 0:
+#                         tf.print(
+#                             'step = {0}: loss = {1}'.format(
+#                                 step.numpy(), round(loss.numpy(), 2)
+#                             )
+#                         )
+#                     if i > 0 and i % chkpt_interval == 0:
+#                         checkpoint_manager.save(global_step)
+
+#         runtime_mins = int((time.time() - start_time) / 60)
+#         tf.print(f"runtime_mins: {runtime_mins}")
+
+#     saver.save(model_dir)
+#     tf.print(f"saved trained policy to: {model_dir}")
+#     checkpoint_manager.save(global_step)
+#     tf.print(f"saved trained policy to: {chkpoint_dir}")
     
     return list_o_loss, agent  # agent | val_loss

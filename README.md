@@ -4,8 +4,8 @@
 
 ## How to use this repo
 
-This repo is organized across several notebooks. Complete the first two notebooks to setup your workspace environment and prepare the Movielens dataset. From there, you can choose your own adventure and complete any subdirectory, in any order. 
-
+This repo is organized across several notebooks and subfolders. First complete `00-env-setup.ipynb` to setup your workspace environment (e.g., enable APIs, create BigQuery and GCS assets; and then secondly, prepare the Movielens dataset with the CLI tool described in the `00-data-prep-eda` subfolder. From here, you can choose your own adventure and complete any subdirectory, in any order. 
+    
 Below are the high-level objectives of each notebook or set of examples. *See READMEs in each subdirectory for more details*
 
 * [00-env-setup.ipynb](00-env-setup.ipynb) - establish naming conventions and env config for repo
@@ -15,18 +15,36 @@ Below are the high-level objectives of each notebook or set of examples. *See RE
 * [03-ranking/](03-ranking/) - train contextual bandits for ranking problems
 * [04-pipelines/](04-pipelines/) - MLOps for contextual bandits
 
+<details>
+  <summary>tensorflow versions</summary>
+    
+```
+tf-agents==0.19.0
+tensorflow==2.15.0
+tensorflow-cloud==0.1.16
+tensorflow-datasets==4.9.0
+tensorflow-estimator==2.15.0
+tensorflow-hub==0.14.0
+tensorflow-io==0.29.0
+tensorflow-io-gcs-filesystem==0.29.0
+tensorflow-metadata==0.14.0
+tensorflow-probability==0.23.0
+tensorflow-serving-api==2.13.0
+tensorflow-transform==0.14.0
+
+tensorboard==2.16.2
+tensorboard-data-server==0.7.1
+tensorboard-plugin-wit==1.8.1
+tensorboard_plugin_profile==2.15.1
+tensorboardX==2.6.2.2
+```
+</details>
+
 ## Introduction to Contextual Bandit problems
 
 The Contextual Bandit (CB) problem is a special case of Reinforcement Learning: an agent collects rewards in an environment by taking some actions after observing some state of the environment. The main difference between general RL and CB is that in CB, we assume that **the action taken by the agent does not influence the next state of the environment**. Therefore, agents do not model state transitions, credit rewards to past actions, or "plan ahead" to get to reward-rich states.
 
 As in other RL domains, the goal of a Contextual Bandit agent is to find a *policy* that collects as much reward as possible. It would be a mistake, however, to always try to exploit the action that promises the highest reward, because then there is a chance that we miss out on better actions if we do not explore enough. This is the main problem to be solved in CB, often referred to as the *exploration-exploitation dilemma*.
-
-## Online vs Offline RL
-A popular deployment paradigm to consider with the *exploration-exploitation tradeoff*, is the concept of "Online RL" (aka "Online Learning", "Online Agent's"). In an online approach, the deployed agent learns over time from it's own experiences (i.e., its actions and their rewards). At each step, the agent needs to get the feedback from the past, update its policy, take actions based on the policy, and observe a reward value for the actions. 
-
-One aspect that can significantly impact the complexity of the deployment is: **the degree to which the online agent learns in "real-time" vs "near real-time"**
-
-See [online-agents](learning/online-agents.md) in the `learning/` subfolder for more on this topic!
 
 ## Why reinforcement learning?
 * train algorithms that consider long-term (cumulative value) of decisions
@@ -34,7 +52,8 @@ See [online-agents](learning/online-agents.md) in the `learning/` subfolder for 
 * make a sequence of decisions, where each decision, or action, possibly impacts future decisions
 * return a **distribution** over predictions rather than a single prediction*
 
-### Using RL for recommendations
+### Applying RL to RecSys
+
 * User vectors are the environment observations
 * Items to recommend are the agent actions applied on the environment
 * Approximate user ratings are the environment rewards generated as feedback to the observations and actions
@@ -71,7 +90,7 @@ basic questions we need to answer:
 ### Training data used in this repo
 
 We use the
-[MovieLens 100K dataset](https://www.kaggle.com/prajitdatta/movielens-100k-dataset)
+[MovieLens 1M dataset](https://www.tensorflow.org/datasets/catalog/movielens#movielens1m-movies)
 to build a simulation environment that frames the recommendation problem:
 
 1.  User vectors are the environment observations;
@@ -89,8 +108,25 @@ In TF-Agents, the environment class serves the role of giving information on the
 As mentioned above, CB differs from general RL in that actions do not influence the next observation. Another difference is that in Bandits, there are no "episodes": every time step starts with a new observation, independently of previous time steps.
 
 
+### Agents
+The algorithm used to solve an RL problem is represented by an `Agent`. Agents take care of updating a *policy* based on training samples (represented as trajectories)
+
+<img src='imgs/rl_agent_defined.png' width='700' height='445'>
+
+Sometimes referred to as the `learner entity`, or `the brain`, which takes action for each time step toward a goal
+* performs actions in an environment to gain some reward
+* agent's learn when the policy is *updated*; they serve predictions when they *generate actions*
+
+Agent's are comprised of three subcomponents:
+1. **Policy (${\pi}$)**: Mapping function determining agent's behavior, RL goal is to learn optimal mapping
+2. **Value function**: Tells agent how “good” each state is; gives a measure of potential future rewards from being in a state
+3. **Model**: Agent’s representation of the environment
+
+> Note: in RL terminology, *model* typically refers to some object that can make concrete predictions about future observations or features. The RL concepts of `model-based` and `model-free` refer to this definiton of the word. `Model-based`, for example, refers to algorithms using a *model* for planning, i.e., predicted future observations to improve current decision-making
+
+
 ### Policies
-In Reinforcement Learning terminology, policies map an observation from the environment to an action or a distribution over actions. In TF-Agents, observations from the environment are contained in a named tuple `TimeStep('step_type', 'discount', 'reward', 'observation')`, and policies map timesteps to actions or distributions over actions. Most policies use `timestep.observation`, some policies use `timestep.step_type` (e.g. to reset the state at the beginning of an episode in stateful policies), but `timestep.discount` and `timestep.reward` are usually ignored. 
+In RL terminology, policies map an observation from the environment to an action or a distribution over actions. In TF-Agents, observations from the environment are contained in a named tuple `TimeStep('step_type', 'discount', 'reward', 'observation')`, and policies map timesteps to actions or distributions over actions. Most policies use `timestep.observation`, some policies use `timestep.step_type` (e.g. to reset the state at the beginning of an episode in stateful policies), but `timestep.discount` and `timestep.reward` are usually ignored. 
 
 Policies are related to other components in TF-Agents in the following way:
 * Most policies have a neural network to compute actions and/or distributions over actions from `TimeSteps` 
@@ -100,15 +136,32 @@ Policies are related to other components in TF-Agents in the following way:
 For more details, see the [TF-Agents Policy tutorial](https://github.com/tensorflow/agents/blob/master/docs/tutorials/3_policies_tutorial.ipynb).
 
 
-### Agents
-Agents take care of changing the policy based on training samples (represented as trajectories)
-
-> TODO
-
 ### Trajectorties
 In TF-Agents, `trajectories` are the training examples used to train an agent. More specifically, they are named tuples that contain samples from previous steps taken. These samples are then used by the agent to train and update the policy. In RL, trajectories must contain information about the current state, the next state, and whether the current episode has ended
 
-> TODO: example trajectory
+```
+Trajectory(
+    {
+        'action': <tf.Tensor: shape=(3, 1),
+        'discount': <tf.Tensor: shape=(3, 1),
+        'next_step_type': <tf.Tensor: shape=(3, 1),
+        'observation': {
+            'global': <tf.Tensor: shape=(3, 1, 48),
+            'policy_info': PerArmPolicyInfo(
+                log_probability=(), 
+                predicted_rewards_mean=<tf.Tensor: shape=(3, 1, 2), 
+                multiobjective_scalarized_predicted_rewards_mean=(), 
+                predicted_rewards_optimistic=(), 
+                predicted_rewards_sampled=(), 
+                bandit_policy_type=<tf.Tensor: shape=(3, 1, 1), 
+                chosen_arm_features=<tf.Tensor: shape=(3, 1, 32),
+            )
+            'reward': <tf.Tensor: shape=(3, 1),
+            'step_type': <tf.Tensor: shape=(3, 1),
+        }
+    }
+)
+```
 
 The [functools](https://docs.python.org/3/library/functools.html) package is commonly used to develop RL agents with TF-Agents because it provides a number of useful functions for working with nested structures of tensors 
 * These functions can be used to create and manipulate data structures such as arrays, lists, and dictionaries, which are commonly used in RL algorithms
@@ -119,11 +172,7 @@ The [functools](https://docs.python.org/3/library/functools.html) package is com
 Bandits' most important metric is *regret*, calculated as the difference between the reward collected by the agent and the expected reward of an oracle policy that has access to the reward functions of the environment. The [RegretMetric](https://github.com/tensorflow/agents/blob/master/tf_agents/bandits/metrics/tf_metrics.py) thus needs a `baseline_reward_fn` function that calculates the best achievable expected reward given an observation
 
 
-### Training Agents
-
-> TODO
-
-#### Track Agent training performance with Vertex AI Experiments
+## Track Agent training performance with Vertex AI Experiments
 
 > Vertex AI enables users to track the steps (e.g., preprocessing, training) of an experiment run, and track inputs (e.g., algorithm, parameters, datasets) and outputs (fe.g.,, models, checkpoints, metrics) of those steps.
 
@@ -137,14 +186,38 @@ Bandits' most important metric is *regret*, calculated as the difference between
 * Save time and effort by [Autologging experiment data](https://cloud.google.com/vertex-ai/docs/experiments/autolog-data) from training jobs, and [pipeline runs](https://cloud.google.com/vertex-ai/docs/experiments/add-pipelinerun-experiment) 
 * To learn more, see [Introduction to Vertex AI Experiments](https://cloud.google.com/vertex-ai/docs/experiments/intro-vertex-ai-experiments)
 
-### Profiling Agents
+## Profiling Agents
 
-> TODO
+The profiler's overview page is an aggregated view of the host (CPU) and all devices (either GPU or TPU), and includes a performance summary, step-time graph, and potential recommendations for improving performance
 
 ![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/getting_profiler.png)
 
-#### Input pipeline bottleneck analysis
+**TODO: currently investigating profiler:** 
+* After optimizing training loop with the `tf.function` below, the profiler cannot detect step changes
+* This prevents us from getting granular performance details of the data input pipeline.
 
-> TODO
+```
+    ### optimized train step ###
+    
+    @common.function(autograph=False)
+    def _train_step_fn(trajectories):
+
+        def replicated_train_step(experience):
+            return agent.train(experience).loss
+
+        per_replica_losses = distribution_strategy.run(
+            replicated_train_step, 
+            args=(trajectories,)
+        )
+        return distribution_strategy.reduce(
+            tf.distribute.ReduceOp.MEAN, 
+            per_replica_losses, # loss, 
+            axis=None
+        )
+```
+
+### Input pipeline bottleneck analysis
+
+> analysis tool automatically detects bottlenecks in `tf.data` input pipelines in your job
 
 ![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/tb_input_bottleneck_analysis.png)

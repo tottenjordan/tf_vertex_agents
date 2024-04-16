@@ -1,4 +1,4 @@
-google-cloud-aiplatform[prediction]==1.41.0
+google-cloud-aiplatform[prediction]==1.46.0
 google-cloud-storage
 numpy
 six

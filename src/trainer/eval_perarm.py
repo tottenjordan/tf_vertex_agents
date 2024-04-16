@@ -27,7 +27,7 @@ def _run_bandit_eval(
     global_emb_size: int,
     mv_emb_size: int,
 ):
-    logged_rewards = []
+    actual_rewards = []
     predicted_rewards = []
     trouble_list = []
     train_loss_results = []
@@ -62,7 +62,6 @@ def _run_bandit_eval(
 
         # get actual reward
         actual_reward = rewards.numpy()[0]
-        # logged_rewards.append(actual_reward)
 
         # build trajectory step
         trajectory_step = train_utils._get_eval_step(feature, actual_reward)
@@ -90,14 +89,15 @@ def _run_bandit_eval(
         if filter_mask is None:
             trouble_list.append(pred_reward)
         else:
-            predicted_rewards.append(pred_reward)
-
             pred_loss = tf.keras.metrics.mean_squared_error(
                 rewards, predicted_reward_tf
             )
-
             train_loss_results.append(pred_loss)
-
+            # log the predicted rewards
+            predicted_rewards.append(pred_reward)
+            # log the actual reward
+            actual_rewards.append(actual_reward)
+            
         # When the uniform random policy is used, the loss is meaningless for evaluation
         # > discard preds from uniform random policy
         # > keep preds from greedy policy, 
@@ -121,6 +121,5 @@ def _run_bandit_eval(
     return (
         avg_eval_loss,
         predicted_rewards,
-        logged_rewards,
-        # train_loss_results
+        actual_rewards,
     )
