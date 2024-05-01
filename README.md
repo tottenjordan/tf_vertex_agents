@@ -19,23 +19,23 @@ Below are the high-level objectives of each notebook or set of examples. *See RE
   <summary>tensorflow versions</summary>
     
 ```
-tf-agents==0.19.0
-tensorflow==2.15.0
+tf-agents==0.17.0
+tensorflow==2.13.0
 tensorflow-cloud==0.1.16
 tensorflow-datasets==4.9.0
-tensorflow-estimator==2.15.0
+tensorflow-estimator==2.13.0
 tensorflow-hub==0.14.0
 tensorflow-io==0.29.0
 tensorflow-io-gcs-filesystem==0.29.0
 tensorflow-metadata==0.14.0
-tensorflow-probability==0.23.0
+tensorflow-probability==0.20.1
 tensorflow-serving-api==2.13.0
-tensorflow-transform==0.14.0
+tensorflow-transform==1.14.0
 
-tensorboard==2.16.2
-tensorboard-data-server==0.7.1
+tensorboard==2.13.0
+tensorboard-data-server==0.7.2
 tensorboard-plugin-wit==1.8.1
-tensorboard_plugin_profile==2.15.1
+tensorboard_plugin_profile==2.13.0
 tensorboardX==2.6.2.2
 ```
 </details>
