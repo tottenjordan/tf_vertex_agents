@@ -12,3 +12,4 @@ tensorboard-plugin-profile
 tensorboard-plugin-wit
 tensorboard-data-server
 tensorflow-io
+protobuf==3.20.3
