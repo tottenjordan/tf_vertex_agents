@@ -36,7 +36,6 @@ tensorboard==2.13.0
 tensorboard-data-server==0.7.2
 tensorboard-plugin-wit==1.8.1
 tensorboard_plugin_profile==2.13.0
-tensorboardX==2.6.2.2
 ```
 </details>
 
@@ -110,8 +109,6 @@ As mentioned above, CB differs from general RL in that actions do not influence 
 
 ### Agents
 The algorithm used to solve an RL problem is represented by an `Agent`. Agents take care of updating a *policy* based on training samples (represented as trajectories)
-
-<img src='imgs/rl_agent_defined.png' width='700' height='445'>
 
 Sometimes referred to as the `learner entity`, or `the brain`, which takes action for each time step toward a goal
 * performs actions in an environment to gain some reward
