@@ -66,15 +66,15 @@ def download_blob(
 # ==========================================
 feature_description = {
     # # context sequence item features
-    # 'context_movie_id': tf.io.FixedLenFeature(shape=(MAX_CONTEXT_LENGTH), dtype=tf.string),
-    # 'context_movie_rating': tf.io.FixedLenFeature(shape=(MAX_CONTEXT_LENGTH), dtype=tf.float32),
-    # 'context_rating_timestamp': tf.io.FixedLenFeature(shape=(MAX_CONTEXT_LENGTH), dtype=tf.int64),
-    # 'context_movie_genre': tf.io.FixedLenFeature(shape=(MAX_GENRE_LENGTH), dtype=tf.string),
-    # 'context_movie_year': tf.io.FixedLenFeature(shape=(MAX_CONTEXT_LENGTH), dtype=tf.int64),
-    # 'context_movie_title': tf.io.FixedLenFeature(shape=(MAX_CONTEXT_LENGTH), dtype=tf.string),
+    # 'context_movie_id': tf.io.FixedLenFeature(shape=(data_config.MAX_CONTEXT_LENGTH), dtype=tf.string),
+    # 'context_movie_rating': tf.io.FixedLenFeature(shape=(data_config.MAX_CONTEXT_LENGTH), dtype=tf.float32),
+    # 'context_rating_timestamp': tf.io.FixedLenFeature(shape=(data_config.MAX_CONTEXT_LENGTH), dtype=tf.int64),
+    # 'context_movie_genre': tf.io.FixedLenFeature(shape=(data_config.MAX_GENRE_LENGTH), dtype=tf.string),
+    # 'context_movie_year': tf.io.FixedLenFeature(shape=(data_config.MAX_CONTEXT_LENGTH), dtype=tf.int64),
+    # 'context_movie_title': tf.io.FixedLenFeature(shape=(data_config.MAX_CONTEXT_LENGTH), dtype=tf.string),
 
     # target/label item features
-    'target_movie_id': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+    'target_movie_id': tf.io.FixedLenFeature(shape=(), dtype=tf.string), # int64 | string
     'target_movie_rating': tf.io.FixedLenFeature(shape=(), dtype=tf.float32),
     'target_rating_timestamp': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
     'target_movie_genres': tf.io.FixedLenFeature(shape=(data_config.MAX_GENRE_LENGTH), dtype=tf.string),
@@ -159,3 +159,34 @@ def load_movielens_ratings(
         #     float(movie_gen_lookup_dict[row['movie_genres'].numpy()]) + .0001
         # ) 
     return ratings_matrix, np.array(user_age_int), np.array(user_occ_int)
+
+# Sequence examples for REINFORCE #TODO
+seq_feature_description = {
+    # context sequence item features
+    'context_movie_id': tf.io.FixedLenFeature(shape=(data_config.MAX_CONTEXT_LENGTH), dtype=tf.string),
+    'context_movie_rating': tf.io.FixedLenFeature(shape=(data_config.MAX_CONTEXT_LENGTH), dtype=tf.float32),
+    'context_rating_timestamp': tf.io.FixedLenFeature(shape=(data_config.MAX_CONTEXT_LENGTH), dtype=tf.int64),
+    'context_movie_genre': tf.io.FixedLenFeature(shape=(data_config.MAX_GENRE_LENGTH), dtype=tf.string),
+    'context_movie_year': tf.io.FixedLenFeature(shape=(data_config.MAX_CONTEXT_LENGTH), dtype=tf.int64),
+    'context_movie_title': tf.io.FixedLenFeature(shape=(data_config.MAX_CONTEXT_LENGTH), dtype=tf.string),
+
+    # target/label item features
+    'target_movie_id': tf.io.FixedLenFeature(shape=(), dtype=tf.string), # int64 | string
+    'target_movie_rating': tf.io.FixedLenFeature(shape=(), dtype=tf.float32),
+    'target_rating_timestamp': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
+    'target_movie_genres': tf.io.FixedLenFeature(shape=(data_config.MAX_GENRE_LENGTH), dtype=tf.string),
+    'target_movie_year': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
+    'target_movie_title': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+
+    # user - global context features
+    'user_id': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+    'user_gender': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+    'user_age': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
+    'user_occupation_text': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+    'user_zip_code': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+}
+
+def _parse_seq_function(example_proto):
+    return tf.io.parse_single_sequence_example(
+        example_proto, seq_feature_description
+    )
