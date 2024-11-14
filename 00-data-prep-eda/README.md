@@ -1,6 +1,6 @@
 # Download and prep MovieLens data
 
-See `data_download_prep.ipynb` notebook for instructions
+See `00a_data_download_prep.ipynb` notebook for instructions
 
 ```
 python example_gen_movielens.py --project_id=$PROJECT_ID \
