@@ -263,5 +263,5 @@ def train_validation(
     )
     
     return (
-        LOG_DIR
+        f"{LOG_DIR}"
     )

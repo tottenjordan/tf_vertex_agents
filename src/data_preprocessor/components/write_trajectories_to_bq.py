@@ -51,6 +51,7 @@ def write_trajectories_to_bq(
     # this repo
     from src.networks import encoding_network as emb_features
     from src.data import data_utils as data_utils
+    from src.data import data_config as data_config
     from src import reward_factory as reward_factory
     from src.data_preprocessor import preprocess_utils
 
@@ -127,6 +128,7 @@ def write_trajectories_to_bq(
         num_oov_buckets = num_oov_buckets,
         global_emb_size = global_emb_size,
         mv_emb_size = mv_emb_size,
+        # max_genre_length = data_config.MAX_GENRE_LENGTH,
     )
     test_globals = embs._get_global_context_features(data)
     test_arms = embs._get_per_arm_features(data)
