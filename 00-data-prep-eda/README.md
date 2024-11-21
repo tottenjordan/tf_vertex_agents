@@ -1,6 +1,6 @@
 # Download and prep MovieLens data
 
-See `data_download_prep.ipynb` notebook for instructions
+See `00a_data_download_prep.ipynb` to download and prepare the movielens dataset:
 
 ```
 python example_gen_movielens.py --project_id=$PROJECT_ID \
@@ -18,6 +18,16 @@ python example_gen_movielens.py --project_id=$PROJECT_ID \
     --num_train_tfrecords=$NUM_TRAIN_RECORDS \
     --num_test_tfrecords=$NUM_VAL_RECORDS
 ```
+
+
+**WIP notebooks**
+* `00b_movielens_eda.ipynb`
+* `00c_get_wikidata_side_features.ipynb` (enrich movielens DS)
+
+
+
+# Notes on source data and prepared features
+
 
 ### raw movielens data
 

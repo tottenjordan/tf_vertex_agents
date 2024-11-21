@@ -8,6 +8,11 @@ logic using the [TF-Agents](https://www.tensorflow.org/agents) library. We also
 illustrate how to use TensorBoard Profiler to track the training process and
 resources, allowing speed and scalability analysis.
 
+
+**TODOs**
+* clean-up and consolidate `01a` and `01b` notebooks
+
+
 ### RL Training Illustration
 
 ![alt text](https://github.com/tottenjordan/tf_vertex_agents/blob/main/imgs/rl_training.png)
