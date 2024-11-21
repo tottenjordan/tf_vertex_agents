@@ -2,6 +2,12 @@
 
 > in this section, we use a training dataset fit for supervised learning (i.e., a labled dataset with logged user feedback) and use it to train a contextual bandit algorithm, where the labels (user feedback) is used as a proxy for immediate rewards
 
+
+**TODOs**
+* better organize this subfolder
+* consider moving `02g-*` notebooks (optimized, batched datasets) to seperate subfolder?
+
+
 ## Objectives
 
   * `02a-train-supervised-bandit-locally.ipynb` - Use labeled dataset to train bandit locally (same as 1 except no "environment")
@@ -9,6 +15,10 @@
   * `02d-build-training-image.ipynb` - build docker image for scaling training with Vertex AI
   * `02e-scale-bandit-training-vertex.ipynb` - submit train job to Vertex AI
   * `02f-cpr-deploy-bandit-policy.ipynb` - deploy trained bandit policy to Vertex AI online endpoint
+  * WIP notebooks
+    * `02g-a-create-preprocessed-ds.ipynb` - Create preprocessed dataset for optimized data loading; implement as Vertex Ai Pipeline
+    * `02g-b-example-optimized-dataset.ipynb` - Validate (local) training with optimized dataset
+    * `02g-c-train-batched-ds.ipynb` - TODO: standardize optimized dataset
 
 ## Supervised-to-bandit datasets
 
