@@ -14,6 +14,8 @@ Below are the high-level objectives of each notebook or set of examples. *See RE
 * [02-supervised-to-bandit-training/](02-supervised-to-bandit-training/) - train contextual bandits with previously collected (logged) data
 * [03-ranking/](03-ranking/) - train contextual bandits for ranking problems
 * [04-pipelines/](04-pipelines/) - MLOps for contextual bandits
+* [05-online-learning/](05-online-learning/) - (WIP) agents training and serving in the same process (e.g., online endpoint)
+* [06-reinforce-nominator/](06-reinforce-nominator/) - (WIP) REINFORCE recommender with top-k off-policy correction
 
 <details>
   <summary>tensorflow versions</summary>
