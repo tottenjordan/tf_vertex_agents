@@ -46,6 +46,7 @@ def _train_step_fn(data):
     )
 ```
 
+
 ## Experiment ideas
 
 **Create experiment comparing:**
@@ -63,7 +64,62 @@ def _train_step_fn(data):
 * use_supervised_loss_for_main_policy = False
 
 
-## Notes from whitepaper: [Top-𝐾 Off-Policy Correction for a REINFORCE Recommender System](https://arxiv.org/pdf/1812.02353.pdf)
+
+## Sequence data for REINFORCE Recommender
+
+For each `user`, we consider a sequence of user historical interactions with the RecSys, recording the actions taken by the recommender (e.g., items recommended), as well as user feedback (e.g.,`ratings`)
+
+Given such a sequence, we predict the next `action` to take, i.e., items to recommend, so that user satisfaction metrics, e.g., indicated by `ratings` improve
+
+**MPD definiton**
+
+> We translate this setup into a Markov Decision Process (MDP)
+
+**{`S`, `A`, `P`, `R`, `p0`, `y`}**
+
+* **`S`**: a continuous state space describing the user states
+* **`A`**: a discrete action space, containing items available for recommendation
+* **`P`** : S × A × S → R is the state transition probability
+* **`R`** : S × A → R is the reward function, where 𝑟(𝑠, 𝑎) is the immediate reward obtained by performing action 𝑎 at user state `s`
+* **`p0`** is the initial state distribution
+* **`y`** is the discount factor for future rewards
+
+#### Trajectories
+
+**A `Trajectory` represents a sequence of aligned time steps** 
+
+It captures:
+* `observation` and `step_type` from current time step with the computed `action` and `policy_info`
+* `Discount`, `reward` and `next_step_type` come from the next time step.
+  
+We allow `experience` to contain trajectories of different lengths in the *time dimension*, but these have to be padded with dummy values to have a constant size of `T` in the time dimension
+
+* Both `trajectory.reward` and `weights` have to be 0 for these dummy values
+* `experience` can be provided in other formats such as `Transition`'s if they can be converted into Trajectories.
+
+#### TimeSteps
+
+**A `TimeStep` contains the data emitted by an environment at each step of interaction**. They include:
+* a `step_type`, 
+* an `observation` (e.g., NumPy array, dict, or list of arrays), 
+* and an associated `reward` and `discount`
+
+**sequential ordering**
+* first `TimeStep` in a sequence equals `StepType.FIRST`
+* final `TimeStep` in a sequence equals `StepType.LAST`
+* All other `TimeStep`s in a sequence equal `StepType.MID`
+
+#### Discounted rewards
+
+> A discounting factor is introduced for:
+* Reducing variance 
+* Prescribing the effective time horizon we optimize over
+
+
+
+## Notes from whitepaper
+
+> [Top-𝐾 Off-Policy Correction for a REINFORCE Recommender System](https://arxiv.org/pdf/1812.02353.pdf)
 
 **section 4.2 Estimating the behavior policy 𝛽**
 
