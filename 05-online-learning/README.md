@@ -1,47 +1,68 @@
 # Online learning with Contextual Bandits
 
-In RL, *online learning* refers to agents that **learn "on-the-fly", actively rather than offline, in batch**. Online agents typically learn directly from their experiences (on-policy) as they balance exploration and exploitation: (1) generate predictions from policy, (2) process feedback re: these predictions, (3) refine policy for future predictions
+In general, *online learning* refers to agents or models that learn *"on-the-fly"* (or actively) rather than offline, in batch: 
 
-* For "online learning" to take place, the agent's policy needs to be updated
-* The policy is updated when the agent receives (e.g., `agent.train(...)`) new trajectories of `< previous prediction, user context, user feedback >`
-* Don't need to update policy for every indivudal feedback impression; instead do in batches (gradients concepts)
-
-| Batch learning | Online learning |
-| :--------: | :------------: |
-| Generates the decision rule after learning from entire training data set | data becomes available sequentially and is used to update the decision rule (policy) for future data |
+* **Batch learning**  : generates decision rule after learning from entire training data set
+* **Online learning** : data becomes available sequentially and is used to update decision rule (policy) for future data
 
 
-## ...wait so
+In RL, online agents typically learn directly from their previous actions (predictions) and the user's feedback:
 
-<p align="center">
-    <img src='imgs/zoolander_meme.png' width='700' />
-</p>
-
-[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/L_o_O7v1ews/0.jpg)](https://www.youtube.com/watch?v=L_o_O7v1ews)
+* (1) generate predictions from policy
+* (2) process feedback re: these predictions
+* (3) refine policy for future predictions
 
 
-## How *online* are we?
+**What's actually going on??**
 
- > To deicde between the sceanrios below, consider the expected latency of reflecting a user interaction in the system behavior (i.e., from “click” to serving a system trained on that “click”)
+* For *online learning* to take place, the agent's policy needs to be updated
+* The policy is updated when the agent receives new trajectories (e.g., `<user_context, prediction,feedback>` --> `agent.train(...)`)
+* We don't update the policy for indivudal feedback/impressions; rather update in batches (gradients concepts)
 
-**Scenario 1:** inference and training deployed to seperate processes
+
+## Online learning: system design
+
+*Note determining system design*
+* consider expected latency of reflecting a user interaction in the system behavior (i.e., from “click” to serving a system trained on that “click”)
+
+*Note on logging*
+* in most high-throughput applications, the user feedback is not observed until long after the action (prediction) is made (i.e., "Delayed Feedback")
+* best practice to associate a unique ID to each `<context, prediciton, feedback>` tuple, log them asynchronously (when available), and join them later (once feedback available)
+* this prevents us from storing the `context` and `predictions` in a front-end server's memory for the duration of the feedback delay
+
+
+### baseline architecture
+
+> Agent handles inference and training in *seperate processes*
+
 * deployed policy generates predictions
 * predictions and metadata logged with user feedback for future training
 * After collecting enough samples, agent trains 
 * updated policy pushed to serving application
 
+<img src='imgs/online_train_baseline_steps.png' width='1700' >
+
+
+###`in-process` architecture
+
+> Agent handles inference and training in *the same processes*
+
+* deploys agent to single process for training and generating predictions (aka `in-memory training`)
+* implements a policy that waits for checkpoint to become available
+* typical requirements include:
+  * ultra low serving latency
+  * serving binary only allows for small (MBs) binary size increments
+
 <p align="center">
-    <img src='imgs/online_learning_baseline.png' width='1200' />
+    <img src='imgs/online_train_process_steps.png' width='1700' />
 </p>
 
 
-**Scenario 2:** inference and training executed in same process
-* implement single process for agent to train (update weights), refine policy, and generate predictions
-* aka `in-memory training` or `in-process training`
+## the training is *in* the server!?!
 
-<p align="center">
-    <img src='imgs/in_process_train.png' width='1200' />
-</p>
+<img src='imgs/zoolander_meme.png' width='700' />
+
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/L_o_O7v1ews/0.jpg)](https://www.youtube.com/watch?v=L_o_O7v1ews)
 
 
 ## RL concepts
@@ -58,6 +79,7 @@ In RL, *online learning* refers to agents that **learn "on-the-fly", actively ra
 * Specifically, GPI describes two interacting processes: (i) [policy evaluation](http://www.incompleteideas.net/book/ebook/node41.html) and (ii) [policy improvement](http://www.incompleteideas.net/book/ebook/node42.html), that eventually converge on the optimal policy and value functions as an agent interacts with an environment
 
 
+# Repo TODOs
 
 <details>
   <summary>Orchestrating policy improvment experiment</summary>
