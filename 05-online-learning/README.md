@@ -2,7 +2,7 @@
 
 
 <p align="center">
-    <img src='imgs/zoolander_meme.png' width='700' />
+    <img src='imgs/zoolander_meme.png' width='600' />
 </p>
 
 
