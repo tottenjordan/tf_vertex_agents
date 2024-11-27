@@ -32,7 +32,7 @@ Applied to RL, the general framework follows:
 5. Depending on the use case, a policy update can be triggered when ~100s of events are available or several minutes pass since the last incrmental train, whichever comes first
 
 
-# Online learning system design for RL
+# Reference architectures for online learning system design
 
 > When designing an RL implementation, consider the expected latency of reflecting a user interaction in the system behavior (i.e., from “click” to serving a system trained on that “click”)
 
@@ -42,7 +42,7 @@ Applied to RL, the general framework follows:
 * this prevents us from storing the `context` and `predictions` in a front-end server's memory for the duration of the feedback delay
 
 
-## baseline architecture: agent handles inference and training in *seperate processes*
+## [1] agent handles inference and training in *seperate processes*
 
 <img src='imgs/baseline_train_RA_simple.png' width='800' >
 
@@ -54,11 +54,11 @@ Applied to RL, the general framework follows:
 
 
 
-## "in-process" training architecture (advanced): Agent handles inference and training in *the same processes*
+## [2] agent handles inference and training in *the same processes*
 
 <img src='imgs/in_process_simple_RA.png' width='800' >
 
-* deploys agent to single process for training and generating predictions (aka `in-memory training`)
+* deploys agent to single process for training and generating predictions (aka `in-memory` or `in-process training`)
 * implements a policy that waits for checkpoint to become available
 * typical requirements include:
   * ultra low serving latency
@@ -79,7 +79,7 @@ Applied to RL, the general framework follows:
 * Specifically, GPI describes two interacting processes: (i) [policy evaluation](http://www.incompleteideas.net/book/ebook/node41.html) and (ii) [policy improvement](http://www.incompleteideas.net/book/ebook/node42.html), that eventually converge on the optimal policy and value functions as an agent interacts with an environment
 
 
-# Repo TODOs
+# TODOs
 
 <details>
   <summary>Orchestrating policy improvment experiment</summary>
