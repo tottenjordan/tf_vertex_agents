@@ -26,7 +26,7 @@ Applied to RL, the general framework follows:
 
 1. For *online learning* to take place, the agent's policy needs to be updated 
 2. The policy is updated when the agent trains with new trajectories
-  > * e.g., `<user_context, prediction,feedback>` --> `agent.train(...)`
+   * e.g., `<user_context, prediction,feedback>` --> `agent.train(...)`
 3. A deployed policy is not updated for each individual feedback or impression that becomes available (e.g., few samples will not be enough to impact weights)
 4. Instead, policy updates typically occur once a batch of logged feedback is available
 5. Depending on the use case, a policy update can be triggered when ~100s of events are available or several minutes pass since the last incrmental train, whichever comes first
