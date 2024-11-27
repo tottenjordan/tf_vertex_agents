@@ -58,7 +58,7 @@ Applied to RL, the general framework follows:
 
 <img src='imgs/in_process_simple_RA.png' width='800' >
 
-* deploys agent to single process for training and generating predictions (aka `in-memory training`)
+* deploys agent to single process for training and generating predictions (aka `in-memory` or `in-process training`)
 * implements a policy that waits for checkpoint to become available
 * typical requirements include:
   * ultra low serving latency
