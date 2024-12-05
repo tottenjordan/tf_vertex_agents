@@ -51,7 +51,7 @@ def train_agent(
     aiplatform.init(
         project=project_id, 
         location=location,
-        experiment=experiment_name
+        # experiment=experiment_name
     )
     storage_client = storage.Client(project=project_id)
     
@@ -117,14 +117,14 @@ def train_agent(
     )
     logging.info(f'Submitting train job to Vertex AI...')
     job.run(
-        tensorboard=tensorboard_resource_name,
+        # tensorboard=tensorboard_resource_name,
         service_account=f'{service_account}',
         restart_job_on_worker_restart=False,
         enable_web_access=True,
-        sync=False,
+        sync=True,
     )
     # wait for job to complete
-    job.wait()
+    # job.wait()
     
     train_job_dict = job.to_dict()
     logging.info(f'train_job_dict: {train_job_dict}')
