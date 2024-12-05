@@ -212,9 +212,15 @@ def train_perarm(
         if profiler:
             tf.profiler.experimental.stop()
 
-    checkpoint_manager.save(global_step)
     runtime_mins = int((time.time() - start_time) / 60)
     tf.print(f"runtime_mins: {runtime_mins}")
+    
+    saver.save(model_dir)
+    tf.print(f"saved trained policy to: {model_dir}")
+    
+    checkpoint_manager.save(global_step)
+    print(f"saved to checkpoint_manager: {chkpoint_dir}")
+    
 #     # ====================================================
 #     # non-profiler - train loop
 #     # ====================================================

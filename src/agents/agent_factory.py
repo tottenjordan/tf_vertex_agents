@@ -246,14 +246,15 @@ class PerArmAgentFactory:
                 optimizer=tf.compat.v1.train.AdamOptimizer(
                     learning_rate=self.learning_rate
                 ),
-                alpha=1.0,                                              # TODO - parameterize
-                gamma=1.0,                                              # TODO - parameterize
+                alpha=1.0, # TODO - parameterize
+                gamma=1.0, # TODO - parameterize
                 epsilon_greedy=self.epsilon,
                 accepts_per_arm_features=self.PER_ARM,
-                debug_summaries=self.debug_summaries,                   # TODO - parameterize
-                summarize_grads_and_vars=self.summarize_grads_and_vars, # TODO - parameterize
+                debug_summaries=self.debug_summaries,                  
+                summarize_grads_and_vars=self.summarize_grads_and_vars,
                 emit_policy_info=(
-                    policy_utilities.InfoFields.PREDICTED_REWARDS_MEAN
+                    policy_utilities.InfoFields.PREDICTED_REWARDS_MEAN,
+                    policy_utilities.InfoFields.PREDICTED_REWARDS_OPTIMISTIC
                 ),
             )
             
