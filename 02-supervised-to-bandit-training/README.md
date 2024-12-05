@@ -15,10 +15,11 @@
   * `02d-build-training-image.ipynb` - build docker image for scaling training with Vertex AI
   * `02e-scale-bandit-training-vertex.ipynb` - submit train job to Vertex AI
   * `02f-cpr-deploy-bandit-policy.ipynb` - deploy trained bandit policy to Vertex AI online endpoint
-  * WIP notebooks
+  * `optimized_dataset/` - (WIP) experimenting with alternative datasets and input pipelines
     * `02g-a-create-preprocessed-ds.ipynb` - Create preprocessed dataset for optimized data loading; implement as Vertex Ai Pipeline
     * `02g-b-example-optimized-dataset.ipynb` - Validate (local) training with optimized dataset
     * `02g-c-train-batched-ds.ipynb` - TODO: standardize optimized dataset
+    * `02_xx_improve_data_input.ipynb` - TFRecords --> unbatched trajectory function
 
 ## Supervised-to-bandit datasets
 

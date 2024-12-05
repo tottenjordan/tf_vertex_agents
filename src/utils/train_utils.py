@@ -68,7 +68,7 @@ def _get_train_dataset(
                 )
             )
     if is_testing:
-        train_files = train_files[:2]
+        train_files = train_files[:3]
     print(f"number of train_files: {len(train_files)}")
 
     train_dataset = tf.data.TFRecordDataset(train_files)

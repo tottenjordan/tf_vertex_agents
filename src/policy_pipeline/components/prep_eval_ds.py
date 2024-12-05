@@ -50,7 +50,7 @@ def prep_eval_ds(
     for blob in storage_client.list_blobs(f"{bucket_name}", prefix=f'{example_gen_gcs_path}/val'):
         if '.tfrecord' in blob.name:
             val_files.append(blob.public_url.replace("https://storage.googleapis.com/", "gs://"))
-            
+
     val_dataset = tf.data.TFRecordDataset(val_files)
     val_dataset = val_dataset.map(data_utils._parse_function, num_parallel_calls=tf.data.AUTOTUNE)
     

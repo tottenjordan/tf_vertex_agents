@@ -25,6 +25,7 @@ def train_validation(
     num_epochs: int = 2,
 ) -> NamedTuple('Outputs', [
     ('log_dir', str),
+    ('tf_record_file', str),
 ]):
     import os
     import time
@@ -44,7 +45,7 @@ def train_validation(
     from tf_agents.metrics import tf_metrics
     
     # this repo
-    from src import train_utils as train_utils
+    from src.utils import train_utils as train_utils
     from src.data_preprocessor import preprocess_utils
     from src.agents import agent_factory as agent_factory
     
@@ -54,18 +55,20 @@ def train_validation(
     BASE_OUTPUT_DIR   = f"gs://{bucket_name}/{experiment_name}/{RUN_NAME}"
     LOG_DIR           = f"{BASE_OUTPUT_DIR}/logs"
     ARTIFACTS_DIR     = f"{BASE_OUTPUT_DIR}/artifacts"
+    
     print(f"BASE_OUTPUT_DIR : {BASE_OUTPUT_DIR}")
     print(f"LOG_DIR         : {LOG_DIR}")
     print(f"ARTIFACTS_DIR   : {ARTIFACTS_DIR}")
     
     aiplatform.init(project=project_id, location=location)
-    tensorboard = aiplatform.Tensorboard.create(
-        display_name=experiment_name
-        , project=project_id
-        , location=location
-    )
-    TB_RESOURCE_NAME = tensorboard.resource_name
-    TB_ID = TB_RESOURCE_NAME.split('/')[-1]
+    
+    # tensorboard = aiplatform.Tensorboard.create(
+    #     display_name=experiment_name
+    #     , project=project_id
+    #     , location=location
+    # )
+    # TB_RESOURCE_NAME = tensorboard.resource_name
+    # TB_ID = TB_RESOURCE_NAME.split('/')[-1]
     
     # set agent config
     AGENT_TYPE      = 'epsGreedy' # 'LinUCB' | 'LinTS |, 'epsGreedy' | 'NeuralLinUCB'
@@ -242,7 +245,7 @@ def train_validation(
             )
 
             # print step loss
-            if step % 10 == 0:
+            if step % 100 == 0:
                 print(
                     'step = {0}: train loss = {1}'.format(
                         step, round(loss.loss.numpy(), 2)
@@ -252,16 +255,20 @@ def train_validation(
     runtime_mins = int((time.time() - start_time) / 60)
     print(f"train runtime_mins: {runtime_mins}")
     
-    # one time upload
-    aiplatform.upload_tb_log(
-        tensorboard_id=TB_ID,
-        tensorboard_experiment_name=experiment_name,
-        logdir=LOG_DIR,
-        experiment_display_name=experiment_name,
-        run_name_prefix=RUN_NAME,
-        # description=description,
-    )
+    # # one time upload
+    # aiplatform.upload_tb_log(
+    #     tensorboard_id=TB_ID,
+    #     tensorboard_experiment_name=experiment_name,
+    #     logdir=LOG_DIR,
+    #     experiment_display_name=experiment_name,
+    #     run_name_prefix=RUN_NAME,
+    #     # description=description,
+    # )
+    
+    print(f"LOG_DIR: {LOG_DIR}")
+    print(f"tf_record_file: {tf_record_file}")
     
     return (
-        f"{LOG_DIR}"
+        LOG_DIR,
+        tf_record_file
     )

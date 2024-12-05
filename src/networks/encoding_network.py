@@ -15,6 +15,8 @@ from typing import List, Union
 # TF-Agent agents & networks
 from tf_agents.bandits.policies import policy_utilities
 
+from src.utils import train_utils as train_utils
+
 # logging
 import logging
 logging.disable(logging.WARNING)
@@ -40,6 +42,7 @@ class EmbeddingModel:
         global_emb_size: int,
         mv_emb_size: int,
         max_genre_length: int,
+        # reduce_axis: bool,
     ):
         
         self.vocab_dict = vocab_dict
@@ -47,6 +50,7 @@ class EmbeddingModel:
         self.global_emb_size = global_emb_size
         self.mv_emb_size = mv_emb_size
         self.max_genre_length = max_genre_length
+        # self.reduce_axis = reduce_axis
         
         # ====================================================
         # get global context (user) feature embedding models 
@@ -71,6 +75,7 @@ class EmbeddingModel:
             input_dim=len(self.vocab_dict['user_id']) + self.num_oov_buckets,
             output_dim=self.global_emb_size
         )(user_id_lookup)
+        # if self.reduce_axis:
         user_id_embedding = tf.reduce_sum(user_id_embedding, axis=-2)
         
         self.user_id_model = tf.keras.Model(
@@ -95,6 +100,7 @@ class EmbeddingModel:
             input_dim=len(self.vocab_dict['user_age_vocab']) + self.num_oov_buckets,
             output_dim=self.global_emb_size
         )(user_age_lookup)
+        # if self.reduce_axis:
         user_age_embedding = tf.reduce_sum(user_age_embedding, axis=-2)
         
         self.user_age_model = tf.keras.Model(
@@ -120,6 +126,7 @@ class EmbeddingModel:
             input_dim=len(self.vocab_dict['user_occ_vocab']) + self.num_oov_buckets,
             output_dim=self.global_emb_size
         )(user_occ_lookup)
+        # if self.reduce_axis:
         user_occ_embedding = tf.reduce_sum(user_occ_embedding, axis=-2)
         
         self.user_occ_model = tf.keras.Model(
@@ -142,6 +149,7 @@ class EmbeddingModel:
             input_dim=len(self.vocab_dict['timestamp_buckets'].tolist()) + self.num_oov_buckets,
             output_dim=self.global_emb_size
         )(user_ts_lookup)
+        # if self.reduce_axis:
         user_ts_embedding = tf.reduce_sum(user_ts_embedding, axis=-2)
         
         self.user_ts_model = tf.keras.Model(
@@ -167,6 +175,7 @@ class EmbeddingModel:
             input_dim=len(self.vocab_dict['user_zip_vocab']) + self.num_oov_buckets,
             output_dim=self.global_emb_size
         )(user_zip_lookup)
+        # if self.reduce_axis:
         user_zip_embedding = tf.reduce_sum(user_zip_embedding, axis=-2)
         
         self.user_zip_model = tf.keras.Model(
@@ -192,6 +201,7 @@ class EmbeddingModel:
             input_dim=len(self.vocab_dict['user_gender_vocab']) + self.num_oov_buckets,
             output_dim=self.global_emb_size
         )(user_gender_lookup)
+        # if self.reduce_axis:
         user_gender_embedding = tf.reduce_sum(user_gender_embedding, axis=-2)
         
         self.user_gender_model = tf.keras.Model(
@@ -223,6 +233,7 @@ class EmbeddingModel:
             input_dim=len(self.vocab_dict['movie_id']) + self.num_oov_buckets,
             output_dim=self.mv_emb_size
         )(mv_id_lookup)
+        # if self.reduce_axis:
         mv_id_embedding = tf.reduce_sum(mv_id_embedding, axis=-2)
         
         self.mv_id_model = tf.keras.Model(
@@ -247,6 +258,7 @@ class EmbeddingModel:
             input_dim=len(self.vocab_dict['movie_title']) + self.num_oov_buckets,
             output_dim=self.mv_emb_size
         )(mv_title_text)
+        # if self.reduce_axis:
         mv_title_embedding = tf.reduce_sum(mv_title_embedding, axis=-2)
         
         self.mv_title_model = tf.keras.Model(
@@ -271,6 +283,7 @@ class EmbeddingModel:
             input_dim=len(self.vocab_dict['movie_year']) + self.num_oov_buckets,
             output_dim=self.mv_emb_size
         )(mv_year_lookup)
+        # if self.reduce_axis:
         mv_year_embedding = tf.reduce_sum(mv_year_embedding, axis=-2)
         
         self.mv_year_model = tf.keras.Model(
@@ -384,17 +397,33 @@ class EmbeddingModel:
         _mid = self.mv_id_model(x['target_movie_id'])
         _myr = self.mv_year_model(x['target_movie_year'])
         _mtl = self.mv_title_model(x['target_movie_title'])
+        
+        # _mtl = tf.reduce_mean(_mtl, axis=-2)
+        # _mtl = train_utils._add_outer_dimension(_mtl)
 
-        BATCH_SIZE_g = x["target_movie_genres"].shape[0]
-        GEN_LENGTH = x["target_movie_genres"].shape[1]
-        _mgen = self.mv_gen_model(tf.reshape(x['target_movie_genres'], [BATCH_SIZE_g, GEN_LENGTH, 1]))
+        # BATCH_SIZE_g = x["target_movie_genres"].shape[0]
+        # GEN_LENGTH = x["target_movie_genres"].shape[1]
+        
+        # _mgen = self.mv_gen_model(
+        #     tf.reshape(
+        #         x['target_movie_genres'], 
+        #         [
+        #             x["target_movie_genres"].shape[0], 
+        #             x["target_movie_genres"].shape[1], 
+        #             1
+        #         ]
+        #     )
+        # )
+        _mgen = self.mv_gen_model(x['target_movie_genres'])
+    
+        # _mgen = train_utils._add_outer_dimension(_mgen)
 
         # BATCH_SIZE_t = x["movie_tags"].shape[0]
         # TAG_LENGTH = x["movie_tags"].shape[1]
         # _mtag = self.mv_tags_model(tf.reshape(x['movie_tags'], [BATCH_SIZE_t, TAG_LENGTH, 1]))
         
         concat = tf.concat(
-            [_mid, _mgen, _myr, _mtl], axis=-1 #_mtag
+            [_mid, _myr, _mtl, _mgen], axis=-1 #_mtag
         )
 
         return concat

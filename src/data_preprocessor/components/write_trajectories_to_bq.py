@@ -52,7 +52,7 @@ def write_trajectories_to_bq(
     from src.networks import encoding_network as emb_features
     from src.data import data_utils as data_utils
     from src.data import data_config as data_config
-    from src import reward_factory as reward_factory
+    from src.utils import reward_factory as reward_factory
     from src.data_preprocessor import preprocess_utils
 
     # set client SDKs
@@ -63,6 +63,7 @@ def write_trajectories_to_bq(
     )
     storage_client = storage.Client(project=project_id)
     bqclient = bigquery.Client(project=project_id)
+    
     # set variables
     GCS_DATA_PATH        = f"gs://{bucket_name}/{example_gen_gcs_path}"
     NUM_GLOBAL_FEATURES  = len(data_utils.USER_FEATURE_NAMES)     # 6
@@ -128,7 +129,7 @@ def write_trajectories_to_bq(
         num_oov_buckets = num_oov_buckets,
         global_emb_size = global_emb_size,
         mv_emb_size = mv_emb_size,
-        # max_genre_length = data_config.MAX_GENRE_LENGTH,
+        max_genre_length = data_config.MAX_GENRE_LENGTH,
     )
     test_globals = embs._get_global_context_features(data)
     test_arms = embs._get_per_arm_features(data)

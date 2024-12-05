@@ -88,7 +88,7 @@ def train(
     aiplatform.init(
         project=data_config.PROJECT_ID,
         location="us-central1",
-        experiment=experiment_name
+        # experiment=experiment_name
     )
     print(f"hparams dict:")
     pprint(hparams)
@@ -340,6 +340,7 @@ def train(
                 )
                 step = agent.train_step_counter.numpy()
                 loss = _train_step_fn(_parsed_trajectories)
+                # loss = agent.train(experience=_parsed_trajectories)
                 loss_values.append(loss.numpy())
 
                 train_utils._export_metrics_and_summaries(
