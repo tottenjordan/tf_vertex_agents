@@ -1,39 +1,176 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 import pickle
+import functools
 import numpy as np
 import tensorflow as tf
+
 import logging
 logging.disable(logging.WARNING)
 
 from google.cloud import storage
 
+# tf agents
+from tf_agents.trajectories import trajectory
+from tf_agents.bandits.policies import policy_utilities
+from tf_agents.bandits.specs import utils as bandit_spec_utils
+
+# this repo
 from src.data import data_utils as data_utils
 from src.data import data_config as data_config
+from src.utils import train_utils as train_utils
+from src.utils import reward_factory as reward_factory
+# from src.networks import encoding_network as emb_features
 
 storage_client = storage.Client(project=data_config.PROJECT_ID)
-# ====================================================
-# environemnt utils
-# ====================================================
-def compute_optimal_reward_with_my_environment(observation, environment):
-    """Helper function for gin configurable Regret metric."""
-    del observation
-    return tf.py_function(environment.compute_optimal_reward, [], tf.float32)
 
-def compute_optimal_action_with_my_environment(
-    observation, 
-    environment, 
-    action_dtype=tf.int32
+# ====================================================
+# get TF Record Dataset function
+# ====================================================
+def example_proto_to_trajectory(
+    example_proto,
 ):
-    """Helper function for gin configurable SuboptimalArms metric."""
-    del observation
-    return tf.py_function(environment.compute_optimal_action, [], action_dtype)
+    feature_description = {
+        # target/label item features
+        'target_movie_id': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+        'target_movie_rating': tf.io.FixedLenFeature(shape=(), dtype=tf.float32),
+        'target_rating_timestamp': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
+        'target_movie_genres': tf.io.FixedLenFeature(shape=(data_config.MAX_GENRE_LENGTH), dtype=tf.string),
+        'target_movie_year': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
+        'target_movie_title': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+
+        # user - global context features
+        'user_id': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+        'user_gender': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+        'user_age': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
+        'user_occupation_text': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+        'user_zip_code': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
+    }
+    # single_example = tf.io.parse_single_example(example_proto, feature_description)
+    parsed_example = tf.io.parse_single_sequence_example(example_proto, feature_description)
+    
+    return parsed_example[0]
+
+def _trajectory_fn(element, hparams, embs):
+    """Converts a dataset element into a trajectory."""
+    global_features_emb = embs._get_global_context_features(element)
+    arm_features_emb = embs._get_per_arm_features(element)
+    
+    # Adds a time dimension.
+    arm_features = train_utils._add_outer_dimension(arm_features_emb)
+    observation = {
+        bandit_spec_utils.GLOBAL_FEATURE_KEY:
+            # train_utils._add_outer_dimension(tf.concat(global_features_emb, axis=1))
+            train_utils._add_outer_dimension(global_features_emb),
+    }
+    reward = train_utils._add_outer_dimension(reward_factory._get_rewards(element))
+    # reward = train_utils._add_outer_dimension(reward_factory._get_binary_rewards(element))
+    
+    dummy_rewards = tf.zeros([hparams['batch_size'], 1, hparams['num_actions']])
+    policy_info = policy_utilities.PerArmPolicyInfo(
+        chosen_arm_features=arm_features,
+        predicted_rewards_mean=dummy_rewards,
+        # bandit_policy_type=tf.zeros([hparams['batch_size'], 1, 1], dtype=tf.int32)
+    )
+    if hparams['model_type'] == 'NeuralLinUCB':
+        policy_info = policy_info._replace(
+            predicted_rewards_optimistic=dummy_rewards
+        )
+    
+    return trajectory.single_step(
+        observation=observation,
+        action=tf.zeros_like(
+            reward, dtype=tf.int32
+        ),  # Arm features are copied from policy info, put dummy zeros here
+        policy_info=policy_info,
+        reward=reward,
+        discount=tf.zeros_like(reward))
+
+def create_single_tfrecord_ds(
+    filename,
+    process_example_fn,
+    shuffle_buffer_size = 1,
+):
+    raw_ds = tf.data.TFRecordDataset(filename)
+    ds = raw_ds.map(
+        process_example_fn,
+        num_parallel_calls=tf.data.AUTOTUNE
+    )
+    # ds = ds.shuffle(shuffle_buffer_size)
+    ds = ds.prefetch(tf.data.AUTOTUNE)
+    return ds
+
+def create_tfrecord_ds(
+    filenames,
+    process_example_fn,
+    process_trajectory_fn,
+    batch_size: int,
+    shuffle_buffer_size_per_record: int = 1,
+    shuffle_buffer_size: int = 1024,
+    num_shards: int = 50,
+    cycle_length: int = tf.data.AUTOTUNE,
+    block_length: int = 10,
+    num_prefetch: int = 10,
+    num_parallel_calls: int = 10,
+    repeat: bool = True,
+    drop_remainder: bool = False
+):
+    """
+      Each element of the TFRecord data is parsed using the process_example_fn
+      and converted to Tensors. A dataset is created for each record file and these
+      are interleaved together to create the final dataset.
+    """
+    filenames = list(filenames)
+    initial_len = len(filenames)
+    remainder = initial_len % num_shards
+    
+    for _ in range(num_shards - remainder):
+        filenames.append(
+            filenames[np.random.randint(low=0, high=initial_len)]
+        )
+        
+    filenames = np.array(filenames)
+    np.random.shuffle(filenames)
+    filenames = np.array_split(filenames, num_shards)
+    filename_ds = tf.data.Dataset.from_tensor_slices(filenames)
+    
+    if repeat:
+        filename_ds = filename_ds.repeat()
+
+    # filename_ds = filename_ds.shuffle(len(filenames))    
+    example_ds = filename_ds.interleave(
+        functools.partial(
+            create_single_tfrecord_ds,
+            process_example_fn=process_example_fn,
+            shuffle_buffer_size=shuffle_buffer_size_per_record,
+        ),
+        cycle_length=tf.data.AUTOTUNE,
+        block_length=block_length,
+        num_parallel_calls=tf.data.AUTOTUNE,
+    )
+    # parsed dataset; not trajectory yet
+    example_ds = example_ds.shuffle(shuffle_buffer_size)
+    
+    # map trajectory
+    example_ds = example_ds.batch(
+        batch_size,
+        drop_remainder=drop_remainder
+    ).map(
+        process_trajectory_fn,
+        num_parallel_calls=tf.data.AUTOTUNE
+    ).prefetch(num_prefetch)
+  
+    return example_ds
+
 
 # ====================================================
 # get train & val datasets
+# TODO: replace with "create TF Record dataset function
 # ====================================================
 options = tf.data.Options()
 options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
-options.threading.max_intra_op_parallelism = 1 # TODO
-
+options.threading.max_intra_op_parallelism = 1
 
 def _get_train_dataset(
     bucket_name, 
@@ -107,7 +244,6 @@ def _get_train_dataset(
     # train_dataset = train_dataset.cache()
 
     # return train_dataset
-
 
 
 def _get_eval_dataset(bucket_name, data_dir_prefix_path, split, batch_size):
@@ -500,3 +636,20 @@ def from_spec(spec):
             )
 
     return tf.nest.map_structure(_convert_to_tensor_spec, spec)
+
+# ====================================================
+# environemnt utils
+# ====================================================
+def compute_optimal_reward_with_my_environment(observation, environment):
+    """Helper function for gin configurable Regret metric."""
+    del observation
+    return tf.py_function(environment.compute_optimal_reward, [], tf.float32)
+
+def compute_optimal_action_with_my_environment(
+    observation, 
+    environment, 
+    action_dtype=tf.int32
+):
+    """Helper function for gin configurable SuboptimalArms metric."""
+    del observation
+    return tf.py_function(environment.compute_optimal_action, [], action_dtype)

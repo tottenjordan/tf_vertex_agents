@@ -19,26 +19,27 @@ from src.utils import reward_factory, train_utils
 def _run_bandit_eval(
     policy,
     data,
+    embs,
     eval_batch_size: int,
     per_arm_dim: int,
     global_dim: int,
-    vocab_dict: dict,
-    num_oov_buckets: int,
-    global_emb_size: int,
-    mv_emb_size: int,
+    # vocab_dict: dict,
+    # num_oov_buckets: int,
+    # global_emb_size: int,
+    # mv_emb_size: int,
 ):
     actual_rewards = []
     predicted_rewards = []
     trouble_list = []
     train_loss_results = []
     
-    embs = emb_features.EmbeddingModel(
-        vocab_dict = vocab_dict,
-        num_oov_buckets = num_oov_buckets,
-        global_emb_size = global_emb_size,
-        mv_emb_size = mv_emb_size,
-        max_genre_length = data_config.MAX_GENRE_LENGTH
-    )
+    # embs = emb_features.EmbeddingModel(
+    #     vocab_dict = vocab_dict,
+    #     num_oov_buckets = num_oov_buckets,
+    #     global_emb_size = global_emb_size,
+    #     mv_emb_size = mv_emb_size,
+    #     max_genre_length = data_config.MAX_GENRE_LENGTH
+    # )
     
     dummy_arm = tf.zeros([eval_batch_size, per_arm_dim], dtype=tf.float32)
 

@@ -6,6 +6,7 @@
 **TODOs**
 * better organize this subfolder
 * consider moving `02g-*` notebooks (optimized, batched datasets) to seperate subfolder?
+* `with tf.compat.v2.summary.record_if()`: [see example](https://github.com/tensorflow/agents/blob/master/tf_agents/agents/td3/examples/v2/train_eval.py#L128C1-L130C5)
 
 
 ## Objectives

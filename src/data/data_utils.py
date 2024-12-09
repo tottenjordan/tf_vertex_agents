@@ -37,7 +37,6 @@ MOVIE_FEATURE_NAMES = [
     'target_movie_genres',
     # 'target_movie_tags',
 ]
-# TARGET_FEATURE_NAME = "user_rating"
 TARGET_FEATURE_NAME = "target_movie_rating"
 
 # ==========================================
@@ -60,6 +59,55 @@ def download_blob(
             source_blob_name, bucket_name, destination_file_name
         )
     )
+
+# ============================================
+# load movielens
+# ============================================
+def load_movielens_ratings(
+    ratings_dataset
+    , num_users: int
+    , num_movies: int
+    , user_age_lookup_dict: dict
+    , user_occ_lookup_dict: dict
+    # , movie_gen_lookup_dict: dict
+):
+    """
+    > loads (wide) movielens ratings data 
+    > returns ratings matrix
+    """
+    ratings_matrix = np.zeros([num_users, num_movies])
+    
+    local_data = ratings_dataset.map(
+        lambda x: {
+            'user_id': x['user_id']
+            ,'target_movie_id':  x['target_movie_id']
+            ,'target_movie_rating':  x['target_movie_rating']
+            ,'user_age': x['user_age']
+            ,'user_occupation_text': x['user_occupation_text']
+            # ,'movie_genres': x['movie_genres'][0]
+        }
+    )
+    user_age_int = []
+    user_occ_int = []
+    mov_gen_int = []
+    
+    for row in local_data:
+        ratings_matrix[
+            int(row['user_id'].numpy()) - 1
+            , int(row['target_movie_id'].numpy()) - 1
+        ] = float(row['target_movie_rating'].numpy())
+        
+        user_age_int.append(
+            # float(user_age_lookup_dict[row['user_age'].numpy()]) + .0001
+            float(row['user_age'].numpy()) + .0001
+        )
+        user_occ_int.append(
+            float(user_occ_lookup_dict[row['user_occupation_text'].numpy()]) + .0001
+        )
+        # mov_gen_int.append(
+        #     float(movie_gen_lookup_dict[row['movie_genres'].numpy()]) + .0001
+        # ) 
+    return ratings_matrix, np.array(user_age_int), np.array(user_occ_int)
 
 # ==========================================
 # parsing functions
@@ -110,55 +158,6 @@ def get_dictionary_lookup_by_tf_data_key(key, dataset) -> Dict:
     
     #return a dictionary of keys by integer values for the feature space
     return {val: i for i, val in enumerate(unique_elems)}
-
-# ============================================
-# load movielens
-# ============================================
-def load_movielens_ratings(
-    ratings_dataset
-    , num_users: int
-    , num_movies: int
-    , user_age_lookup_dict: dict
-    , user_occ_lookup_dict: dict
-    # , movie_gen_lookup_dict: dict
-):
-    """
-    > loads (wide) movielens ratings data 
-    > returns ratings matrix
-    """
-    ratings_matrix = np.zeros([num_users, num_movies])
-    
-    local_data = ratings_dataset.map(
-        lambda x: {
-            'user_id': x['user_id']
-            ,'target_movie_id':  x['target_movie_id']
-            ,'target_movie_rating':  x['target_movie_rating']
-            ,'user_age': x['user_age']
-            ,'user_occupation_text': x['user_occupation_text']
-            # ,'movie_genres': x['movie_genres'][0]
-        }
-    )
-    user_age_int = []
-    user_occ_int = []
-    mov_gen_int = []
-    
-    for row in local_data:
-        ratings_matrix[
-            int(row['user_id'].numpy()) - 1
-            , int(row['target_movie_id'].numpy()) - 1
-        ] = float(row['target_movie_rating'].numpy())
-        
-        user_age_int.append(
-            # float(user_age_lookup_dict[row['user_age'].numpy()]) + .0001
-            float(row['user_age'].numpy()) + .0001
-        )
-        user_occ_int.append(
-            float(user_occ_lookup_dict[row['user_occupation_text'].numpy()]) + .0001
-        )
-        # mov_gen_int.append(
-        #     float(movie_gen_lookup_dict[row['movie_genres'].numpy()]) + .0001
-        # ) 
-    return ratings_matrix, np.array(user_age_int), np.array(user_occ_int)
 
 # Sequence examples for REINFORCE #TODO
 seq_feature_description = {

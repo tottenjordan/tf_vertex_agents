@@ -104,8 +104,7 @@ def get_args(raw_args: List[str]) -> argparse.Namespace:
     parser.add_argument("--distribute", default="single", type=str, help="")
     parser.add_argument("--experiment_name", default="tmp-experiment", type=str)
     parser.add_argument("--experiment_run", default="tmp-experiment-run", type=str)
-    parser.add_argument("--agent_type", default="epsGreedy", type=str, help="'LinUCB' | 'LinTS |, 'epsGreedy' | 'NeuralLinUCB'")
-    parser.add_argument("--network_type", default="dotproduct", type=str, help="'commontower' | 'dotproduct'")
+    parser.add_argument("--tb_resource_name", default=None, type=str, help="")
     # Hyperparameters
     parser.add_argument("--batch_size", default=128, type=int)
     parser.add_argument("--eval_batch_size", default=1, type=int)
@@ -115,6 +114,8 @@ def get_args(raw_args: List[str]) -> argparse.Namespace:
     parser.add_argument("--num_eval_steps", default=1000, type=int)
     parser.add_argument("--num_actions", default=20, type=int, help="Number of actions (movie items) to choose from.")
     # agent & network config
+    parser.add_argument("--agent_type", default="epsGreedy", type=str, help="'LinUCB' | 'LinTS |, 'epsGreedy' | 'NeuralLinUCB'")
+    parser.add_argument("--network_type", default="dotproduct", type=str, help="'commontower' | 'dotproduct'")
     parser.add_argument("--global_dim", type=int, default=1, help="")
     parser.add_argument("--per_arm_dim", type=int, default=1, help="")
     parser.add_argument("--log_interval", type=int, default=1, help="")
@@ -198,6 +199,7 @@ def main(args: argparse.Namespace):
     GLOBAL_LAYERS = train_utils.get_arch_from_string(args.global_layers)
     ARM_LAYERS = train_utils.get_arch_from_string(args.arm_layers)
     COMMON_LAYERS = train_utils.get_arch_from_string(args.common_layers)
+    
     print(f'GLOBAL_LAYERS    : {GLOBAL_LAYERS}')
     print(f'ARM_LAYERS       : {ARM_LAYERS}')
     print(f'COMMON_LAYERS    : {COMMON_LAYERS}')
@@ -276,51 +278,51 @@ def main(args: argparse.Namespace):
             max_genre_length = data_config.MAX_GENRE_LENGTH,
         )
 
-        def _trajectory_fn(element):
+#         def _trajectory_fn(element):
 
-            """
-            Converts a dataset element into a trajectory.
-            """
-            global_features = embs._get_global_context_features(element)
-            arm_features = embs._get_per_arm_features(element)
+#             """
+#             Converts a dataset element into a trajectory.
+#             """
+#             global_features = embs._get_global_context_features(element)
+#             arm_features = embs._get_per_arm_features(element)
 
-            # Adds a time dimension.
-            arm_features = train_utils._add_outer_dimension(arm_features)
+#             # Adds a time dimension.
+#             arm_features = train_utils._add_outer_dimension(arm_features)
 
-            # obs spec
-            observation = {
-                bandit_spec_utils.GLOBAL_FEATURE_KEY:
-                    train_utils._add_outer_dimension(global_features)
-            }
+#             # obs spec
+#             observation = {
+#                 bandit_spec_utils.GLOBAL_FEATURE_KEY:
+#                     train_utils._add_outer_dimension(global_features)
+#             }
 
-            reward = train_utils._add_outer_dimension(reward_factory._get_rewards(element))
+#             reward = train_utils._add_outer_dimension(reward_factory._get_rewards(element))
 
-            # To emit the predicted rewards in policy_info, we need to create dummy
-            # rewards to match the definition in TensorSpec for the ones specified in
-            # emit_policy_info set.
-            dummy_rewards = tf.zeros([args.batch_size, 1, args.num_actions])
-            policy_info = policy_utilities.PerArmPolicyInfo(
-                chosen_arm_features=arm_features,
-                # Pass dummy mean rewards here to match the model_spec for emitting
-                # mean rewards in policy info
-                predicted_rewards_mean=dummy_rewards,
-                bandit_policy_type=tf.zeros([args.batch_size, 1, 1], dtype=tf.int32)
-            )
+#             # To emit the predicted rewards in policy_info, we need to create dummy
+#             # rewards to match the definition in TensorSpec for the ones specified in
+#             # emit_policy_info set.
+#             dummy_rewards = tf.zeros([args.batch_size, 1, args.num_actions])
+#             policy_info = policy_utilities.PerArmPolicyInfo(
+#                 chosen_arm_features=arm_features,
+#                 # Pass dummy mean rewards here to match the model_spec for emitting
+#                 # mean rewards in policy info
+#                 predicted_rewards_mean=dummy_rewards,
+#                 bandit_policy_type=tf.zeros([args.batch_size, 1, 1], dtype=tf.int32)
+#             )
 
-            if args.agent_type == 'neural_ucb':
-                policy_info = policy_info._replace(
-                    predicted_rewards_optimistic=dummy_rewards
-                )
+#             if args.agent_type == 'neural_ucb':
+#                 policy_info = policy_info._replace(
+#                     predicted_rewards_optimistic=dummy_rewards
+#                 )
 
-            return trajectory.single_step(
-                observation=observation,
-                action=tf.zeros_like(
-                    reward, dtype=tf.int32
-                ),  # Arm features are copied from policy info, put dummy zeros here
-                policy_info=policy_info,
-                reward=reward,
-                discount=tf.zeros_like(reward)
-            )
+#             return trajectory.single_step(
+#                 observation=observation,
+#                 action=tf.zeros_like(
+#                     reward, dtype=tf.int32
+#                 ),  # Arm features are copied from policy info, put dummy zeros here
+#                 policy_info=policy_info,
+#                 reward=reward,
+#                 discount=tf.zeros_like(reward)
+#             )
     
     # ====================================================
     # create agent
@@ -387,42 +389,74 @@ def main(args: argparse.Namespace):
     tf.print("Inpsecting agent policy from task file: Complete")
 
     # ====================================================
+    # train files
+    # ====================================================
+    train_files = []
+    for blob in storage_client.list_blobs(
+        f"{args.bucket_name}", 
+        prefix=f'{args.data_dir_prefix_path}/train'
+    ):
+        if '.tfrecord' in blob.name:
+            train_files.append(
+                blob.public_url.replace(
+                    "https://storage.googleapis.com/", "gs://"
+                )
+            )
+    if args.is_testing:
+        train_files = train_files[:3]
+    print(f"number of train_files: {len(train_files)}")
+    
+    # ====================================================
     # val dataset
     # ====================================================
-    # train_dataset = train_utils._get_train_dataset(
-    #     bucket_name=args.bucket_name,
-    #     data_dir_prefix_path=args.data_dir_prefix_path, 
-    #     batch_size = args.batch_size,
-    #     num_replicas = NUM_REPLICAS,
-    #     cache = args.cache_train,
-    #     is_testing=args.is_testing,
-    # )
-    val_dataset = train_utils._get_eval_dataset(
+    eval_ds = train_utils._get_eval_dataset(
         args.bucket_name, 
         args.data_dir_prefix_path, 
         split="val", 
         batch_size=args.eval_batch_size
     )
-    eval_ds = val_dataset.batch(args.eval_batch_size)
+    eval_ds = eval_ds.batch(args.eval_batch_size)
 
     if args.num_eval_steps > 0:
         eval_ds = eval_ds.take(args.num_eval_steps)
 
-    with distribution_strategy.scope():
-        eval_ds = eval_ds.cache()
-
+    # with distribution_strategy.scope():
+    eval_ds = eval_ds.cache()
     tf.print(f"eval_ds: {eval_ds}")
+    
     # ====================================================
     # TB summary writer
     # ====================================================
     tf.print(f"log_dir: {log_dir}")
     tf.print(f"current thread has eager execution enabled: {tf.executing_eagerly()}")
 
-    with distribution_strategy.scope():
-        train_summary_writer = tf.compat.v2.summary.create_file_writer(
-            log_dir, flush_millis=10 * 1000
-        )
-        train_summary_writer.set_as_default()
+    # with distribution_strategy.scope():
+    train_summary_writer = tf.compat.v2.summary.create_file_writer(
+        log_dir, flush_millis=10 * 1000
+    )
+    train_summary_writer.set_as_default()
+
+    # ====================================================
+    # hyperparams dict
+    # ====================================================
+    HPARAMS = {  # TODO - streamline and consolidate
+        "batch_size": args.batch_size,
+        "eval_batch_size" : args.eval_batch_size,
+        "num_actions": args.num_actions,
+        "global_emb_size": args.global_emb_size,
+        "arm_emb_size": args.mv_emb_size,
+        "global_dim": args.global_dim,
+        "per_arm_dim": args.per_arm_dim,
+        "global_layers": GLOBAL_LAYERS,
+        "per_arm_layers": ARM_LAYERS,
+        "common_layers": COMMON_LAYERS,
+        "learning_rate": args.learning_rate,
+        "epsilon": args.epsilon,
+        "encoding_dim": args.encoding_dim,
+        "num_oov_buckets": args.num_oov_buckets,
+        "model_type": args.agent_type,
+        "network_type": args.network_type,
+    }
 
     # ====================================================
     # train loop
@@ -435,22 +469,25 @@ def main(args: argparse.Namespace):
 
     metric_results, trained_agent = train_perarm.train_perarm(
         agent = agent,
-        epsilon = args.epsilon,
+        embs = embs,
+        hparams = HPARAMS,
+        train_files = train_files,
+        # epsilon = args.epsilon,
         reward_spec = reward_tensor_spec,
         global_dim = args.global_dim,
         per_arm_dim = args.per_arm_dim,
         num_iterations = args.training_loops,
         steps_per_loop = args.steps_per_loop,
         # data
-        batch_size=args.batch_size,
+        # batch_size=args.batch_size,
         # functions
-        _trajectory_fn = _trajectory_fn,
+        # _trajectory_fn = _trajectory_fn,
         # train intervals
         chkpt_interval = args.chkpt_interval,
         log_interval = args.log_interval,
         # dirs
-        bucket_name=args.bucket_name,
-        data_dir_prefix_path=args.data_dir_prefix_path,
+        # bucket_name=args.bucket_name,
+        # data_dir_prefix_path=args.data_dir_prefix_path,
         log_dir=args.log_dir,
         model_dir=args.artifacts_dir,
         chkpoint_dir=args.chkpoint_dir,
@@ -459,11 +496,11 @@ def main(args: argparse.Namespace):
         profiler=args.profiler,
         train_summary_writer = train_summary_writer,
         global_step = global_step,
-        num_replicas = NUM_REPLICAS,
-        cache_train_data = args.cache_train,
+        # num_replicas = NUM_REPLICAS,
+        # cache_train_data = args.cache_train,
         strategy = distribution_strategy,
         # saver = saver,
-        is_testing=args.is_testing,
+        # is_testing=args.is_testing,
         num_epochs=args.num_epochs,
     )
 
@@ -488,14 +525,11 @@ def main(args: argparse.Namespace):
 
     val_loss, preds, tr_rewards = eval_perarm._run_bandit_eval(
         policy = trained_policy,
-        data = eval_ds, # eval_ds | dist_eval_ds
+        data = eval_ds,
+        embs = embs,
         eval_batch_size = args.eval_batch_size,
         per_arm_dim = args.per_arm_dim,
         global_dim = args.global_dim,
-        vocab_dict = VOCAB_DICT,
-        num_oov_buckets = args.num_oov_buckets,
-        global_emb_size = args.global_emb_size,
-        mv_emb_size = args.mv_emb_size,
     )
 
     runtime_mins = int((time.time() - start_time) / 60)
@@ -512,7 +546,7 @@ def main(args: argparse.Namespace):
 
         with vertex_ai.start_run(
             f'{args.experiment_run}',
-            # tensorboard=args.tb_resource_name
+            tensorboard=args.tb_resource_name
         ) as my_run:
 
             # tf.print(f"logging time-series metrics...")
