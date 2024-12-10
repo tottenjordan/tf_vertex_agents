@@ -278,52 +278,6 @@ def main(args: argparse.Namespace):
             max_genre_length = data_config.MAX_GENRE_LENGTH,
         )
 
-#         def _trajectory_fn(element):
-
-#             """
-#             Converts a dataset element into a trajectory.
-#             """
-#             global_features = embs._get_global_context_features(element)
-#             arm_features = embs._get_per_arm_features(element)
-
-#             # Adds a time dimension.
-#             arm_features = train_utils._add_outer_dimension(arm_features)
-
-#             # obs spec
-#             observation = {
-#                 bandit_spec_utils.GLOBAL_FEATURE_KEY:
-#                     train_utils._add_outer_dimension(global_features)
-#             }
-
-#             reward = train_utils._add_outer_dimension(reward_factory._get_rewards(element))
-
-#             # To emit the predicted rewards in policy_info, we need to create dummy
-#             # rewards to match the definition in TensorSpec for the ones specified in
-#             # emit_policy_info set.
-#             dummy_rewards = tf.zeros([args.batch_size, 1, args.num_actions])
-#             policy_info = policy_utilities.PerArmPolicyInfo(
-#                 chosen_arm_features=arm_features,
-#                 # Pass dummy mean rewards here to match the model_spec for emitting
-#                 # mean rewards in policy info
-#                 predicted_rewards_mean=dummy_rewards,
-#                 bandit_policy_type=tf.zeros([args.batch_size, 1, 1], dtype=tf.int32)
-#             )
-
-#             if args.agent_type == 'neural_ucb':
-#                 policy_info = policy_info._replace(
-#                     predicted_rewards_optimistic=dummy_rewards
-#                 )
-
-#             return trajectory.single_step(
-#                 observation=observation,
-#                 action=tf.zeros_like(
-#                     reward, dtype=tf.int32
-#                 ),  # Arm features are copied from policy info, put dummy zeros here
-#                 policy_info=policy_info,
-#                 reward=reward,
-#                 discount=tf.zeros_like(reward)
-#             )
-    
     # ====================================================
     # create agent
     # ====================================================
@@ -472,22 +426,13 @@ def main(args: argparse.Namespace):
         embs = embs,
         hparams = HPARAMS,
         train_files = train_files,
-        # epsilon = args.epsilon,
         reward_spec = reward_tensor_spec,
         global_dim = args.global_dim,
         per_arm_dim = args.per_arm_dim,
         num_iterations = args.training_loops,
         steps_per_loop = args.steps_per_loop,
-        # data
-        # batch_size=args.batch_size,
-        # functions
-        # _trajectory_fn = _trajectory_fn,
-        # train intervals
         chkpt_interval = args.chkpt_interval,
         log_interval = args.log_interval,
-        # dirs
-        # bucket_name=args.bucket_name,
-        # data_dir_prefix_path=args.data_dir_prefix_path,
         log_dir=args.log_dir,
         model_dir=args.artifacts_dir,
         chkpoint_dir=args.chkpoint_dir,
@@ -496,11 +441,7 @@ def main(args: argparse.Namespace):
         profiler=args.profiler,
         train_summary_writer = train_summary_writer,
         global_step = global_step,
-        # num_replicas = NUM_REPLICAS,
-        # cache_train_data = args.cache_train,
         strategy = distribution_strategy,
-        # saver = saver,
-        # is_testing=args.is_testing,
         num_epochs=args.num_epochs,
     )
 

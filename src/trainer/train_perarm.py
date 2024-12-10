@@ -59,7 +59,6 @@ options.threading.max_intra_op_parallelism = 1 # TODO
 def train_perarm(
     agent,
     reward_spec,
-    # epsilon,
     embs,
     train_files,
     hparams: dict,
@@ -71,10 +70,6 @@ def train_perarm(
     log_dir: str,
     model_dir: str,
     chkpoint_dir: str,
-    # batch_size: int,
-    # bucket_name: str,
-    # data_dir_prefix_path: str,
-    # _trajectory_fn = None,
     log_interval: int = 10,
     chkpt_interval: int = 100,
     additional_metrics: Optional[List[TFStepMetric]] = None,
@@ -82,13 +77,10 @@ def train_perarm(
     use_tpu = False,
     profiler = False,
     global_step = None,
-    # num_replicas = 1,
-    # cache_train_data = True,
     saver = None,
     strategy: tf.distribute.Strategy = None,
     train_summary_writer: Optional[tf.summary.SummaryWriter] = None,
     use_tf_functions: bool = True,
-    # is_testing: bool = False,
 ) -> Dict[str, List[float]]:
     
     # # GPU - All variables & Agents need to be created under strategy.scope()
@@ -204,11 +196,7 @@ def train_perarm(
             for i in tf.range(num_iterations):
                 step = agent.train_step_counter.numpy()
 
-                # experience = next(train_dataset_iterator)
-                # loss = train_step(experience)
-
                 loss = train_step()
-
                 list_o_loss.append(loss.numpy())
 
                 if step % log_interval == 0:
@@ -239,6 +227,7 @@ def train_perarm(
     print(f"saved to checkpoint_manager: {chkpoint_dir}")
     
     return list_o_loss, agent
+
 #     # ==== Distributed ========#
     
 #     # ====================================================
