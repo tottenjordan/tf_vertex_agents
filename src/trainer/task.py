@@ -75,6 +75,25 @@ storage_client = storage.Client(project=data_config.PROJECT_ID)
 options = tf.data.Options()
 options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.AUTO
 
+def get_filenames(
+    bucket_name,
+    prefix,
+    split,
+):
+    file_list = []
+    for blob in storage_client.list_blobs(
+        f"{bucket_name}", 
+        prefix=f'{prefix}/{split}'
+    ):
+        if '.tfrecord' in blob.name:
+            file_list.append(
+                blob.public_url.replace(
+                    "https://storage.googleapis.com/", "gs://"
+                )
+            )
+    
+    return file_list
+
 # ====================================================
 # Args
 # ====================================================
@@ -345,24 +364,25 @@ def main(args: argparse.Namespace):
     # ====================================================
     # train files
     # ====================================================
-    train_files = []
-    for blob in storage_client.list_blobs(
-        f"{args.bucket_name}", 
-        prefix=f'{args.data_dir_prefix_path}/train'
-    ):
-        if '.tfrecord' in blob.name:
-            train_files.append(
-                blob.public_url.replace(
-                    "https://storage.googleapis.com/", "gs://"
-                )
-            )
+    train_files = get_filenames(
+        bucket_name=args.bucket_name,
+        prefix=args.data_dir_prefix_path,
+        split="train",
+    )
+    val_files = get_filenames(
+        bucket_name=args.bucket_name,
+        prefix=args.data_dir_prefix_path,
+        split="val",
+    )
     if args.is_testing:
         train_files = train_files[:3]
     print(f"number of train_files: {len(train_files)}")
+    print(f"number of val_files  : {len(val_files)}")
     
     # ====================================================
     # val dataset
     # ====================================================
+    # TODO:
     eval_ds = train_utils._get_eval_dataset(
         args.bucket_name, 
         args.data_dir_prefix_path, 

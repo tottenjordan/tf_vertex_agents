@@ -540,13 +540,11 @@ def restore_and_get_checkpoint_manager(
     )
     latest = checkpoint_manager.latest_checkpoint
     if latest is not None:
-        logging.info('Restoring checkpoint from %s.', latest)
+        print(f'Restoring checkpoint from {latest}')
         checkpoint.restore(latest)
-        logging.info('Successfully restored to step %s.', step_metric.result())
+        print(f'Successfully restored to step {step_metric.numpy()}')
     else:
-        logging.info(
-            'Did not find a pre-existing checkpoint. Starting from scratch.'
-        )
+        print('Did not find a pre-existing checkpoint. Starting from scratch.')
     return checkpoint_manager
 
 # ====================================================
