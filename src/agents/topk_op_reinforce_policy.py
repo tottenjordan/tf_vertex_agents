@@ -178,7 +178,6 @@ def _get_last_valid_states(states, step_types):
         axis=1,
     )
     indices = tf.argmax(is_last, axis=1)
-  
     return tf.gather(states, indices, axis=1, batch_dims=1)
 
 
@@ -254,9 +253,7 @@ class TopKOffPolicyReinforcePolicy(tf_policy.TFPolicy):
         self._emit_logits_as_info = emit_logits_as_info
 
         info_spec = (
-            tf.TensorSpec(shape=(None,), dtype=tf.float32)
-            if emit_logits_as_info
-            else ()
+            tf.TensorSpec(shape=(None,), dtype=tf.float32) if emit_logits_as_info else ()
         )
         super(TopKOffPolicyReinforcePolicy, self).__init__(
             time_step_spec=time_step_spec,

@@ -1,14 +1,25 @@
 """
 utils for the REINFORCE Recommender Agent
 """
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 import functools
+import numpy as np
 import tensorflow as tf
 from typing import Sequence
-from tf_agents.typing import types
+
 from tensorflow.python.ops import nn_impl
+
+from tf_agents.typing import types
 from tf_agents.networks import sequential
 from tf_agents.networks import utils as network_utils
 from tf_agents.keras_layers import dynamic_unroll_layer
+
+from tf_agents.trajectories import trajectory
+from tf_agents.trajectories import time_step as ts
+
+from src.data import data_config as data_config
 
 IntegerLookup = tf.keras.layers.IntegerLookup
 StringLookup = tf.keras.layers.StringLookup
@@ -123,12 +134,10 @@ dense = functools.partial(
         distribution='truncated_normal'
     )
 )
-
 fused_lstm_cell = functools.partial(
     tf.keras.layers.LSTMCell, 
     implementation=KERAS_LSTM_FUSED
 )
-
 embedding = functools.partial(tf.keras.layers.Embedding, input_length=1)
 
 def create_state_embedding_network(
@@ -156,172 +165,165 @@ def create_state_embedding_network(
 # ==============================================
 # data utils 
 # ==============================================
-
-# def create_record_io_dataset(
-#     filenames: Sequence[Text],
-#     process_example_fn: ProcessExampleFnType,
-#     batch_size: int,
-#     shuffle_buffer_size_per_record: int = 1,
-#     shuffle_buffer_size: int = 10000,
-#     num_shards: int = 50,
-#     cycle_length: int = tf.data.experimental.AUTOTUNE,
-#     block_length: int = 10,
-#     num_prefetch: int = 10,
-#     num_parallel_calls: int = 10,
-#     repeat: bool = True,
-#     drop_remainder: bool = False
-# ):
-#     """
-#     Creates a RecordIO dataset from a list of filenames.
-
-#     Each element of the RecordIO data is processed using the process_example_fn
-#      and converted to Tensors. A dataset is created for each record file and these
-#      are interleaved together to create the final dataset.
-
-#     Args:
-#      filenames: List of filenames of a RecordIO dataset containing TF Examples.
-#      process_example_fn: A function to process each element in the dataset.
-#      batch_size: The batch size of tensors in the returned dataset.
-#      shuffle_buffer_size_per_record: The buffer size used for shuffling within a
-#        Record file.
-#      shuffle_buffer_size: The shuffle buffer size for the interleaved dataset.
-#      num_shards: The number of shards, each consisting of 1 or more record file
-#        datasets, that are then interleaved together.
-#      cycle_length: The number of input elements processed concurrently while
-#        interleaving.
-#      block_length: The number of consecutive elements to produce from each input
-#        element before cycling to another input element.
-#      num_prefetch: Number of batches to prefetch.
-#      num_parallel_calls: Number of parallel calls for interleave.
-#      repeat: If true, continuously cycles through the shards.
-#      drop_remainder: Whether to drop the remainder when batching.
-
-#     Returns:
-#      A TF.Dataset containing a batch of nested Tensors.
-
-#     Raises:
-#      ValueError: When repeat is False, and the number of files is not divisible
-#        by the number of shards.
-#     """
-#     filenames = list(filenames)
-#     initial_len = len(filenames)
-#     remainder = initial_len % num_shards
-  
-#     if not repeat and remainder != 0:
-#         raise ValueError(
-#             'When `repeat` is False, the number of files should be '
-#             'divisible by the number of shards.'
-#         )
-
-#     for _ in range(num_shards - remainder):
-#         filenames.append(filenames[np.random.randint(low=0, high=initial_len)])
-  
-#     filenames = np.array(filenames)
-#     np.random.shuffle(filenames)
-#     filenames = np.array_split(filenames, num_shards)
-
-#     filename_ds = tf.data.Dataset.from_tensor_slices(filenames)
-#     if repeat:
-#         filename_ds = filename_ds.repeat()
-#     filename_ds = filename_ds.shuffle(len(filenames))
-
-#     example_ds = filename_ds.interleave(
-#         functools.partial(
-#             create_single_record_io_dataset,
-#             process_example_fn=process_example_fn,
-#             shuffle_buffer_size=shuffle_buffer_size_per_record,
-#         ),
-#         cycle_length=cycle_length,
-#         block_length=block_length,
-#         num_parallel_calls=num_parallel_calls,
-#     )
-#     example_ds = example_ds.shuffle(shuffle_buffer_size)
-#     example_ds = example_ds.batch(
-#         batch_size, drop_remainder=drop_remainder
-#     ).prefetch(num_prefetch)
+def create_tfrecord_ds(
+    filenames,
+    process_example_fn,
+    batch_size: int,
+    shuffle_buffer_size_per_record: int = 1,
+    shuffle_buffer_size: int = 10000,
+    num_shards: int = 50,
+    cycle_length: int = tf.data.AUTOTUNE,
+    block_length: int = 10,
+    num_prefetch: int = 10,
+    num_parallel_calls: int = 10,
+    repeat: bool = True,
+    drop_remainder: bool = False
+):
+    filenames = list(filenames)
+    initial_len = len(filenames)
+    remainder = initial_len % num_shards
     
-#     return example_ds
+    for _ in range(num_shards - remainder):
+        filenames.append(
+            filenames[np.random.randint(low=0, high=initial_len)]
+        )
+        
+    filenames = np.array(filenames)
+    np.random.shuffle(filenames)
+    filenames = np.array_split(filenames, num_shards)
+    filename_ds = tf.data.Dataset.from_tensor_slices(filenames)
+    
+    if repeat:
+        filename_ds = filename_ds.repeat()
+    
+    filename_ds = filename_ds.shuffle(len(filenames))
+    
+    example_ds = filename_ds.interleave(
+        functools.partial(
+            create_single_tfrecord_ds,
+            process_example_fn=process_example_fn,
+            shuffle_buffer_size=shuffle_buffer_size_per_record,
+        ),
+        cycle_length=tf.data.AUTOTUNE,
+        block_length=block_length,
+        num_parallel_calls=tf.data.AUTOTUNE,
+    )
+    example_ds = example_ds.shuffle(shuffle_buffer_size)
+    
+    example_ds = example_ds.batch(
+        batch_size, drop_remainder=drop_remainder
+    ).prefetch(num_prefetch)
+  
+    return example_ds
 
+def create_single_tfrecord_ds(
+    filename,
+    process_example_fn,
+    shuffle_buffer_size = 1,
+):
+    raw_ds = tf.data.TFRecordDataset(filename)
+    
+    ds = raw_ds.map(
+        process_example_fn,
+        num_parallel_calls=tf.data.AUTOTUNE
+    )
+    ds = ds.shuffle(shuffle_buffer_size)
+    ds = ds.prefetch(tf.data.AUTOTUNE)
+    return ds
 
-# def example_proto_to_trajectory(
-#     example_proto: types.Tensor,
-#     sequence_length: int
-# ):
-#     """
-#     Converts a sequence example proto to a Trajectory and weights for training.
+def example_proto_to_trajectory(
+    example_proto, # sequence_feature,
+    sequence_length: int
+):
+    """
+    Converts a sequence example to a Trajectory and weights for training.
 
-#     For now, we are using the following simplified features. At every point in
-#     time, the `offer_docid` field in the proto is the action and the `offer_docid`
-#     at the previous time step (last action) is the observation. The `clicks` field
-#     is converted to a binary reward.
+    For now, we are using the following simplified features. At every point in
+    time, the `context_movie_id` field in the sequence is the action and the `context_movie_id`
+    at the previous time step (last action) is the observation. The `context_movie_rating` field
+    is converted to a binary reward.
 
-#     If the sequence example is longer than than `sequence_length`, we only take
-#     the last part of the sequence example. If it is shorter, we pad it with dummy
-#     values at the end to equal `sequence_length`.
+    If the sequence example is longer than than `sequence_length`, we only take
+    the last part of the sequence example. If it is shorter, we pad it with dummy
+    values at the end to equal `sequence_length`.
 
-#     Args:
-#     example_proto: A serialized SequenceExample proto to convert to a
-#       trajectory.
-#     sequence_length: The time dimension of the returned trajectory.
+    Args:
+    sequence_feature: A serialized SequenceExample to convert to a
+      trajectory.
+    sequence_length: The time dimension of the returned trajectory.
 
-#     Returns:
-#     trajectory: An unbatched trajectory. The time dimension will be equal to
-#       sequence length. The agent assumes that this trajectory is a single
-#       episode, so `trajectory.step_type` and `trajectory.discount` are ignored.
-#     weights: A [T] float tensor of weights. Each row of `weights`
-#         (along the time dimension) is usually a sequence of 0's, followed by
-#         a sequence of 1's, again followed by a sequence of 0's. This divides
-#         the trajectory into 3 parts. The first part is used to warm start
-#         the state embedding network. The second part is used to compute
-#         losses. Returns are computed using the second and third parts.
-#     """
+    Returns:
+    trajectory: An unbatched trajectory. The time dimension will be equal to
+      sequence length. The agent assumes that this trajectory is a single
+      episode, so `trajectory.step_type` and `trajectory.discount` are ignored.
+    weights: A [T] float tensor of weights. Each row of `weights`
+        (along the time dimension) is usually a sequence of 0's, followed by
+        a sequence of 1's, again followed by a sequence of 0's. This divides
+        the trajectory into 3 parts. The first part is used to warm start
+        the state embedding network. The second part is used to compute
+        losses. Returns are computed using the second and third parts.
+    """
+    
+    feature_description = {
+        'context_movie_id': tf.io.FixedLenFeature(shape=(data_config.MAX_CONTEXT_LENGTH), dtype=tf.string),
+        'context_movie_rating': tf.io.FixedLenFeature(shape=(data_config.MAX_CONTEXT_LENGTH), dtype=tf.float32),
+    }
+    
+    sequence_feature = tf.io.parse_single_sequence_example(example_proto, feature_description)
+    
+    context_id_int = tf.strings.to_number(
+        sequence_feature[0]['context_movie_id'],
+        out_type=tf.dtypes.int64,
+        name=None
+    )
+    
+    sequence_feature[0]['context_movie_id'] = context_id_int
+    actions = sequence_feature[0]['context_movie_id'][-sequence_length:]
+    rewards = sequence_feature[0]['context_movie_rating'][-sequence_length:]
+    observations = sequence_feature[0]['context_movie_id'][-(sequence_length+1):-1]
 
-#   _, sequence_feature = tf.io.parse_single_sequence_example(
-#       example_proto,
-#       sequence_features={
-#           'offer_docid':
-#               tf.io.FixedLenSequenceFeature([], tf.int64, default_value=None),
-#           'clicks':
-#               tf.io.FixedLenSequenceFeature([], tf.int64, default_value=None),
-#       })
+    # actual length
+    actual_sequence_length = tf.shape(observations)[0]
+    
+    actions = actions[-actual_sequence_length:]
+    rewards = rewards[-actual_sequence_length:]
 
-#   clicks = sequence_feature['clicks'][-sequence_length:]
+    # padding
+    paddings = tf.stack([0, sequence_length - actual_sequence_length])
+    paddings = tf.expand_dims(paddings, 0)
 
-#   rewards = tf.cast(clicks > 0, dtype=tf.float32)
-#   actions = sequence_feature['offer_docid'][-sequence_length:]
-#   observations = sequence_feature['offer_docid'][-(sequence_length+1):-1]
+    rewards = tf.pad(rewards, paddings, 'CONSTANT', constant_values=0)
+    actions = tf.pad(actions, paddings, 'CONSTANT', constant_values=0)
+    observations = tf.pad(observations, paddings, 'CONSTANT', constant_values=0)
 
-#   actual_sequence_length = tf.shape(observations)[0]
-#   actions = actions[-actual_sequence_length:]
-#   rewards = rewards[-actual_sequence_length:]
+    # steps & discounts
+    discounts = tf.ones((sequence_length,), dtype=tf.float32)
+    next_step_types = tf.ones(
+      (sequence_length,), dtype=tf.int32) * ts.StepType.MID
+    step_types = tf.concat([[ts.StepType.FIRST], next_step_types[1:]], axis=0)
 
-#   paddings = tf.stack([0, sequence_length - actual_sequence_length])
-#   paddings = tf.expand_dims(paddings, 0)
+    # build trajectory
+    traj = trajectory.Trajectory(
+        step_type=step_types,
+        observation=observations,
+        action=actions,
+        policy_info=(),
+        next_step_type=next_step_types,
+        reward=rewards,
+        discount=discounts
+    )
 
-#   rewards = tf.pad(rewards, paddings, 'CONSTANT', constant_values=0)
-#   actions = tf.pad(actions, paddings, 'CONSTANT', constant_values=0)
-#   observations = tf.pad(observations, paddings, 'CONSTANT', constant_values=0)
-
-#   discounts = tf.ones((sequence_length,), dtype=tf.float32)
-#   next_step_types = tf.ones(
-#       (sequence_length,), dtype=tf.int32) * ts.StepType.MID
-#   step_types = tf.concat([[ts.StepType.FIRST], next_step_types[1:]], axis=0)
-
-#   traj = trajectory.Trajectory(
-#       step_type=step_types,
-#       observation=observations,
-#       action=actions,
-#       policy_info=(),
-#       next_step_type=next_step_types,
-#       reward=rewards,
-#       discount=discounts)
-
-#   # TODO(b/169276588): Split the sequence based on time stamp.
-#   section_size = tf.cast(actual_sequence_length / 3, tf.int32)
-#   weights = tf.concat([
-#       tf.zeros((section_size,)),
-#       tf.ones((section_size,)),
-#       tf.zeros((sequence_length - 2 * section_size,))
-#   ], axis=0)
-
-#   return traj, weights
+    # get importance weights
+    section_size = tf.cast(actual_sequence_length / 3, tf.int32)
+    # print(f"section_size: {section_size}")
+    
+    weights = tf.concat(
+        [
+            tf.zeros((section_size,)),
+            tf.ones((section_size,)),
+            tf.zeros((sequence_length - 2 * section_size,))
+        ], 
+        axis=0
+    )
+    
+    return traj, weights # sequence_feature

@@ -5,6 +5,7 @@ numba
 matplotlib
 tensorflow==2.13.0
 tf-agents==0.17.0
+tensorflow-recommenders==0.7.3
 tensorflow-probability==0.20.1
 tensorflow-datasets
 tensorboard
