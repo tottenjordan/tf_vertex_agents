@@ -1,0 +1,27 @@
+
+FROM gcr.io/deeplearning-platform-release/tf-gpu.2-13.py310
+
+ENV PYTHONUNBUFFERED True
+ENV APP_HOME /workspace
+
+WORKDIR $APP_HOME
+
+COPY /requirements.txt $APP_HOME/requirements.txt
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r $APP_HOME/requirements.txt
+
+COPY src/data $APP_HOME/src/data
+COPY src/utils $APP_HOME/src/utils
+COPY src/agents $APP_HOME/src/agents
+COPY src/trainer $APP_HOME/src/trainer
+COPY src/networks $APP_HOME/src/networks
+COPY src/data_preprocessor $APP_HOME/src/data_preprocessor
+
+RUN apt update && apt -y install nvtop
+
+RUN export PYTHONPATH=${PYTHONPATH}:${APP_HOME}/
+
+RUN pip freeze
+
+# Sets up the entry point to invoke the task.
+ENTRYPOINT ["python3", "-m", "src.trainer.train_topkop_rfa"]
