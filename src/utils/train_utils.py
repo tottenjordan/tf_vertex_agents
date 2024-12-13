@@ -25,6 +25,10 @@ from src.utils import reward_factory as reward_factory
 
 storage_client = storage.Client(project=data_config.PROJECT_ID)
 
+options = tf.data.Options()
+options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+options.threading.max_intra_op_parallelism = 1
+
 # ====================================================
 # get TF Record Dataset function
 # ====================================================
@@ -110,7 +114,7 @@ def create_tfrecord_ds(
     shuffle_buffer_size: int = 1024,
     num_shards: int = 50,
     cycle_length: int = tf.data.AUTOTUNE,
-    block_length: int = 10,
+    block_length: int = tf.data.AUTOTUNE,
     num_prefetch: int = 10,
     num_parallel_calls: int = 10,
     repeat: bool = True,
@@ -159,7 +163,7 @@ def create_tfrecord_ds(
     ).map(
         process_trajectory_fn,
         num_parallel_calls=tf.data.AUTOTUNE
-    ).prefetch(num_prefetch)
+    ).prefetch(tf.data.AUTOTUNE)
   
     return example_ds
 
@@ -168,10 +172,6 @@ def create_tfrecord_ds(
 # get train & val datasets
 # TODO: replace with "create TF Record dataset function
 # ====================================================
-options = tf.data.Options()
-options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
-options.threading.max_intra_op_parallelism = 1
-
 def _get_train_dataset(
     bucket_name, 
     data_dir_prefix_path, 

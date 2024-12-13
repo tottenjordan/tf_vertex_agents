@@ -39,7 +39,7 @@ from tf_agents.trajectories import time_step as ts
 from tf_agents.replay_buffers import tf_uniform_replay_buffer
 
 # google cloud
-from google.cloud import aiplatform as vertex_ai
+from google.cloud import aiplatform
 from google.cloud import storage
 
 # this repo
@@ -135,6 +135,7 @@ def get_args(raw_args: List[str]) -> argparse.Namespace:
     parser.add_argument("--experiment_name", default="tmp-experiment", type=str)
     parser.add_argument("--experiment_run", default="tmp-experiment-run", type=str)
     parser.add_argument("--tb_resource_name", default=None, type=str, help="")
+    parser.add_argument("--log_vertex_experiment", action='store_true', help="ommit for False")
 
     # performance
     parser.add_argument("--use_gpu", action='store_true', help="include for True; ommit for False")
@@ -192,9 +193,11 @@ def main(args: argparse.Namespace):
     # ====================================================
     tf.print("Detecting devices....")
     tf.print("Setting device strategy...")
+    
     # GPU - All variables and Agents need to be created under strategy.scope()
     if args.use_gpu:
         distribution_strategy = strategy_utils.get_strategy(tpu=args.use_tpu, use_gpu=args.use_gpu)
+    
     if args.use_tpu:
         cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu="local")
         tf.config.experimental_connect_to_cluster(cluster_resolver)
@@ -202,38 +205,48 @@ def main(args: argparse.Namespace):
         distribution_strategy = tf.distribute.TPUStrategy(cluster_resolver)
         logging.info("All devices: ", tf.config.list_logical_devices('TPU'))
 
-    tf.print(f"distribution_strategy: {distribution_strategy}")
-
     if distribution_strategy == 'multiworker':
         task_type, task_id = (strategy.cluster_resolver.task_type, strategy.cluster_resolver.task_id)
     else:
         task_type, task_id = 'chief', None
 
     NUM_REPLICAS = distribution_strategy.num_replicas_in_sync
-    tf.print(f'NUM_REPLICAS = {NUM_REPLICAS}')
-    tf.print(f'task_type = {task_type}')
-    tf.print(f'task_id = {task_id}')
-    # =============================================
-    # set GCP clients
-    # =============================================
-    storage_client = storage.Client(project=data_config.PROJECT_ID)
-    vertex_ai.init(
-        project=data_config.PROJECT_ID, 
-        location='us-central1', 
-        experiment=args.experiment_name
-    )
+    tf.print(f"distribution_strategy: {distribution_strategy}")
+    tf.print(f'NUM_REPLICAS: {NUM_REPLICAS}')
+    tf.print(f'task_type: {task_type}')
+    tf.print(f'task_id: {task_id}')
+    
     # ====================================================
     # set Vertex AI env vars
     # ====================================================
+    
+    # Vertex tensorboard logging
     if 'AIP_TENSORBOARD_LOG_DIR' in os.environ:
-        log_dir=os.environ['AIP_TENSORBOARD_LOG_DIR']
-        tf.print(f'log_dir: {log_dir}')
+        LOG_DIR=os.environ['AIP_TENSORBOARD_LOG_DIR']
+        tf.print(f'LOG_DIR: {LOG_DIR}')
     else:
-        log_dir = args.log_dir
-        tf.print(f'log_dir: {log_dir}')
+        LOG_DIR = args.log_dir
+        tf.print(f'LOG_DIR: {LOG_DIR}')
 
-    MODEL_DIR = os.environ["AIP_MODEL_DIR"]
-    tf.print(f'MODEL_DIR: {MODEL_DIR}')
+    # Vertex Model registry
+    if 'AIP_MODEL_DIR' in os.environ:
+        MODEL_DIR=os.environ['AIP_MODEL_DIR']
+        tf.print(f'AIP_MODEL_DIR: {MODEL_DIR}')
+    else:
+        MODEL_DIR = args.artifacts_dir
+        tf.print(f'MODEL_DIR: {MODEL_DIR}')
+    
+    # =============================================
+    # set GCP clients
+    # =============================================
+    
+    aiplatform.init(
+        project=data_config.PROJECT_ID, 
+        location='us-central1',
+        experiment=args.experiment_name,
+        experiment_tensorboard=args.tb_resource_name
+    )
+
     # ====================================================
     # train & val files
     # ====================================================
@@ -284,21 +297,20 @@ def main(args: argparse.Namespace):
     # ====================================================
     # summary writers
     # ====================================================
-    _train_log_dir = os.path.join(log_dir, 'train')
-    _eval_log_dir = os.path.join(log_dir, 'eval')
-    tf.print(f'train_log_dir : {_train_log_dir}')
-    tf.print(f'eval_log_dir  : {_eval_log_dir}')
+    # _train_log_dir = os.path.join(LOG_DIR, 'train')
+    # _eval_log_dir = os.path.join(LOG_DIR, 'eval')
+    # tf.print(f'train_log_dir : {_train_log_dir}')
+    # tf.print(f'eval_log_dir  : {_eval_log_dir}')
     
     train_summary_writer = tf.compat.v2.summary.create_file_writer(
-        _train_log_dir, flush_millis=10 * 1000)
+        LOG_DIR, flush_millis=10 * 1000)
     train_summary_writer.set_as_default()
     
-    eval_summary_writer = tf.compat.v2.summary.create_file_writer(
-        _eval_log_dir, flush_millis=10 * 1000)
+    # eval_summary_writer = tf.compat.v2.summary.create_file_writer(
+    #     _eval_log_dir, flush_millis=10 * 1000)
     
     global_step = tf.compat.v1.train.get_or_create_global_step()
     tf.print(f'global_step  : {global_step.numpy()}')
-    
     # ====================================================
     # create agent, networks, layers, and variables
     # ====================================================
@@ -308,20 +320,18 @@ def main(args: argparse.Namespace):
         action_lookup_layer = tf.keras.layers.IntegerLookup(
             vocabulary=VOCAB_DICT['movie_id_int'], mask_value=None
         )
-        
         inverse_action_lookup_layer = tf.keras.layers.IntegerLookup(
             vocabulary=action_lookup_layer.get_vocabulary(), 
             mask_value=None,
             invert=True
         )
-        action_vocab_size = action_lookup_layer.vocab_size() # 3885
-
         observation_lookup_layer = tf.keras.layers.IntegerLookup(
             vocabulary=VOCAB_DICT['movie_id_int'], 
             mask_value=None
         )
-        obs_vocab_size = observation_lookup_layer.vocab_size()
         
+        action_vocab_size = action_lookup_layer.vocab_size()
+        obs_vocab_size = observation_lookup_layer.vocab_size()
         tf.print(f"action_vocab_size : {action_vocab_size}")
         tf.print(f"obs_vocab_size    : {obs_vocab_size}")
 
@@ -335,24 +345,13 @@ def main(args: argparse.Namespace):
             maximum=action_vocab_size - 1,
             name='observation'
         )
-        
         time_step_spec = ts.time_step_spec(observation_spec=observation_spec)
-        
         action_spec = tensor_spec.BoundedTensorSpec(
             shape=[],
             dtype=tf.int64, # tf.string | tf.int64,
             minimum=0,
             maximum=action_vocab_size - 1,
             name='action'
-        )
-
-        # network
-        state_embedding_network = rfa_utils.create_state_embedding_network(
-            observation_lookup_layer=observation_lookup_layer,
-            input_embedding_size=args.input_embedding_size,
-            input_fc_layer_units=INPUT_FC_LAYER_PARAMS,
-            lstm_size=LSTM_SIZE,
-            output_fc_layer_units=OUTPUT_FC_LAYER_PARAMS
         )
         # ====================================================
         # Agent
@@ -371,13 +370,20 @@ def main(args: argparse.Namespace):
             SAMPLED_SOFTMAX_NUM_NEGATIVES=None
         else:
             SAMPLED_SOFTMAX_NUM_NEGATIVES = args.sampled_softmax_num_negatives
-
-        optimizer = tf.keras.optimizers.Adam(learning_rate=args.learning_rate)
+            
+        # with distribution_strategy.scope():
+        state_embedding_network = rfa_utils.create_state_embedding_network(
+            observation_lookup_layer=observation_lookup_layer,
+            input_embedding_size=args.input_embedding_size,
+            input_fc_layer_units=INPUT_FC_LAYER_PARAMS,
+            lstm_size=LSTM_SIZE,
+            output_fc_layer_units=OUTPUT_FC_LAYER_PARAMS
+        )
         tf_agent = topk_reinforce_agent.TopKOffPolicyReinforceAgent(
             time_step_spec=time_step_spec,
             action_spec=action_spec,
             state_embedding_network=state_embedding_network,
-            optimizer=optimizer,
+            optimizer=tf.keras.optimizers.Adam(learning_rate=args.learning_rate),
             off_policy_correction_exponent=OFF_POLICY_CORRECTION_EXPONENT,
             action_lookup_layer=action_lookup_layer,
             inverse_action_lookup_layer=inverse_action_lookup_layer,
@@ -516,64 +522,79 @@ def main(args: argparse.Namespace):
         if args.use_tf_functions:
             _train_step = common.function(_train_step)
 
-        # Training loop..
+        # ====================================================
+        # Training loop
+        # ====================================================
         tf.print(f"starting train loop...")
         
-        list_o_loss=[]
-        time_acc = 0
-        timed_at_step = global_step.numpy()
+        TENSORBOARD_ID = args.tb_resource_name.split('/')[-1]
+        tf.print(f'TENSORBOARD_ID: {TENSORBOARD_ID}')
+
+        # Continuous monitoring w/ TensorBoard
+        aiplatform.start_upload_tb_log(
+            tensorboard_id=TENSORBOARD_ID,
+            tensorboard_experiment_name=args.experiment_name,
+            logdir=LOG_DIR,
+            experiment_display_name=args.experiment_name,
+            run_name_prefix=f"{args.experiment_run}-",
+        )
+
+        try:
         
-        start_train = time.time()
-        
-        for i in range(args.num_iterations):
-            train_loss = _train_step()
-            list_o_loss.append(train_loss.numpy())
-            
-            if global_step.numpy() % args.log_interval == 0:
-                tf.print(f'step = {global_step.numpy()}: loss = {train_loss.numpy()}')
-                
-            if global_step.numpy() % args.eval_interval == 0:
-                # steps/sec
-                time_acc += time.time() - start_train
-                steps_per_sec = (global_step.numpy() - timed_at_step) / time_acc
-                tf.print(f"\n{round(steps_per_sec,3)} steps/sec")
-                timed_at_step = global_step.numpy()
-                time_acc = 0
-                
-                tf.print(f"\nEval at step: {global_step.numpy()}...")
-                
-                # TODO: uncomment for ScaNN layer
-                # tf_agent.post_process_policy()
-                
-                offline_evaluation.evaluate(
-                    tf_agent.policy,
-                    eval_dataset,
-                    offline_eval_metrics=offline_eval_metrics,
-                    train_step=global_step,
-                    summary_writer=eval_summary_writer,
-                    summary_prefix='Metrics',
-                )
-                metric_utils.log_metrics(offline_eval_metrics)
-                for metric in offline_eval_metrics:
-                    tf.print(metric.name, ' = ', metric.result().numpy())
-                
-                tf.print("="*40 + "\n")
-                
-            if global_step.numpy() % args.chkpt_interval == 0:
-                train_checkpointer.save(global_step)
-                tf.print(f"saved train_checkpointer step {global_step.numpy()} to {args.chkpoint_dir}")
-                
-                # TODO: uncomment for ScaNN layer
-                # tf.print(f"post processing policy...")
-                # tf_agent.post_process_policy()
-                
-                policy_checkpointer.save(global_step)
-                tf.print(f"saved policy_checkpointer step {global_step.numpy()} to {POLICY_CHEKPT_DIR}")
-                
+            list_o_loss=[]
+            time_acc = 0
+            timed_at_step = global_step.numpy()
+            start_train = time.time()
+
+            for i in range(args.num_iterations):
+                train_loss = _train_step()
+                list_o_loss.append(train_loss.numpy())
+
+                if global_step.numpy() % args.log_interval == 0:
+                    tf.print(f'step = {global_step.numpy()}: loss = {train_loss.numpy()}')
+
+                if global_step.numpy() % args.eval_interval == 0:
+                    time_acc += time.time() - start_train
+                    steps_per_sec = (global_step.numpy() - timed_at_step) / time_acc
+                    tf.print(f"\n{round(steps_per_sec,3)} steps/sec")
+                    timed_at_step = global_step.numpy()
+                    time_acc = 0
+
+                    tf.print(f"\nEval at step: {global_step.numpy()}...")
+                    
+                    # TODO: uncomment for ScaNN layer
+                    # tf_agent.post_process_policy()
+
+                    offline_evaluation.evaluate(
+                        tf_agent.policy,
+                        eval_dataset,
+                        offline_eval_metrics=offline_eval_metrics,
+                        train_step=global_step,
+                        summary_writer=train_summary_writer, # eval_summary_writer,
+                        summary_prefix='Metrics',
+                    )
+                    metric_utils.log_metrics(offline_eval_metrics)
+                    for metric in offline_eval_metrics:
+                        tf.print(metric.name, ' = ', metric.result().numpy())
+                    tf.print("="*40 + "\n")
+
+                if global_step.numpy() % args.chkpt_interval == 0:
+                    tf.print(f"global_step for checkpoints: {global_step.numpy()}")
+                    
+                    train_checkpointer.save(global_step)
+                    tf.print(f"saved train_checkpointer to {args.chkpoint_dir}")
+
+                    # TODO: uncomment for ScaNN layer
+                    # tf.print(f"post processing policy...")
+                    # tf_agent.post_process_policy()
+
+                    policy_checkpointer.save(global_step)
+                    tf.print(f"saved policy_checkpointer to {POLICY_CHEKPT_DIR}")
+        finally:
+            aiplatform.end_upload_tb_log()
         
     runtime_mins = int((time.time() - start_train) / 60)
     tf.print(f"completed train job in {runtime_mins} minutes")
-    tf.print(f"global_step for checkpoints: {global_step.numpy()}")
     
     train_checkpointer.save(global_step)
     tf.print(f"saved train_checkpointer to: {args.chkpoint_dir}")
@@ -587,40 +608,48 @@ def main(args: argparse.Namespace):
 
     saver.save(MODEL_DIR)
     tf.print(f"saved trained policy to: {MODEL_DIR}")
+    
     # ====================================================
     # log Vertex Experiments
     # ====================================================
-    metric_dict = {}
-    for met in offline_eval_metrics:
-        metric_dict[met.name] = round(float(met.result().numpy()), 5)
-    
-    exp_params = {
-        "off_policy_exp" : int(args.off_policy_correction_exponent),
-        "use_sl_loss" : str(args.use_supervised_loss_for_main_policy),
-        "num_actions" : int(args.policy_num_actions),
-        "num_greedy_actions" : int(args.num_greedy_actions),
-        "softmax_num_negatives" : int(args.sampled_softmax_num_negatives),
-        "gamma": float(args.gamma),
-        "batch_size": int(args.batch_size),
-        "eval_batch_size": int(args.eval_batch_size),
-    }
+    if args.log_vertex_experiment:
+        
+        # log experiment to Vertex
+        metric_dict = {}
+        for met in offline_eval_metrics:
+            metric_dict[met.name] = round(float(met.result().numpy()), 5)
 
-    if task_type == 'chief':
-        tf.print(f" task_type logging experiments: {task_type}")
-        tf.print(f" task_id logging experiments: {task_id}")
-        tf.print(f" logging data to experiment run: {args.experiment_run}")
+        exp_params = {
+            "off_policy_exp" : int(args.off_policy_correction_exponent),
+            "use_sl_loss" : str(args.use_supervised_loss_for_main_policy),
+            "num_actions" : int(args.policy_num_actions),
+            "num_greedy_actions" : int(args.num_greedy_actions),
+            "softmax_num_negatives" : int(args.sampled_softmax_num_negatives),
+            "gamma": float(args.gamma),
+            "batch_size": int(args.batch_size),
+            "eval_batch_size": int(args.eval_batch_size),
+        }
 
-        with vertex_ai.start_run(
-            f'{args.experiment_run}',
-            # tensorboard=args.tb_resource_name
-        ) as my_run:
+        if task_type == 'chief':
+            tf.print(f" task_type logging experiments: {task_type}")
+            tf.print(f" task_id logging experiments: {task_id}")
+            tf.print(f" logging data to experiment run: {args.experiment_run}")
             
-            tf.print(f"logging params & metrics...")
-            my_run.log_params(exp_params)
-            my_run.log_metrics(metric_dict)
+            # aiplatform.start_run(args.experiment_run)
+            # aiplatform.log_params(exp_params)
+            # aiplatform.log_metrics(metric_dict)
+            # aiplatform.end_run()
             
-            vertex_ai.end_run()
             tf.print(f"EXPERIMENT RUN: {args.experiment_run} has ended")
+
+            with aiplatform.start_run(args.experiment_run) as my_run:
+                # tensorboard=args.tb_resource_name
+                tf.print(f"logging params & metrics...")
+                my_run.log_params(exp_params)
+                my_run.log_metrics(metric_dict)
+
+                aiplatform.end_run()
+                tf.print(f"EXPERIMENT RUN: {args.experiment_run} has ended")
             
 if __name__ == "__main__":
     # logging.set_verbosity(logging.INFO)
