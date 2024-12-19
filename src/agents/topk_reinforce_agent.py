@@ -13,7 +13,6 @@ import collections
 import functools
 from typing import Optional, Text, Tuple
 
-import gin
 import tensorflow as tf
 import tensorflow_recommenders as tfrs
 from tf_agents.agents import data_converter

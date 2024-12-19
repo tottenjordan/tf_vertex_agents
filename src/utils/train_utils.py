@@ -118,7 +118,8 @@ def create_tfrecord_ds(
     num_prefetch: int = 10,
     num_parallel_calls: int = 10,
     repeat: bool = True,
-    drop_remainder: bool = False
+    drop_remainder: bool = False,
+    # cache: bool = True
 ):
     """
       Each element of the TFRecord data is parsed using the process_example_fn
@@ -164,6 +165,10 @@ def create_tfrecord_ds(
         process_trajectory_fn,
         num_parallel_calls=tf.data.AUTOTUNE
     ).prefetch(tf.data.AUTOTUNE)
+    
+    # TODO: test cache impact to perf
+    # if cache:
+    #     example_ds.cache()
   
     return example_ds
 
