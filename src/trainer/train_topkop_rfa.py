@@ -150,6 +150,9 @@ def get_args(raw_args: List[str]) -> argparse.Namespace:
     parser.add_argument("--summary_interval", type=int, default=100, help="")
     parser.add_argument("--chkpt_interval", type=int, default=1000, help="")
     parser.add_argument("--learning_rate", type=float, default=0.001, help="")
+    
+    # evaluation
+    parser.add_argument('--eval_ks', type=str, required=False)
 
     return parser.parse_args(raw_args)
 
@@ -164,10 +167,12 @@ def main(args: argparse.Namespace):
     INPUT_FC_LAYER_PARAMS = train_utils.get_arch_from_string(args.input_fc_layer_params)
     LSTM_SIZE = train_utils.get_arch_from_string(args.lstm_size)
     OUTPUT_FC_LAYER_PARAMS = train_utils.get_arch_from_string(args.output_fc_layer_params)
+    EVAL_Ks = train_utils.get_arch_from_string(args.eval_ks)
     
     tf.print(f'INPUT_FC_LAYER_PARAMS  : {INPUT_FC_LAYER_PARAMS}')
     tf.print(f'LSTM_SIZE              : {LSTM_SIZE}')
     tf.print(f'OUTPUT_FC_LAYER_PARAMS : {OUTPUT_FC_LAYER_PARAMS}')
+    tf.print(f'EVAL_Ks                : {EVAL_Ks}')
     
     # =============================================
     # limiting GPU growth
@@ -408,11 +413,18 @@ def main(args: argparse.Namespace):
 
         offline_eval_metrics = [
             # offline_metrics.AccuracyAtK(),
-            offline_metrics.AveragePerClassAccuracyAtK(
-                action_vocab_size, action_lookup=action_lookup_layer
-            ),
+            # offline_metrics.AveragePerClassAccuracyAtK(
+            #     vocabulary_size=action_vocab_size,
+            #     action_lookup=action_lookup_layer
+            # ),
             # WeightedReturns requires action logits to work, make sure
             # emit_logits_as_info = True in the TopKOffPolicyReinforcePolicy
+            offline_metrics.WeightedReturns(
+                gamma=1.,
+                action_lookup=action_lookup_layer,
+                weight_by_probabilities=True,
+                name='WeightedReturnsProb_gamma_1'
+            ),
             offline_metrics.WeightedReturns(
                 gamma=1.,
                 action_lookup=action_lookup_layer,
@@ -420,13 +432,44 @@ def main(args: argparse.Namespace):
                 name='WeightedReturnsLogProb_gamma_1'
             ),
             offline_metrics.WeightedReturns(
-                gamma=1.,
+                gamma=0.6,
+                action_lookup=action_lookup_layer,
+                weight_by_probabilities=False,
+                name='WeightedReturnsLogProb_gamma_p6'
+            ),
+            offline_metrics.WeightedReturns(
+                gamma=0.6,
                 action_lookup=action_lookup_layer,
                 weight_by_probabilities=True,
-                name='WeightedReturnsProb_gamma_1'
+                name='WeightedReturnsProb_gamma_p6'
+            ),
+            offline_metrics.WeightedReturns(
+                gamma=0.4,
+                action_lookup=action_lookup_layer,
+                weight_by_probabilities=False,
+                name='WeightedReturnsLogProb_gamma_p4'
+            ),
+            offline_metrics.WeightedReturns(
+                gamma=0.4,
+                action_lookup=action_lookup_layer,
+                weight_by_probabilities=True,
+                name='WeightedReturnsProb_gamma_p4'
+            ),
+            offline_metrics.WeightedReturns(
+                gamma=0,
+                action_lookup=action_lookup_layer,
+                weight_by_probabilities=False,
+                name='WeightedReturnsLogProb_gamma_0'
+            ),
+            offline_metrics.WeightedReturns(
+                gamma=0,
+                action_lookup=action_lookup_layer,
+                weight_by_probabilities=True,
+                name='WeightedReturnsProb_gamma_0'
             ),
         ]
-        for k in [1, 5, 10]: # args.policy_num_actions
+        # TODO: paramterize w/ args.policy_num_actions
+        for k in EVAL_Ks: #[1, 5, 10]:
             offline_eval_metrics.append(
                 offline_metrics.AccuracyAtK(
                     trajectory_filter=non_oov_filter,
@@ -434,22 +477,22 @@ def main(args: argparse.Namespace):
                     k=k
                 )
             )
-        #     offline_eval_metrics.append(
-        #         offline_metrics.AveragePerClassAccuracyAtK(
-        #             action_vocab_size,
-        #             action_lookup=action_lookup_layer,
-        #             trajectory_filter=non_oov_filter,
-        #             name='AveragePerClassAccuracyAtK_' + str(k),
-        #             k=k
-        #         )
-        #     )
-        #     offline_eval_metrics.append(
-        #         offline_metrics.LastActionAccuracyAtK(
-        #             trajectory_filter=non_oov_filter,
-        #             name='LastActionAccuracyAtK_' + str(k),
-        #             k=k
-        #         )
-        #     )        
+            offline_eval_metrics.append(
+                offline_metrics.AveragePerClassAccuracyAtK(
+                    vocabulary_size=action_vocab_size,
+                    action_lookup=action_lookup_layer,
+                    trajectory_filter=non_oov_filter,
+                    name='AveragePerClassAccuracyAtK_' + str(k),
+                    k=k
+                )
+            )
+            offline_eval_metrics.append(
+                offline_metrics.LastActionAccuracyAtK(
+                    trajectory_filter=non_oov_filter,
+                    name='LastActionAccuracyAtK_' + str(k),
+                    k=k
+                )
+            )        
         
         tf.print(f"setting train_checkpointer: {args.chkpoint_dir}")
         train_checkpointer = train_utils.restore_and_get_checkpoint_manager(
