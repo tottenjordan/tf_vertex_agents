@@ -43,13 +43,15 @@ from google.cloud import aiplatform
 from google.cloud import storage
 
 # this repo
+from . import offline_evaluation as offline_evaluation
+from . import offline_metrics as offline_metrics
+
 from src.data import data_utils as data_utils
 from src.data import data_config as data_config
 from src.networks import encoding_network as emb_features
 from src.agents import topk_reinforce_agent as topk_reinforce_agent
-from src.agents import offline_evaluation as offline_evaluation
-from src.agents import offline_metrics as offline_metrics
-from src.agents import rfa_utils as rfa_utils
+
+from src.utils import rfa_utils as rfa_utils
 from src.utils import train_utils as train_utils
 
 # gcp clients
