@@ -62,10 +62,16 @@ def train_agent(
     # experiment
     invoke_time       = time.strftime("%Y%m%d-%H%M%S")
     RUN_NAME          = f'{experiment_run_tag}-{invoke_time}'
-    CHECKPT_DIR       = f"gs://{bucket_name}/{experiment_name}/chkpoint"
-    BASE_OUTPUT_DIR   = f"gs://{bucket_name}/{experiment_name}/{RUN_NAME}"
-    LOG_DIR           = f"{BASE_OUTPUT_DIR}/logs"
-    ARTIFACTS_DIR     = f"{BASE_OUTPUT_DIR}/artifacts"
+    EXPERIMENT_DIR    = os.path.join(f"gs://{bucket_name}", experiment_name)
+    BASE_OUTPUT_DIR   = os.path.join(EXPERIMENT_DIR, RUN_NAME)
+    CHECKPT_DIR       = os.path.join(BASE_OUTPUT_DIR, "chkpoint")
+    LOG_DIR           = os.path.join(BASE_OUTPUT_DIR, "logs")
+    ROOT_DIR          = os.path.join(BASE_OUTPUT_DIR, "root")
+    ARTIFACTS_DIR     = os.path.join(BASE_OUTPUT_DIR, "artifacts")
+    # CHECKPT_DIR       = f"gs://{bucket_name}/{experiment_name}/chkpoint"
+    # BASE_OUTPUT_DIR   = f"gs://{bucket_name}/{experiment_name}/{RUN_NAME}"
+    # LOG_DIR           = f"{BASE_OUTPUT_DIR}/logs"
+    # ARTIFACTS_DIR     = f"{BASE_OUTPUT_DIR}/artifacts"
     
     # job config 
     JOB_NAME = f'train-{experiment_name}-{experiment_run_tag}'
