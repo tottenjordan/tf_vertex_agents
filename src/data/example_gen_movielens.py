@@ -63,6 +63,7 @@ USERS_FILE_NAME = "users.dat"
 RATINGS_DATA_COLUMNS = ['user_id', 'movie_id', 'rating', 'timestamp']
 MOVIES_DATA_COLUMNS = ["movie_id", "title", "genres"]
 USERS_DATA_COLUMNS = ['user_id', 'user_gender', 'user_age', 'occupation', 'zip_code']
+
 OUTPUT_MOVIE_VOCAB_FILENAME = "movie_vocab.json"
 OUTPUT_MOVIE_YEAR_VOCAB_FILENAME = "movie_year_vocab.txt"
 OUTPUT_MOVIE_GENRE_VOCAB_FILENAME = "movie_genre_vocab.txt"

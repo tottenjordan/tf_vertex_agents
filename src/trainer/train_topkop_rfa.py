@@ -428,6 +428,25 @@ def main(args: argparse.Namespace):
                 name='WeightedReturnsProb_gamma_1'
             ),
             offline_metrics.WeightedReturns(
+                gamma=0.6,
+                action_lookup=action_lookup_layer,
+                weight_by_probabilities=True,
+                name='WeightedReturnsProb_gamma_p6'
+            ),
+            offline_metrics.WeightedReturns(
+                gamma=0.4,
+                action_lookup=action_lookup_layer,
+                weight_by_probabilities=True,
+                name='WeightedReturnsProb_gamma_p4'
+            ),
+            offline_metrics.WeightedReturns(
+                gamma=0,
+                action_lookup=action_lookup_layer,
+                weight_by_probabilities=True,
+                name='WeightedReturnsProb_gamma_0'
+            ),
+            # LogProb
+            offline_metrics.WeightedReturns(
                 gamma=1.,
                 action_lookup=action_lookup_layer,
                 weight_by_probabilities=False,
@@ -440,34 +459,16 @@ def main(args: argparse.Namespace):
                 name='WeightedReturnsLogProb_gamma_p6'
             ),
             offline_metrics.WeightedReturns(
-                gamma=0.6,
-                action_lookup=action_lookup_layer,
-                weight_by_probabilities=True,
-                name='WeightedReturnsProb_gamma_p6'
-            ),
-            offline_metrics.WeightedReturns(
                 gamma=0.4,
                 action_lookup=action_lookup_layer,
                 weight_by_probabilities=False,
                 name='WeightedReturnsLogProb_gamma_p4'
             ),
             offline_metrics.WeightedReturns(
-                gamma=0.4,
-                action_lookup=action_lookup_layer,
-                weight_by_probabilities=True,
-                name='WeightedReturnsProb_gamma_p4'
-            ),
-            offline_metrics.WeightedReturns(
                 gamma=0,
                 action_lookup=action_lookup_layer,
                 weight_by_probabilities=False,
                 name='WeightedReturnsLogProb_gamma_0'
-            ),
-            offline_metrics.WeightedReturns(
-                gamma=0,
-                action_lookup=action_lookup_layer,
-                weight_by_probabilities=True,
-                name='WeightedReturnsProb_gamma_0'
             ),
         ]
         # TODO: paramterize w/ args.policy_num_actions

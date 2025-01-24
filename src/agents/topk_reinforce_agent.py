@@ -27,7 +27,7 @@ from tf_agents.utils import value_ops
 
 # this repo
 from . import topk_op_reinforce_policy as topk_op_reinforce_policy
-from . import rfa_utils as rfa_utils
+from src.utils import rfa_utils as rfa_utils
 
 TOL = 1e-6
 
